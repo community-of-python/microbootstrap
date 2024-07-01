@@ -18,4 +18,4 @@ jobs:
       - name: Run pre-commit
         uses: pre-commit/action@v3.0.0
         with:
-          extra_args: run --all-files --hook-stage manual
+          extra_args: --all-files --hook-stage manual

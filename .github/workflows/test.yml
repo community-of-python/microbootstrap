@@ -23,7 +23,7 @@ jobs:
           poetry-version: "1.8.3"
       - name: Install dependencies with Poetry
         run: |
-          poetry install --all-extras
+          poetry install --all-extras --with dev
       - name: Run tests with coverage
         run: |
           pytest . --cov=. --cov-report xml -n 4
