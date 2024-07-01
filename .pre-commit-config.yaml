@@ -5,7 +5,7 @@ repos:
       - id: mypy
         name: mypy
         always_run: true
-        args: [.]
+        args: [""]
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.5.0
     hooks:

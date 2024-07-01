@@ -23,6 +23,7 @@ jobs:
           poetry-version: "1.8.3"
       - name: Install dependencies with Poetry
         run: |
+          poetry run virtualenvs.create false
           poetry install --all-extras --with dev
       - name: Run tests with coverage
         run: |
