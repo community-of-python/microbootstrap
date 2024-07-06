@@ -34,7 +34,7 @@ readme = "README.md"
 packages = [{ include = "microbootstrap" }]
 
 [tool.poetry.dependencies]
-python = "^3.8"
+python = "^3.9"
 pydantic-settings = "^2.3.4"
 granian = { version = "^1.4.4", extras = ["reload"] }
 # for logging boostrap
@@ -84,7 +84,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.mypy]
 files = ["microbootstrap", "tests"]
-python_version = "3.8"
+python_version = "3.9"
 strict = true
 ignore_missing_imports = true
 pretty = true
@@ -98,7 +98,7 @@ disallow_subclassing_any = false
 disallow_untyped_decorators = false
 
 [tool.ruff]
-target-version = "py38"
+target-version = "py39"
 line-length = 120
 
 [tool.ruff.format]
