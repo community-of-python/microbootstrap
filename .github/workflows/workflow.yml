@@ -5,4 +5,4 @@ on:
 
 jobs:
   ci:
-    uses: community-of-python/.github/workflows/preset.yml@main
+    uses: community-of-python/community-workflow/.github/workflows/preset.yml@main
