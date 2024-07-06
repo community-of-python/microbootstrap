@@ -1,7 +1,16 @@
 name: CI Pipeline
 
 on:
-  workflow_call:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  release:
+    types:
+      - published
+
 
 jobs:
   ci:
