@@ -1,0 +1,8 @@
+name: CI Pipeline
+
+on:
+  workflow_call:
+
+jobs:
+  ci:
+    uses: community-of-python/.github/workflows/workflow.yml@main
