@@ -4,7 +4,7 @@ import typing
 
 import sentry_sdk
 
-from microbootstrap.helpers.base import BootstrapServicesBootstrapper
+from microbootstrap.base.base import BootstrapServicesBootstrapper
 from microbootstrap.settings.base import BootstrapSettings
 
 

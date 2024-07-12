@@ -11,9 +11,9 @@ from litestar.status_codes import HTTP_200_OK
 from starlette import status
 
 from microbootstrap import bootstrap
-from microbootstrap.frameworks.fastapi import FastAPIBootstrapper
-from microbootstrap.frameworks.litestar import LitestarBootstrapper
-from microbootstrap.helpers.base import BootstrapServicesBootstrapper
+from microbootstrap.base.base import BootstrapServicesBootstrapper
+from microbootstrap.bootstrappers.fastapi import FastAPIBootstrapper
+from microbootstrap.bootstrappers.litestar import LitestarBootstrapper
 from tests import settings_for_test
 
 

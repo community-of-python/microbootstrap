@@ -6,7 +6,7 @@ from fastapi.testclient import TestClient
 from opentelemetry.instrumentation.redis import RedisInstrumentor
 from opentelemetry.sdk import resources
 
-from microbootstrap.helpers import opentelemetry
+from microbootstrap.base import opentelemetry
 from tests import settings_for_test
 from tests.conftest import simple_request_hook
 

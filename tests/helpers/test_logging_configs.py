@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import structlog
 
-from microbootstrap.helpers.logging import config as logging_configs
+from microbootstrap.base.logging import config as logging_configs
 
 
 def test_helpers__logging_configs__single_struct() -> None:

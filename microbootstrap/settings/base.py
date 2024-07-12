@@ -3,27 +3,19 @@ import typing
 
 import pydantic
 import pydantic_settings
-from sentry_sdk.integrations import Integration  # noqa: TCH002
 
-from microbootstrap.helpers.logging import base as logging_base
-from microbootstrap.helpers.opentelemetry import OpenTelemetryInstrumentor  # noqa: TCH001
+from microbootstrap.base.logging import base as logging_base
+from microbootstrap.base.opentelemetry import OpenTelemetryInstrumentor  # noqa: TCH001
+from microbootstrap.instruments import SentryConfig
 
 
-class BootstrapSettings(pydantic_settings.BaseSettings):
+class BootstrapSettings(pydantic_settings.BaseSettings, SentryConfig):
     debug: bool = False
     app_environment: str | None = None
     namespace: str = "default"
-    service_name: str = pydantic.Field(default="service")
-    service_version: str = pydantic.Field(default="0")
+    service_name: str = pydantic.Field(default="micro-service")
+    service_version: str = pydantic.Field(default="1.0.0")
     container_name: str | None = pydantic.Field(default=None)
-
-    sentry_dsn: str | None = None
-    sentry_traces_sample_rate: float | None = None
-    sentry_sample_rate: float = pydantic.Field(default=1.0, le=1.0, ge=0.0)
-    sentry_max_breadcrumbs: int = 15
-    sentry_attach_stacktrace: bool = True
-    sentry_integrations: list[Integration] = []
-    sentry_additional_params: dict[str, typing.Any] = {}
 
     logging_log_level: int = logging_base.BASE_LOG_LEVEL
     logging_flush_level: int = logging_base.BASE_FLUSH_LEVEL

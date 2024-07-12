@@ -3,8 +3,8 @@ import dataclasses
 
 import structlog
 
-from microbootstrap.helpers.logging import base as base_logging
-from microbootstrap.helpers.logging.config import SingleStructLoggingConfig
+from microbootstrap.base.logging import base as base_logging
+from microbootstrap.base.logging.config import SingleStructLoggingConfig
 from microbootstrap.settings.litestar import LitestarBootstrapSettings
 
 

@@ -10,10 +10,10 @@ from opentelemetry.instrumentation.redis import RedisInstrumentor
 from sentry_sdk.integrations.opentelemetry.integration import OpenTelemetryIntegration
 from sentry_sdk.integrations.redis import RedisIntegration
 
-from microbootstrap.frameworks import litestar as litestar_framework
-from microbootstrap.helpers import opentelemetry
-from microbootstrap.helpers.logging.litestar import LitestarLoggingBootstrapper
-from microbootstrap.helpers.sentry import SentryBootstrapper
+from microbootstrap.base import opentelemetry
+from microbootstrap.base.logging.litestar import LitestarLoggingBootstrapper
+from microbootstrap.base.sentry import SentryBootstrapper
+from microbootstrap.bootstrappers import litestar as litestar_framework
 from tests.conftest import CustomPrometheusController, simple_request_hook
 from tests.settings_for_test import TestLitestarBootstrapSettings
 

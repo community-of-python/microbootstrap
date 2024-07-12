@@ -6,8 +6,8 @@ import pytest
 import structlog
 from structlog.testing import LogCapture
 
-from microbootstrap.helpers.logging import base as logging_base
-from microbootstrap.helpers.logging import litestar as logging_litestar
+from microbootstrap.base.logging import base as logging_base
+from microbootstrap.base.logging import litestar as logging_litestar
 from tests import settings_for_test
 
 

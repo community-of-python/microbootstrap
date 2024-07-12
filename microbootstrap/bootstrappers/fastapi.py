@@ -7,10 +7,10 @@ from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from prometheus_fastapi_instrumentator import PrometheusFastApiInstrumentator  # type: ignore[attr-defined]
 from sentry_sdk.integrations.fastapi import FastApiIntegration
 
-from microbootstrap.helpers.base import BootstrapWebFrameworkBootstrapper
-from microbootstrap.helpers.logging.base import LoggingBootstrapper
-from microbootstrap.helpers.opentelemetry import OpenTelemetryBootstrapper
-from microbootstrap.helpers.sentry import SentryBootstrapper
+from microbootstrap.base.base import BootstrapWebFrameworkBootstrapper
+from microbootstrap.base.logging.base import LoggingBootstrapper
+from microbootstrap.base.opentelemetry import OpenTelemetryBootstrapper
+from microbootstrap.base.sentry import SentryBootstrapper
 from microbootstrap.middlewares.fastapi import FastAPILoggingMiddleware
 from microbootstrap.settings.fastapi import FastAPIBootstrapSettings
 

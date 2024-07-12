@@ -14,7 +14,7 @@ from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
 from opentelemetry.trace import set_tracer_provider
 
-from microbootstrap.helpers.base import BootstrapServicesBootstrapper, Settings_contra
+from microbootstrap.base.base import BootstrapServicesBootstrapper, Settings_contra
 
 
 if typing.TYPE_CHECKING:

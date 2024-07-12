@@ -5,7 +5,7 @@ from fastapi.testclient import TestClient
 from sentry_sdk.integrations.opentelemetry.integration import OpenTelemetryIntegration
 from sentry_sdk.integrations.redis import RedisIntegration
 
-from microbootstrap.helpers.sentry import SentryBootstrapper
+from microbootstrap.base.sentry import SentryBootstrapper
 from tests.settings_for_test import TestBootstrapSettings
 
 

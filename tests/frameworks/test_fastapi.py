@@ -5,9 +5,9 @@ from fastapi.testclient import TestClient
 from sentry_sdk.integrations.opentelemetry.integration import OpenTelemetryIntegration
 from starlette import status
 
-from microbootstrap.frameworks.fastapi import FastAPIBootstrapper
-from microbootstrap.helpers import opentelemetry
-from microbootstrap.helpers.sentry import SentryBootstrapper
+from microbootstrap.base import opentelemetry
+from microbootstrap.base.sentry import SentryBootstrapper
+from microbootstrap.bootstrappers.fastapi import FastAPIBootstrapper
 
 
 if typing.TYPE_CHECKING:

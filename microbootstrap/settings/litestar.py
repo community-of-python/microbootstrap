@@ -3,7 +3,7 @@ import typing
 
 import pydantic
 
-from microbootstrap.helpers.logging.config import SingleStructLoggingConfig
+from microbootstrap.base.logging.config import SingleStructLoggingConfig
 from microbootstrap.settings import base as settings_base
 
 

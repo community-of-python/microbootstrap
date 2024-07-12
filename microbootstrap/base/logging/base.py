@@ -9,7 +9,7 @@ import warnings
 import structlog
 from opentelemetry import trace
 
-from microbootstrap.helpers.base import BootstrapServicesBootstrapper, Settings_contra
+from microbootstrap.base.base import BootstrapServicesBootstrapper, Settings_contra
 
 
 if typing.TYPE_CHECKING:
