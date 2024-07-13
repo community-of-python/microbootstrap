@@ -2,14 +2,17 @@ from __future__ import annotations
 import dataclasses
 import typing
 
+from pydantic import BaseModel
+
 from microbootstrap.helpers import merge_pydantic_configs
 
 
-if typing.TYPE_CHECKING:
-    from pydantic import BaseModel
+class BaseInstrumentConfig(BaseModel):
+    class Config:
+        arbitrary_types_allowed = True
 
 
-InstrumentConfigT = typing.TypeVar("InstrumentConfigT", bound="BaseModel")
+InstrumentConfigT = typing.TypeVar("InstrumentConfigT", bound="BaseInstrumentConfig")
 
 
 @dataclasses.dataclass

@@ -5,10 +5,10 @@ import pydantic
 import sentry_sdk
 from sentry_sdk.integrations import Integration  # noqa: TCH002
 
-from microbootstrap.instruments.base import Instrument
+from microbootstrap.instruments.base import BaseInstrumentConfig, Instrument
 
 
-class SentryInstrumentConfig(pydantic.BaseModel):
+class SentryInstrumentConfig(BaseInstrumentConfig):
     sentry_dsn: str | None = None
     environment: str | None = None
     sentry_traces_sample_rate: float | None = None
@@ -17,9 +17,6 @@ class SentryInstrumentConfig(pydantic.BaseModel):
     sentry_attach_stacktrace: bool = True
     sentry_integrations: list[Integration] | None = None
     sentry_additional_params: dict[str, typing.Any] | None = None
-
-    class Config:
-        arbitrary_types_allowed = True
 
 
 class SentryInstrument(Instrument[SentryInstrumentConfig]):

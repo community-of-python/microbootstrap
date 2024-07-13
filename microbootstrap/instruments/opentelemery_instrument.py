@@ -9,10 +9,10 @@ from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
 from opentelemetry.trace import set_tracer_provider
 
-from microbootstrap.instruments import Instrument
+from microbootstrap.instruments.base import BaseInstrumentConfig, Instrument
 
 
-class OpentelemetryInstrumentConfig(pydantic.BaseModel):
+class OpentelemetryInstrumentConfig(BaseInstrumentConfig):
     service_name: str | None = None
     service_version: str | None = None
     opentelemetry_container_name: str | None = None
@@ -21,9 +21,6 @@ class OpentelemetryInstrumentConfig(pydantic.BaseModel):
     opentelemetry_insecure: bool = pydantic.Field(default=True)
     opentelemetry_insrumentors: list[BaseInstrumentor] = pydantic.Field(default_factory=list)
     opentelemetry_exclude_urls: list[str] = pydantic.Field(default=["/health"])
-
-    class Config:
-        arbitrary_types_allowed = True
 
 
 class OpentelemetryInstrument(Instrument[OpentelemetryInstrumentConfig]):
