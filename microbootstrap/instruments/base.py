@@ -7,12 +7,12 @@ from pydantic import BaseModel
 from microbootstrap.helpers import merge_pydantic_configs
 
 
+InstrumentConfigT = typing.TypeVar("InstrumentConfigT", bound="BaseInstrumentConfig")
+
+
 class BaseInstrumentConfig(BaseModel):
     class Config:
         arbitrary_types_allowed = True
-
-
-InstrumentConfigT = typing.TypeVar("InstrumentConfigT", bound="BaseInstrumentConfig")
 
 
 @dataclasses.dataclass
