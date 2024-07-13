@@ -23,14 +23,15 @@ class ApplicationBootstrapper(typing.Protocol[SettingsT, ApplicationT, dataclass
     application_config: dataclasses._DataclassT = dataclasses.field(init=False)
 
     sentry_instrument_type: type[Instrument[SentryInstrumentConfig]] = dataclasses.field(init=False)
-    sentry_instrument: Instrument[SentryInstrumentConfig] = dataclasses.field(init=False)
     opentelemetry_instrument_type: type[Instrument[OpentelemetryInstrumentConfig]] = dataclasses.field(init=False)
-    opentelemetry_instrument: Instrument[OpentelemetryInstrumentConfig] = dataclasses.field(init=False)
+
+    __sentry_instrument: Instrument[SentryInstrumentConfig] = dataclasses.field(init=False)
+    __opentelemetry_instrument: Instrument[OpentelemetryInstrumentConfig] = dataclasses.field(init=False)
 
     def __post_init__(self) -> None:
         settings_dump = self.settings.model_dump()
-        self.sentry_instrument = self.sentry_instrument_type(SentryInstrumentConfig(**settings_dump))
-        self.opentelemetry_instrument = self.opentelemetry_instrument_type(
+        self.__sentry_instrument = self.sentry_instrument_type(SentryInstrumentConfig(**settings_dump))
+        self.__opentelemetry_instrument = self.opentelemetry_instrument_type(
             OpentelemetryInstrumentConfig(**settings_dump),
         )
 
@@ -70,4 +71,4 @@ class ApplicationBootstrapper(typing.Protocol[SettingsT, ApplicationT, dataclass
 
     @property
     def __instruments(self) -> list[Instrument[typing.Any]]:
-        return [self.sentry_instrument, self.opentelemetry_instrument]
+        return [self.__sentry_instrument, self.__opentelemetry_instrument]
