@@ -37,7 +37,10 @@ class LitetstarOpentelemetryInstrument(OpentelemetryInstrument):
     def successful_bootstrap_result(self) -> dict[str, typing.Any]:
         return {
             "middleware": OpenTelemetryInstrumentationMiddleware(
-                OpenTelemetryConfig(tracer_provider=self.tracer_provider),
+                OpenTelemetryConfig(
+                    tracer_provider=self.tracer_provider,
+                    exclude=self.instrument_config.opentelemetry_exclude_urls,
+                ),
             ),
         }
 

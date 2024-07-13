@@ -20,6 +20,7 @@ class OpentelemetryConfig(pydantic.BaseModel):
     opentelemetry_namespace: str | None = None
     opentelemetry_insecure: bool = pydantic.Field(default=True)
     opentelemetry_insrumentors: list[BaseInstrumentor] = pydantic.Field(default_factory=list)
+    opentelemetry_exclude_urls: list[str] = pydantic.Field(default=["/health"])
 
     class Config:
         arbitrary_types_allowed = True

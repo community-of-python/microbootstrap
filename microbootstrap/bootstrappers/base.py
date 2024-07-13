@@ -1,9 +1,8 @@
 from __future__ import annotations
-import abc
 import dataclasses
 import typing
 
-from microbootstrap.helpers import merge_dataclasses_configs, merge_dict_configs
+from microbootstrap.helpers import dataclass_to_dict_no_defaults, merge_dataclasses_configs, merge_dict_configs
 from microbootstrap.instruments import OpentelemetryConfig, SentryConfig
 
 
@@ -33,12 +32,10 @@ class ApplicationBootstrapper(typing.Protocol[SettingsT, ApplicationT, dataclass
         self.sentry_instrument = self.sentry_instrument_type(SentryConfig(**settings_dump))
         self.opentelemetry_instrument = self.opentelemetry_instrument_type(OpentelemetryConfig(**settings_dump))
 
-    @abc.abstractmethod
     def configure_application(self: SelfT, application_config: dataclasses._DataclassT) -> SelfT:
         self.application_config = merge_dataclasses_configs(self.application_config, application_config)
         return self
 
-    @abc.abstractmethod
     def configure_opentelemetry(
         self: SelfT,
         opentelemetry_config: OpentelemetryConfig,
@@ -46,7 +43,6 @@ class ApplicationBootstrapper(typing.Protocol[SettingsT, ApplicationT, dataclass
         self.opentelemetry_instrument.configure_instrument(opentelemetry_config)
         return self
 
-    @abc.abstractmethod
     def configure_sentry(
         self: SelfT,
         sentry_config: SentryConfig,
@@ -54,18 +50,18 @@ class ApplicationBootstrapper(typing.Protocol[SettingsT, ApplicationT, dataclass
         self.sentry_instrument.configure_instrument(sentry_config)
         return self
 
-    @abc.abstractmethod
     def configure_logging(self: SelfT) -> SelfT:
         raise NotImplementedError
 
-    @abc.abstractmethod
     def bootstrap(self: SelfT) -> ApplicationT:
-        application_config = dataclasses.asdict(self.application_config)
+        application_config_dict = dataclass_to_dict_no_defaults(self.application_config)
         for instrument in self.__instruments:
-            application_config = merge_dict_configs(application_config, instrument.bootstrap())
+            application_config = merge_dict_configs(
+                application_config_dict,
+                instrument.bootstrap(),
+            )
         return self.application_type(**application_config)
 
-    @abc.abstractmethod
     def teardown(self: SelfT) -> None:
         for instrument in self.__instruments:
             instrument.teardown()

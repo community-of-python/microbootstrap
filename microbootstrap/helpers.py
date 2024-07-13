@@ -13,13 +13,23 @@ if typing.TYPE_CHECKING:
 PydanticConfigT = typing.TypeVar("PydanticConfigT", bound="BaseModel")
 
 
+def dataclass_to_dict_no_defaults(dataclass_to_convert: "_DataclassT") -> dict[str, typing.Any]:
+    conversion_result: typing.Final = {}
+    for dataclass_field in dataclasses.fields(dataclass_to_convert):
+        value = getattr(dataclass_to_convert, dataclass_field.name)
+        if value != dataclass_field.default and value != dataclass_field.default_factory():  # type: ignore[misc]
+            conversion_result[dataclass_field.name] = value
+
+    return conversion_result
+
+
 def merge_pydantic_configs(
     config_to_merge: PydanticConfigT,
     config_with_changes: PydanticConfigT,
 ) -> PydanticConfigT:
     config_class: typing.Final = config_to_merge.__class__
     resulting_dict_config: typing.Final = merge_dict_configs(
-        config_to_merge.model_dump(),
+        config_to_merge.model_dump(exclude_defaults=True, exclude_unset=True),
         config_with_changes.model_dump_json(exclude_defaults=True, exclude_unset=True),
     )
     return config_class(**resulting_dict_config)
@@ -31,8 +41,8 @@ def merge_dataclasses_configs(
 ) -> "_DataclassT":
     config_class: typing.Final = config_to_merge.__class__
     resulting_dict_config: typing.Final = merge_dict_configs(
-        dataclasses.asdict(config_to_merge),
-        dataclasses.asdict(config_with_changes),
+        dataclass_to_dict_no_defaults(config_to_merge),
+        dataclass_to_dict_no_defaults(config_with_changes),
     )
     return config_class(**resulting_dict_config)
 

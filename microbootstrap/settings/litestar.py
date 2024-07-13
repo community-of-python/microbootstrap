@@ -16,5 +16,3 @@ class LitestarBootstrapSettings(settings_base.BootstrapSettings):
 
     logging_exclude_endpoints: list[str] = pydantic.Field(default=["/metrics"])
     logging_config_type: type[SingleStructLoggingConfig] = SingleStructLoggingConfig
-
-    opentelemetry_exclude_urls: list[str] = pydantic.Field(default=["/health"])
