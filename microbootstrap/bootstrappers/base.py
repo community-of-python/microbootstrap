@@ -20,12 +20,13 @@ SelfT = typing.TypeVar("SelfT", bound="ApplicationBootstrapper[typing.Any, typin
 @dataclasses.dataclass()
 class ApplicationBootstrapper(typing.Protocol[SettingsT, ApplicationT, dataclasses._DataclassT]):
     settings: SettingsT
+    application_type: type[ApplicationT] = dataclasses.field(init=False)
+    application_config: dataclasses._DataclassT = dataclasses.field(init=False)
+
     sentry_instrument_type: type[Instrument[SentryConfig]] = dataclasses.field(init=False)
     sentry_instrument: Instrument[SentryConfig] = dataclasses.field(init=False)
     opentelemetry_instrument_type: type[Instrument[OpentelemetryConfig]] = dataclasses.field(init=False)
     opentelemetry_instrument: Instrument[OpentelemetryConfig] = dataclasses.field(init=False)
-    application_type: type[ApplicationT] = dataclasses.field(init=False)
-    application_config: dataclasses._DataclassT = dataclasses.field(init=False)
 
     def __post_init__(self) -> None:
         settings_dump = self.settings.model_dump()

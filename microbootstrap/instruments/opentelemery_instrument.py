@@ -1,12 +1,13 @@
 from __future__ import annotations
-import dataclasses
 import typing
 
 import pydantic
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
+from opentelemetry.instrumentation.instrumentor import BaseInstrumentor  # noqa: TCH002
 from opentelemetry.sdk import resources
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
+from opentelemetry.trace import set_tracer_provider
 
 from microbootstrap.instruments import Instrument
 
@@ -17,8 +18,8 @@ class OpentelemetryConfig(pydantic.BaseModel):
     container_name: str | None = None
     opentelemetry_endpoint: str | None = None
     opentelemetry_namespace: str | None = None
-    opentelemetry_add_system_metrics: bool = dataclasses.field(default=False)
-    opentelemetry_insecure: bool = dataclasses.field(default=True)
+    opentelemetry_insecure: bool = pydantic.Field(default=True)
+    opentelemetry_insrumentors: list[BaseInstrumentor] = pydantic.Field(default_factory=list)
 
     class Config:
         arbitrary_types_allowed = True
@@ -54,6 +55,7 @@ class OpentelemetryInstrument(Instrument[OpentelemetryConfig]):
                 resources.CONTAINER_NAME: self.instrument_config.container_name,
             },
         )
+
         self.tracer_provider = TracerProvider(resource=resource)
         self.tracer_provider.add_span_processor(
             BatchSpanProcessor(
@@ -63,4 +65,9 @@ class OpentelemetryInstrument(Instrument[OpentelemetryConfig]):
                 ),
             ),
         )
+        for opentelemetry_insrumentor in self.instrument_config.opentelemetry_insrumentors:
+            opentelemetry_insrumentor.instrumentor.instrument(
+                tracer_provider=self.tracer_provider,
+            )
+        set_tracer_provider(self.tracer_provider)
         return self.successful_bootstrap_result
