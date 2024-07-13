@@ -4,7 +4,7 @@ import dataclasses
 import typing
 
 from microbootstrap.helpers import merge_dataclasses_configs, merge_dict_configs
-from microbootstrap.instruments import SentryConfig
+from microbootstrap.instruments import OpentelemetryConfig, SentryConfig
 
 
 if typing.TYPE_CHECKING:
@@ -22,12 +22,15 @@ class ApplicationBootstrapper(typing.Protocol[SettingsT, ApplicationT, dataclass
     settings: SettingsT
     sentry_instrument_type: type[Instrument[SentryConfig]] = dataclasses.field(init=False)
     sentry_instrument: Instrument[SentryConfig] = dataclasses.field(init=False)
+    opentelemetry_instrument_type: type[Instrument[OpentelemetryConfig]] = dataclasses.field(init=False)
+    opentelemetry_instrument: Instrument[OpentelemetryConfig] = dataclasses.field(init=False)
     application_type: type[ApplicationT] = dataclasses.field(init=False)
     application_config: dataclasses._DataclassT = dataclasses.field(init=False)
 
     def __post_init__(self) -> None:
         settings_dump = self.settings.model_dump()
         self.sentry_instrument = self.sentry_instrument_type(SentryConfig(**settings_dump))
+        self.opentelemetry_instrument = self.opentelemetry_instrument_type(OpentelemetryConfig(**settings_dump))
 
     @abc.abstractmethod
     def configure_application(self: SelfT, application_config: dataclasses._DataclassT) -> SelfT:
@@ -35,8 +38,12 @@ class ApplicationBootstrapper(typing.Protocol[SettingsT, ApplicationT, dataclass
         return self
 
     @abc.abstractmethod
-    def configure_opentelemetry(self: SelfT) -> SelfT:
-        raise NotImplementedError
+    def configure_opentelemetry(
+        self: SelfT,
+        opentelemetry_config: OpentelemetryConfig,
+    ) -> SelfT:
+        self.opentelemetry_instrument.configure_instrument(opentelemetry_config)
+        return self
 
     @abc.abstractmethod
     def configure_sentry(

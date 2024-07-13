@@ -5,6 +5,8 @@ from microbootstrap import exceptions
 
 
 if typing.TYPE_CHECKING:
+    from dataclasses import _DataclassT
+
     from pydantic import BaseModel
 
 
@@ -24,9 +26,9 @@ def merge_pydantic_configs(
 
 
 def merge_dataclasses_configs(
-    config_to_merge: dataclasses._DataclassT,
-    config_with_changes: dataclasses._DataclassT,
-) -> dataclasses._DataclassT:
+    config_to_merge: "_DataclassT",
+    config_with_changes: "_DataclassT",
+) -> "_DataclassT":
     config_class: typing.Final = config_to_merge.__class__
     resulting_dict_config: typing.Final = merge_dict_configs(
         dataclasses.asdict(config_to_merge),

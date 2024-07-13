@@ -2,12 +2,10 @@ from __future__ import annotations
 import typing
 
 import pydantic
+import sentry_sdk
+from sentry_sdk.integrations import Integration  # noqa: TCH002
 
-from microbootstrap.instruments.base import InstrumentABC
-
-
-if typing.TYPE_CHECKING:
-    from sentry_sdk.integrations import Integration
+from microbootstrap.instruments.base import Instrument
 
 
 class SentryConfig(pydantic.BaseModel):
@@ -20,10 +18,32 @@ class SentryConfig(pydantic.BaseModel):
     sentry_integrations: list[Integration] | None = None
     sentry_additional_params: dict[str, typing.Any] | None = None
 
+    class Config:
+        arbitrary_types_allowed = True
 
-class SentryInstrument(InstrumentABC[SentryConfig]):
+
+class SentryInstrument(Instrument[SentryConfig]):
+    @property
     def is_ready(self) -> bool:
         return bool(self.instrument_config.sentry_dsn)
 
     def teardown(self) -> None:
         return
+
+    def bootstrap(self) -> dict[str, typing.Any]:
+        if not self.is_ready:
+            # TODO: use some logger  # noqa: TD002
+            print("Sentry is not ready for bootstrapping. Provide a sentry_dsn")  # noqa: T201
+            return {}
+
+        sentry_sdk.init(
+            dsn=self.instrument_config.sentry_dsn,
+            sample_rate=self.instrument_config.sentry_sample_rate,
+            traces_sample_rate=self.instrument_config.sentry_traces_sample_rate,
+            environment=self.instrument_config.sentry_environment,
+            max_breadcrumbs=self.instrument_config.sentry_additional_paramsmax_breadcrumbs,
+            attach_stacktrace=self.instrument_config.sentry_attach_stacktrace,
+            integrations=self.instrument_config.sentry_integrations,
+            **self.instrument_config.sentry_additional_params,
+        )
+        return self.successful_bootstrap_result

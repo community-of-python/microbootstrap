@@ -6,10 +6,10 @@ import pydantic_settings
 
 from microbootstrap.base.logging import base as logging_base
 from microbootstrap.base.opentelemetry import OpenTelemetryInstrumentor  # noqa: TCH001
-from microbootstrap.instruments import SentryConfig
+from microbootstrap.instruments import OpentelemetryConfig, SentryConfig
 
 
-class BootstrapSettings(pydantic_settings.BaseSettings, SentryConfig):
+class BootstrapSettings(pydantic_settings.BaseSettings, SentryConfig, OpentelemetryConfig):
     debug: bool = False
     app_environment: str | None = None
     namespace: str = "default"
