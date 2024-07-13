@@ -1,7 +1,7 @@
 import dataclasses
 import typing
 
-from litestar.contrib.opentelemetry.config import OpenTelemetryConfig
+from litestar.contrib.opentelemetry.config import OpentelemetryInstrumentConfig
 from litestar.contrib.opentelemetry.middleware import OpenTelemetryInstrumentationMiddleware
 
 
@@ -11,7 +11,7 @@ if typing.TYPE_CHECKING:
 
 @dataclasses.dataclass
 class OpenTelemetryMiddlware:
-    configuration: OpenTelemetryConfig
+    configuration: OpentelemetryInstrumentConfig
 
     def __call__(self, app: "litestar.types.ASGIApp") -> OpenTelemetryInstrumentationMiddleware:
         return OpenTelemetryInstrumentationMiddleware(app, self.configuration)

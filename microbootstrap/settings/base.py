@@ -5,14 +5,12 @@ import pydantic
 import pydantic_settings
 
 from microbootstrap.base.logging import base as logging_base
-from microbootstrap.base.opentelemetry import OpenTelemetryInstrumentor  # noqa: TCH001
-from microbootstrap.instruments import OpentelemetryConfig, SentryConfig
+from microbootstrap.instruments import OpentelemetryInstrumentConfig, SentryInstrumentConfig
 
 
-class BootstrapSettings(pydantic_settings.BaseSettings, SentryConfig, OpentelemetryConfig):
+class BootstrapSettings(pydantic_settings.BaseSettings, SentryInstrumentConfig, OpentelemetryInstrumentConfig):
     debug: bool = False
     app_environment: str | None = None
-    namespace: str = "default"
     service_name: str = pydantic.Field(default="micro-service")
     service_version: str = pydantic.Field(default="1.0.0")
     container_name: str | None = pydantic.Field(default=None)
@@ -29,13 +27,9 @@ class BootstrapSettings(pydantic_settings.BaseSettings, SentryConfig, Openteleme
     prometheus_proxies: dict[str, str] = {}
     prometheus_tls_config: dict[str, typing.Any] = {}
 
-    opentelemetry_endpoint: str | None = None
-    opentelemetry_instruments: list[OpenTelemetryInstrumentor] = []
-    opentelemetry_add_system_metrics: bool = False
-
     server_host: str = "0.0.0.0"  # noqa: S104
     server_port: int = 8000
-    server_reload: bool = False
+    server_reload: bool = True
     server_workers_count: int = 1
 
     class Config:

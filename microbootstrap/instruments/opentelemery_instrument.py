@@ -12,10 +12,10 @@ from opentelemetry.trace import set_tracer_provider
 from microbootstrap.instruments import Instrument
 
 
-class OpentelemetryConfig(pydantic.BaseModel):
+class OpentelemetryInstrumentConfig(pydantic.BaseModel):
     service_name: str | None = None
     service_version: str | None = None
-    container_name: str | None = None
+    opentelemetry_container_name: str | None = None
     opentelemetry_endpoint: str | None = None
     opentelemetry_namespace: str | None = None
     opentelemetry_insecure: bool = pydantic.Field(default=True)
@@ -26,7 +26,7 @@ class OpentelemetryConfig(pydantic.BaseModel):
         arbitrary_types_allowed = True
 
 
-class OpentelemetryInstrument(Instrument[OpentelemetryConfig]):
+class OpentelemetryInstrument(Instrument[OpentelemetryInstrumentConfig]):
     @property
     def is_ready(self) -> bool:
         return all(
@@ -35,12 +35,12 @@ class OpentelemetryInstrument(Instrument[OpentelemetryConfig]):
                 self.instrument_config.opentelemetry_namespace,
                 self.instrument_config.service_name,
                 self.instrument_config.service_version,
-                self.instrument_config.container_name,
             ],
         )
 
     def teardown(self) -> None:
-        pass
+        for instrumentor_with_params in self.instruments:
+            instrumentor_with_params.instrumentor.uninstrument()
 
     def bootstrap(self) -> dict[str, typing.Any]:
         if not self.is_ready:

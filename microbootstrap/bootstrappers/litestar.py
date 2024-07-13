@@ -6,7 +6,7 @@ import litestar.types
 import sentry_sdk
 from litestar import status_codes
 from litestar.config.app import AppConfig
-from litestar.contrib.opentelemetry.config import OpenTelemetryConfig
+from litestar.contrib.opentelemetry.config import OpentelemetryInstrumentConfig
 from litestar.contrib.opentelemetry.middleware import OpenTelemetryInstrumentationMiddleware
 from litestar.exceptions.http_exceptions import HTTPException
 
@@ -37,7 +37,7 @@ class LitetstarOpentelemetryInstrument(OpentelemetryInstrument):
     def successful_bootstrap_result(self) -> dict[str, typing.Any]:
         return {
             "middleware": OpenTelemetryInstrumentationMiddleware(
-                OpenTelemetryConfig(
+                OpentelemetryInstrumentConfig(
                     tracer_provider=self.tracer_provider,
                     exclude=self.instrument_config.opentelemetry_exclude_urls,
                 ),
