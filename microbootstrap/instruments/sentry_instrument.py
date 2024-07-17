@@ -16,8 +16,8 @@ class SentryConfig(BaseInstrumentConfig):
     sentry_sample_rate: float = pydantic.Field(default=1.0, le=1.0, ge=0.0)
     sentry_max_breadcrumbs: int = 15
     sentry_attach_stacktrace: bool = True
-    sentry_integrations: list[Integration] | None = None
-    sentry_additional_params: dict[str, typing.Any] | None = None
+    sentry_integrations: list[Integration] = pydantic.Field(default_factory=list)
+    sentry_additional_params: dict[str, typing.Any] = pydantic.Field(default_factory=dict)
 
 
 class SentryInstrument(Instrument[SentryConfig]):

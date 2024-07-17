@@ -17,12 +17,7 @@ if typing.TYPE_CHECKING:
     from structlog.typing import EventDict, WrappedLogger
 
 
-BASE_LOG_LEVEL: typing.Final = logging.INFO
-BASE_FLUSH_LEVEL: typing.Final = logging.ERROR
-BASE_CAPACITY: typing.Final = 100
-
-
-ACCESS_LOGGER: typing.Final = structlog.get_logger("api.access")
+access_logger: typing.Final = structlog.get_logger("api.access")
 
 ScopeType = typing.MutableMapping[str, typing.Any]
 
@@ -46,7 +41,7 @@ def fill_log_message(
     client_port: typing.Final = request.client.port if request.client is not None else None
     http_method: typing.Final = request.method
     http_version: typing.Final = request.scope["http_version"]
-    log_on_correct_level: typing.Final = getattr(typing.cast(typing.Any, ACCESS_LOGGER), log_level)
+    log_on_correct_level: typing.Final = getattr(typing.cast(typing.Any, access_logger), log_level)
     log_on_correct_level(
         f"""{client_host}:{client_port} - "{http_method} {url_with_query} HTTP/{http_version}" {status_code}""",
         http={
@@ -94,9 +89,9 @@ DEFAULT_STRUCTLOG_FORMATTER_PROCESSOR: typing.Final[typing.Any] = structlog.stdl
 class LoggingConfig(BaseInstrumentConfig):
     service_debug: bool = False
 
-    logging_log_level: int = BASE_LOG_LEVEL
-    logging_flush_level: int = BASE_FLUSH_LEVEL
-    logging_buffer_capacity: int = BASE_CAPACITY
+    logging_log_level: int = pydantic.Field(default=logging.INFO)
+    logging_flush_level: int = pydantic.Field(default=logging.ERROR)
+    logging_buffer_capacity: int = pydantic.Field(default=100)
     logging_extra_processors: list[typing.Any] = pydantic.Field(default_factory=list)
     logging_unset_handlers: list[str] = pydantic.Field(default_factory=lambda: ["uvicorn", "uvicorn.access"])
     logging_exclude_endpoings: list[str] = pydantic.Field(default_factory=lambda: ["/health"])

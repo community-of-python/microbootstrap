@@ -1,4 +1,5 @@
 import dataclasses
+import re
 import typing
 
 from microbootstrap import exceptions
@@ -67,3 +68,8 @@ def merge_dict_configs(
             config_dict[change_key] = change_value
 
     return config_dict
+
+
+def is_valid_path(maybe_path: str) -> bool:
+    pattern: typing.Final = r"^(/[a-zA-Z0-9_-]+)+/?$"
+    return bool(re.fullmatch(pattern, maybe_path))

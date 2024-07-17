@@ -3,6 +3,7 @@ import typing
 
 import pydantic
 
+from microbootstrap.helpers import is_valid_path
 from microbootstrap.instruments.base import BaseInstrumentConfig, Instrument
 
 
@@ -16,7 +17,9 @@ class PrometheusConfig(BaseInstrumentConfig):
 class PrometheusInstrument(Instrument[PrometheusConfig]):
     @property
     def is_ready(self) -> bool:
-        return bool(self.instrument_config.prometheus_metrics_path)
+        return bool(self.instrument_config.prometheus_metrics_path) and is_valid_path(
+            self.instrument_config.prometheus_metrics_path,
+        )
 
     def teardown(self) -> None:
         return
@@ -24,7 +27,7 @@ class PrometheusInstrument(Instrument[PrometheusConfig]):
     def bootstrap(self) -> dict[str, typing.Any]:
         if not self.is_ready:
             # TODO: use some logger  # noqa: TD002
-            print("Prometheus is not ready for bootstrapping. Provide a prometheus_metrics_path")  # noqa: T201
+            print("Prometheus is not ready for bootstrapping. Provide a valid prometheus_metrics_path")  # noqa: T201
             return {}
 
         return self.bootsrap_final_result
