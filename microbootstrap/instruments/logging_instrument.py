@@ -142,7 +142,7 @@ class LoggingInstrument(Instrument[LoggingConfig]):
         for unset_handlers_logger in self.instrument_config.logging_unset_handlers:
             logging.getLogger(unset_handlers_logger).handlers = []
 
-        structlog.configure(
+        structlog.configure_once(
             processors=[
                 *DEFAULT_STRUCTLOG_PROCESSORS,
                 *self.extra_processors,
