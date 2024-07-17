@@ -8,7 +8,7 @@ from sentry_sdk.integrations import Integration  # noqa: TCH002
 from microbootstrap.instruments.base import BaseInstrumentConfig, Instrument
 
 
-class SentryInstrumentConfig(BaseInstrumentConfig):
+class SentryConfig(BaseInstrumentConfig):
     sentry_dsn: str | None = None
     environment: str | None = None
     sentry_traces_sample_rate: float | None = None
@@ -19,7 +19,7 @@ class SentryInstrumentConfig(BaseInstrumentConfig):
     sentry_additional_params: dict[str, typing.Any] | None = None
 
 
-class SentryInstrument(Instrument[SentryInstrumentConfig]):
+class SentryInstrument(Instrument[SentryConfig]):
     @property
     def is_ready(self) -> bool:
         return bool(self.instrument_config.sentry_dsn)

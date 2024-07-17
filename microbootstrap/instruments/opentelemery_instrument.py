@@ -12,7 +12,7 @@ from opentelemetry.trace import set_tracer_provider
 from microbootstrap.instruments.base import BaseInstrumentConfig, Instrument
 
 
-class OpentelemetryInstrumentConfig(BaseInstrumentConfig):
+class OpentelemetryConfig(BaseInstrumentConfig):
     service_name: str | None = None
     service_version: str | None = None
     opentelemetry_container_name: str | None = None
@@ -23,7 +23,7 @@ class OpentelemetryInstrumentConfig(BaseInstrumentConfig):
     opentelemetry_exclude_urls: list[str] = pydantic.Field(default=["/health"])
 
 
-class OpentelemetryInstrument(Instrument[OpentelemetryInstrumentConfig]):
+class OpentelemetryInstrument(Instrument[OpentelemetryConfig]):
     @property
     def is_ready(self) -> bool:
         return all(
