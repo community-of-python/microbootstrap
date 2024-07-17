@@ -14,7 +14,7 @@ class BootstrapSettings(
     SentryConfig,
     PrometheusConfig,
 ):
-    service_debug: bool = False
+    service_debug: bool = True
     service_environment: str | None = None
     service_name: str = pydantic.Field(default="micro-service")
     service_description: str = pydantic.Field(default="Micro service description")

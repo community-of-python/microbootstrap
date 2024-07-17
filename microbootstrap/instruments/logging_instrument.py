@@ -100,7 +100,7 @@ class LoggingConfig(BaseInstrumentConfig):
 class LoggingInstrument(Instrument[LoggingConfig]):
     @property
     def is_ready(self) -> bool:
-        return self.instrument_config.debug
+        return not self.instrument_config.debug
 
     def teardown(self) -> None:
         root_logger: typing.Final = logging.getLogger()
@@ -114,7 +114,7 @@ class LoggingInstrument(Instrument[LoggingConfig]):
 
     def bootstrap(self) -> dict[str, typing.Any]:
         if not self.is_ready:
-            print("Skipping logging bootstrap.")  # noqa: T201
+            print("Skipping logging bootstrap. Service must be in non-debug mode.")  # noqa: T201
             return {}
 
         root_logger: typing.Final = logging.getLogger()
