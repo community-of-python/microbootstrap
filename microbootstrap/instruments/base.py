@@ -2,7 +2,7 @@ from __future__ import annotations
 import dataclasses
 import typing
 
-from pydantic import BaseModel
+import pydantic
 
 from microbootstrap.helpers import merge_pydantic_configs
 
@@ -10,12 +10,12 @@ from microbootstrap.helpers import merge_pydantic_configs
 InstrumentConfigT = typing.TypeVar("InstrumentConfigT", bound="BaseInstrumentConfig")
 
 
-class BaseInstrumentConfig(BaseModel):
-    class Config:
-        arbitrary_types_allowed = True
+class BaseInstrumentConfig(pydantic.BaseModel):
+    model_config = pydantic.ConfigDict(arbitrary_types_allowed=True)
 
 
 @dataclasses.dataclass
+@typing.runtime_checkable
 class Instrument(typing.Protocol[InstrumentConfigT]):
     instrument_config: InstrumentConfigT
 
@@ -30,7 +30,7 @@ class Instrument(typing.Protocol[InstrumentConfigT]):
         raise NotImplementedError
 
     @property
-    def successful_bootstrap_result(self) -> dict[str, typing.Any]:
+    def bootsrap_final_result(self) -> dict[str, typing.Any]:
         raise NotImplementedError
 
     def bootstrap(self) -> dict[str, typing.Any]:

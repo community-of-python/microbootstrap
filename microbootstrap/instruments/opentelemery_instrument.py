@@ -15,6 +15,7 @@ from microbootstrap.instruments.base import BaseInstrumentConfig, Instrument
 class OpentelemetryConfig(BaseInstrumentConfig):
     service_name: str | None = None
     service_version: str | None = None
+
     opentelemetry_container_name: str | None = None
     opentelemetry_endpoint: str | None = None
     opentelemetry_namespace: str | None = None
@@ -68,4 +69,4 @@ class OpentelemetryInstrument(Instrument[OpentelemetryConfig]):
                 tracer_provider=self.tracer_provider,
             )
         set_tracer_provider(self.tracer_provider)
-        return self.successful_bootstrap_result
+        return self.bootsrap_final_result

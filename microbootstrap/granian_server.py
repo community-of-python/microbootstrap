@@ -1,22 +1,21 @@
 from __future__ import annotations
 import typing
 
+import granian
+from granian.constants import Interfaces, Loops
+from granian.log import log_levels_map
+
 
 if typing.TYPE_CHECKING:
-    import granian
-
-    from microbootstrap.settings.base import BootstrapSettings
+    from microbootstrap.settings import BootstrapSettings
 
 
+# TODO: create bootstrappers for application servers. granian/uvicorn  # noqa: TD002
 def create_granian_server(
     target: str,
     settings: BootstrapSettings,
     **granian_options: typing.Any,  # noqa: ANN401
 ) -> granian.Granian:
-    import granian
-    from granian.constants import Interfaces, Loops
-    from granian.log import log_levels_map
-
     return granian.Granian(
         target=target,
         address=settings.server_host,

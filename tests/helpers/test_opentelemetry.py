@@ -16,7 +16,7 @@ if typing.TYPE_CHECKING:
     from httpx import Response
     from pytest_mock import MockerFixture
 
-    from microbootstrap.settings.base import BootstrapSettings
+    from microbootstrap.settings.settings import BootstrapSettings
 
 
 @pytest.mark.parametrize(

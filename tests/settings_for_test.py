@@ -5,9 +5,9 @@ import typing
 import pydantic_settings
 from litestar.contrib.prometheus import PrometheusConfig
 
-from microbootstrap.settings import base as settings_base
 from microbootstrap.settings import fastapi as settings_fastapi
 from microbootstrap.settings import litestar as settings_litestar
+from microbootstrap.settings import settings as settings_base
 
 
 class TestBootstrapSettings(settings_base.BootstrapSettings):
@@ -18,7 +18,7 @@ class TestBootstrapSettings(settings_base.BootstrapSettings):
     )
 
     debug: bool = False
-    app_environment: str = "test"
+    service_environment: str = "test"
     service_name: str = "bootstrap"
     service_version: str = "1.0.0"
     container_name: str = "microbootstrap"

@@ -9,8 +9,9 @@ from microbootstrap.instruments.base import BaseInstrumentConfig, Instrument
 
 
 class SentryConfig(BaseInstrumentConfig):
+    service_environment: str | None = None
+
     sentry_dsn: str | None = None
-    environment: str | None = None
     sentry_traces_sample_rate: float | None = None
     sentry_sample_rate: float = pydantic.Field(default=1.0, le=1.0, ge=0.0)
     sentry_max_breadcrumbs: int = 15

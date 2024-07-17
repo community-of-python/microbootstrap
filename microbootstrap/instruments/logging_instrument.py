@@ -92,7 +92,7 @@ DEFAULT_STRUCTLOG_FORMATTER_PROCESSOR: typing.Final[typing.Any] = structlog.stdl
 
 
 class LoggingConfig(BaseInstrumentConfig):
-    debug: bool = False
+    service_debug: bool = False
 
     logging_log_level: int = BASE_LOG_LEVEL
     logging_flush_level: int = BASE_FLUSH_LEVEL
@@ -150,4 +150,4 @@ class LoggingInstrument(Instrument[LoggingConfig]):
             cache_logger_on_first_use=True,
         )
 
-        return self.successful_bootstrap_result
+        return self.bootsrap_final_result

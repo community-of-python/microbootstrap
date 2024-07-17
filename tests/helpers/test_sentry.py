@@ -45,7 +45,7 @@ def test_helpers__sentry__load(
     sentry_bootstrapper = SentryBootstrapper(dsn="dsn")
 
     env_vars = {
-        "app_environment": "test",
+        "service_environment": "test",
         "sentry_dsn": "https://testdsn@test.sentry.com/1",
         "sentry_traces_sample_rate": 2.0,
     }

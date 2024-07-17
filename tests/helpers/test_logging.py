@@ -14,7 +14,7 @@ from tests import settings_for_test
 if typing.TYPE_CHECKING:
     from pytest_mock import MockerFixture
 
-    from microbootstrap.settings.base import BootstrapSettings
+    from microbootstrap.settings.settings import BootstrapSettings
 
 
 @pytest.mark.parametrize(

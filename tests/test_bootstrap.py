@@ -10,7 +10,7 @@ from litestar.handlers.http_handlers.base import HTTPRouteHandler  # noqa: TCH00
 from litestar.status_codes import HTTP_200_OK
 from starlette import status
 
-from microbootstrap import bootstrap
+from microbootstrap import granian_server
 from microbootstrap.base.base import BootstrapServicesBootstrapper
 from microbootstrap.bootstrappers.fastapi import FastAPIBootstrapper
 from microbootstrap.bootstrappers.litestar import LitestarBootstrapper
@@ -34,7 +34,7 @@ def test_bootstrap__fastapi__bootstrap_and_teardown(
     monkeypatch.setenv("bootstrap_prometheus_instrumentator_params", '{"should_round_latency_decimals": true}')
 
     bootstrap_settings = settings_for_test.TestFastAPIBootstrapSettings()
-    app_init_params = bootstrap.bootstrap(
+    app_init_params = granian_server.bootstrap(
         web_framework=FastAPIBootstrapper,
         settings=bootstrap_settings,
         app=fastapi_app,
@@ -45,7 +45,7 @@ def test_bootstrap__fastapi__bootstrap_and_teardown(
     assert response.status_code == status.HTTP_200_OK
     assert response.json() == default_response_content
 
-    bootstrap.teardown(
+    granian_server.teardown(
         web_framework=FastAPIBootstrapper,
         settings=bootstrap_settings,
         app=fastapi_app,
@@ -56,7 +56,7 @@ def test_bootstrap__fastapi__teardown_only(
     fastapi_app: FastAPI,
     default_response_content: dict[str, str],
 ) -> None:
-    bootstrap.teardown(
+    granian_server.teardown(
         web_framework=FastAPIBootstrapper,
         settings=settings_for_test.TestFastAPIBootstrapSettings(),
         app=fastapi_app,
@@ -79,7 +79,7 @@ def test_bootstrap__litestar__bootstrap_and_teardown(
     monkeypatch.setenv("bootstrap_static_path", "/static-files")
 
     bootstrap_settings: typing.Final = settings_for_test.TestLitestarBootstrapSettings()
-    app_config: typing.Final = bootstrap.bootstrap(
+    app_config: typing.Final = granian_server.bootstrap(
         web_framework=LitestarBootstrapper,
         settings=bootstrap_settings,
         app=None,
@@ -91,7 +91,7 @@ def test_bootstrap__litestar__bootstrap_and_teardown(
         assert response.status_code == HTTP_200_OK
         assert response.json() == default_response_content
 
-    bootstrap.teardown(web_framework=LitestarBootstrapper, settings=bootstrap_settings, app=None)
+    granian_server.teardown(web_framework=LitestarBootstrapper, settings=bootstrap_settings, app=None)
 
 
 def test_bootstrap__litestar__teardown_only(
@@ -99,7 +99,7 @@ def test_bootstrap__litestar__teardown_only(
     health_litestar_endpoint: HTTPRouteHandler,
     default_response_content: dict[str, str],
 ) -> None:
-    bootstrap.teardown(
+    granian_server.teardown(
         web_framework=LitestarBootstrapper,
         settings=settings_for_test.TestLitestarBootstrapSettings(),
         app=None,
@@ -141,7 +141,7 @@ def test_bootstrap_enter_bootstrapper_context() -> None:
     classes: typing.Final = [create_bootstrapper_class() for _ in range(10)]
     expected_settings: typing.Final = settings_for_test.TestBootstrapSettings()
 
-    with bootstrap.enter_bootstrapper_context(*classes, settings=expected_settings):
+    with granian_server.enter_bootstrapper_context(*classes, settings=expected_settings):
         for one_class in classes:
             assert one_class.load_parameters_calls == 1
             assert one_class.initialize_calls == 1
@@ -156,7 +156,7 @@ def test_create_granian_server() -> None:
     settings: typing.Final = settings_for_test.TestFastAPIBootstrapSettings(logging_log_level=logging.CRITICAL)
     process_name: typing.Final = "myprocess"
 
-    server: typing.Final = bootstrap.create_granian_server(target, settings, process_name=process_name)
+    server: typing.Final = granian_server.create_granian_server(target, settings, process_name=process_name)
     assert server.target == target
     assert server.bind_addr == settings.server_host
     assert server.bind_port == settings.server_port
