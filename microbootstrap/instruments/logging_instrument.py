@@ -36,7 +36,7 @@ def make_path_with_query_string(scope: ScopeType) -> str:
 
 def fill_log_message(
     log_level: str,
-    request: litestar.Request[typing.Any, typing.Any, typing.Any] | fastapi.Request,
+    request: litestar.Request | fastapi.Request,
     status_code: int,
     start_time: int,
 ) -> None:
@@ -63,17 +63,13 @@ def fill_log_message(
 def tracer_injection(_: WrappedLogger, __: str, event_dict: EventDict) -> EventDict:
     event_dict["tracing"] = {}
 
-    def inject_invalid_trace_span_id() -> EventDict:
-        event_dict["tracing"]["trace_id"] = event_dict["tracing"]["span_id"] = "0"
-        return event_dict
-
     current_span: typing.Final[trace.Span] = trace.get_current_span()
     if current_span == trace.INVALID_SPAN:
-        return inject_invalid_trace_span_id()
+        return event_dict
 
     span_context: typing.Final[trace.SpanContext] = current_span.get_span_context()
     if span_context == trace.INVALID_SPAN_CONTEXT:
-        return inject_invalid_trace_span_id()
+        return event_dict
 
     event_dict["tracing"]["trace_id"] = format(span_context.span_id, "016x")
     event_dict["tracing"]["span_id"] = format(span_context.trace_id, "032x")

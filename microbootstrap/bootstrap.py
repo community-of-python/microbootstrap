@@ -24,7 +24,7 @@ def create_granian_server(
         interface=Interfaces.ASGI,
         loop=Loops.uvloop,
         workers=settings.server_workers_count,
-        log_level={value: key for (key, value) in log_levels_map.items()}[settings.logging_log_level],
+        log_level=log_levels_map[settings.logging_log_level],
         reload=settings.server_reload,
         **granian_options,
     )
