@@ -81,9 +81,5 @@ class LitestarBootstrapper(
     logging_instrument_type = LitestarLoggingInstrument
     prometheus_instrument_type = PrometheusInstrument
 
-    def __extra_bootstrap(self: typing_extensions.Self) -> dict[str, typing.Any]:
-        extra_bootstrap_params: dict[str, typing.Any] = {}
-        if self.settings.service_offline_docs:
-            pass
-
-        return extra_bootstrap_params
+    def __extra_bootstrap_before(self: typing_extensions.Self) -> dict[str, typing.Any]:
+        return {"on_shutdown": [self.teardown]}
