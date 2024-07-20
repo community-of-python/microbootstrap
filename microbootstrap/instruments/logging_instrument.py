@@ -98,7 +98,6 @@ class LoggingConfig(BaseInstrumentConfig):
 
 
 class LoggingInstrument(Instrument[LoggingConfig]):
-    @property
     def is_ready(self) -> bool:
         return not self.instrument_config.service_debug
 
@@ -113,7 +112,7 @@ class LoggingInstrument(Instrument[LoggingConfig]):
         structlog.reset_defaults()
 
     def bootstrap(self) -> dict[str, typing.Any]:
-        if not self.is_ready:
+        if not self.is_ready():
             print("Skipping logging bootstrap. Service must be in non-debug mode.")  # noqa: T201
             return {}
 

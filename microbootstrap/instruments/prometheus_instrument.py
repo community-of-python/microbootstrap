@@ -15,7 +15,6 @@ class PrometheusConfig(BaseInstrumentConfig):
 
 
 class PrometheusInstrument(Instrument[PrometheusConfig]):
-    @property
     def is_ready(self) -> bool:
         return bool(self.instrument_config.prometheus_metrics_path) and is_valid_path(
             self.instrument_config.prometheus_metrics_path,
@@ -25,7 +24,7 @@ class PrometheusInstrument(Instrument[PrometheusConfig]):
         return
 
     def bootstrap(self) -> dict[str, typing.Any]:
-        if not self.is_ready:
+        if not self.is_ready():
             # TODO: use some logger  # noqa: TD002
             print("Prometheus is not ready for bootstrapping. Provide a valid prometheus_metrics_path")  # noqa: T201
             return {}

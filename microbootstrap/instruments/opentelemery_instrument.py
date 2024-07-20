@@ -25,7 +25,6 @@ class OpentelemetryConfig(BaseInstrumentConfig):
 
 
 class OpentelemetryInstrument(Instrument[OpentelemetryConfig]):
-    @property
     def is_ready(self) -> bool:
         return all(
             [
@@ -41,7 +40,7 @@ class OpentelemetryInstrument(Instrument[OpentelemetryConfig]):
             instrumentor_with_params.instrumentor.uninstrument()
 
     def bootstrap(self) -> dict[str, typing.Any]:
-        if not self.is_ready:
+        if not self.is_ready():
             print("Opentelemetry is not ready for bootstrapping. Provide required params.")  # noqa: T201
             return {}
 

@@ -26,7 +26,6 @@ class Instrument(abc.ABC, typing.Generic[InstrumentConfigT]):
     ) -> None:
         self.instrument_config = merge_pydantic_configs(self.instrument_config, incoming_config)
 
-    @property
     @abc.abstractmethod
     def is_ready(self) -> bool:
         raise NotImplementedError

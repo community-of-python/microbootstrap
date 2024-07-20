@@ -21,7 +21,6 @@ class SentryConfig(BaseInstrumentConfig):
 
 
 class SentryInstrument(Instrument[SentryConfig]):
-    @property
     def is_ready(self) -> bool:
         return bool(self.instrument_config.sentry_dsn)
 
@@ -29,7 +28,7 @@ class SentryInstrument(Instrument[SentryConfig]):
         return
 
     def bootstrap(self) -> dict[str, typing.Any]:
-        if not self.is_ready:
+        if not self.is_ready():
             # TODO: use some logger  # noqa: TD002
             print("Sentry is not ready for bootstrapping. Provide a sentry_dsn")  # noqa: T201
             return {}
