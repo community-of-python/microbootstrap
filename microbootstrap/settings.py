@@ -1,9 +1,13 @@
 from __future__ import annotations
+import typing
 
 import pydantic
 import pydantic_settings
 
 from microbootstrap.instruments import LoggingConfig, OpentelemetryConfig, PrometheusConfig, SentryConfig
+
+
+SettingsT = typing.TypeVar("SettingsT", bound="BootstrapSettings")
 
 
 # TODO: add offline docs and cors support  # noqa: TD002
