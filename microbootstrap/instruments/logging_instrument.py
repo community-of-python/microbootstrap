@@ -100,7 +100,7 @@ class LoggingConfig(BaseInstrumentConfig):
 class LoggingInstrument(Instrument[LoggingConfig]):
     @property
     def is_ready(self) -> bool:
-        return not self.instrument_config.debug
+        return not self.instrument_config.service_debug
 
     def teardown(self) -> None:
         root_logger: typing.Final = logging.getLogger()
@@ -146,3 +146,7 @@ class LoggingInstrument(Instrument[LoggingConfig]):
         )
 
         return self.bootsrap_final_result
+
+    @classmethod
+    def get_config_type(cls) -> type[LoggingConfig]:
+        return LoggingConfig

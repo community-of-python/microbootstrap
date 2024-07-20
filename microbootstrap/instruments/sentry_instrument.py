@@ -45,3 +45,7 @@ class SentryInstrument(Instrument[SentryConfig]):
             **self.instrument_config.sentry_additional_params,
         )
         return self.successful_bootstrap_result
+
+    @classmethod
+    def get_config_type(cls) -> type[SentryConfig]:
+        return SentryConfig

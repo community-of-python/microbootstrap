@@ -22,6 +22,17 @@ from microbootstrap.middlewares.litestar import build_litestar_logging_middlewar
 from microbootstrap.settings import BootstrapSettings
 
 
+class LitestarBootstrapper(
+    ApplicationBootstrapper[BootstrapSettings, litestar.Litestar, AppConfig],
+):
+    application_config = AppConfig()
+    application_type = litestar.Litestar
+
+    def extra_bootstrap_before(self: typing_extensions.Self) -> dict[str, typing.Any]:
+        return {"on_shutdown": [self.teardown]}
+
+
+@LitestarBootstrapper.use_instrument()
 class LitestarSentryInstrument(SentryInstrument):
     @staticmethod
     async def sentry_exception_catcher_hook(
@@ -39,6 +50,7 @@ class LitestarSentryInstrument(SentryInstrument):
         return {"after_exception": [self.sentry_exception_catcher_hook]}
 
 
+@LitestarBootstrapper.use_instrument()
 class LitetstarOpentelemetryInstrument(OpentelemetryInstrument):
     @property
     def bootsrap_final_result(self) -> dict[str, typing.Any]:
@@ -52,12 +64,14 @@ class LitetstarOpentelemetryInstrument(OpentelemetryInstrument):
         }
 
 
+@LitestarBootstrapper.use_instrument()
 class LitestarLoggingInstrument(LoggingInstrument):
     @property
     def bootsrap_final_result(self) -> dict[str, typing.Any]:
         return {"middleware": build_litestar_logging_middleware(self.instrument_config.logging_exclude_endpoings)}
 
 
+@LitestarBootstrapper.use_instrument()
 class LitestarPrometheusInstrument(PrometheusInstrument):
     @property
     def bootsrap_final_result(self) -> dict[str, typing.Any]:
@@ -71,15 +85,3 @@ class LitestarPrometheusInstrument(PrometheusInstrument):
         )
 
         return {"route_handlers": [LitestarPrometheusController], "middleware": [litestar_prometheus_config.middleware]}
-
-
-class LitestarBootstrapper(
-    ApplicationBootstrapper[BootstrapSettings, litestar.Litestar, AppConfig],
-):
-    sentry_instrument_type = LitestarSentryInstrument
-    opentelemetry_instrument_type = LitetstarOpentelemetryInstrument
-    logging_instrument_type = LitestarLoggingInstrument
-    prometheus_instrument_type = PrometheusInstrument
-
-    def __extra_bootstrap_before(self: typing_extensions.Self) -> dict[str, typing.Any]:
-        return {"on_shutdown": [self.teardown]}

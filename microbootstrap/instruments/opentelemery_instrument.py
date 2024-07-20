@@ -70,3 +70,7 @@ class OpentelemetryInstrument(Instrument[OpentelemetryConfig]):
             )
         set_tracer_provider(self.tracer_provider)
         return self.bootsrap_final_result
+
+    @classmethod
+    def get_config_type(cls) -> type[OpentelemetryConfig]:
+        return OpentelemetryConfig

@@ -31,7 +31,7 @@ def merge_pydantic_configs(
     config_class: typing.Final = config_to_merge.__class__
     resulting_dict_config: typing.Final = merge_dict_configs(
         config_to_merge.model_dump(exclude_defaults=True, exclude_unset=True),
-        config_with_changes.model_dump_json(exclude_defaults=True, exclude_unset=True),
+        config_with_changes.model_dump(exclude_defaults=True, exclude_unset=True),
     )
     return config_class(**resulting_dict_config)
 
@@ -56,12 +56,12 @@ def merge_dict_configs(
         config_value = config_dict.get(change_key)
         if isinstance(config_value, list):
             if not isinstance(change_value, list):
-                raise exceptions.MicroBootstrapBaseError(f"Can't merge {config_value} and {change_value}")
+                raise exceptions.ConfigMergeError(f"Can't merge {config_value} and {change_value}")
             config_dict[change_key] = [*config_value, *change_value]
 
         elif isinstance(config_value, dict):
             if not isinstance(change_value, dict):
-                raise exceptions.MicroBootstrapBaseError(f"Can't merge {config_value} and {change_value}")
+                raise exceptions.ConfigMergeError(f"Can't merge {config_value} and {change_value}")
             config_dict[change_key] = {**config_value, **change_value}
 
         else:

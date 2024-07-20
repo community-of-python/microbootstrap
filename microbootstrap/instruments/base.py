@@ -1,4 +1,5 @@
 from __future__ import annotations
+import abc
 import dataclasses
 import typing
 
@@ -15,8 +16,7 @@ class BaseInstrumentConfig(pydantic.BaseModel):
 
 
 @dataclasses.dataclass
-@typing.runtime_checkable
-class Instrument(typing.Protocol[InstrumentConfigT]):
+class Instrument(abc.ABC, typing.Generic[InstrumentConfigT]):
     instrument_config: InstrumentConfigT
 
     def configure_instrument(
@@ -26,15 +26,24 @@ class Instrument(typing.Protocol[InstrumentConfigT]):
         self.instrument_config = merge_pydantic_configs(self.instrument_config, incoming_config)
 
     @property
+    @abc.abstractmethod
     def is_ready(self) -> bool:
         raise NotImplementedError
 
     @property
+    @abc.abstractmethod
     def bootsrap_final_result(self) -> dict[str, typing.Any]:
         raise NotImplementedError
 
+    @abc.abstractmethod
     def bootstrap(self) -> dict[str, typing.Any]:
         raise NotImplementedError
 
+    @abc.abstractmethod
     def teardown(self) -> None:
+        raise NotImplementedError
+
+    @classmethod
+    @abc.abstractmethod
+    def get_config_type(cls) -> type[InstrumentConfigT]:
         raise NotImplementedError

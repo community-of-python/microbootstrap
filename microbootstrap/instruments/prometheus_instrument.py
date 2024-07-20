@@ -31,3 +31,7 @@ class PrometheusInstrument(Instrument[PrometheusConfig]):
             return {}
 
         return self.bootsrap_final_result
+
+    @classmethod
+    def get_config_type(cls) -> type[PrometheusConfig]:
+        return PrometheusConfig
