@@ -26,10 +26,10 @@ class ApplicationBootstrapper(abc.ABC, typing.Generic[SettingsT, ApplicationT, D
     application_type: type[ApplicationT] = dataclasses.field(init=False)
     application_config: dataclasses._DataclassT = dataclasses.field(init=False)
 
-    instrument_box: InstrumentBox = dataclasses.field(default=InstrumentBox())
+    __instrument_box: InstrumentBox = dataclasses.field(default=InstrumentBox())
 
     def __post_init__(self) -> None:
-        self.instrument_box.initialize(self.settings)
+        self.__instrument_box.initialize(self.settings)
 
     def configure_application(
         self: typing_extensions.Self,
@@ -42,16 +42,16 @@ class ApplicationBootstrapper(abc.ABC, typing.Generic[SettingsT, ApplicationT, D
         self: typing_extensions.Self,
         instrument_config: InstrumentConfigT,
     ) -> typing_extensions.Self:
-        self.instrument_box.configure_instrument(instrument_config)
+        self.__instrument_box.configure_instrument(instrument_config)
         return self
 
     @classmethod
     def use_instrument(cls) -> typing.Callable[[type[Instrument[typing.Any]]], type[Instrument[typing.Any]]]:
-        return cls.instrument_box.extend_instruments
+        return cls.__instrument_box.extend_instruments
 
     def bootstrap(self: typing_extensions.Self) -> ApplicationT:
         resulting_application_config = dataclass_to_dict_no_defaults(self.application_config)
-        for instrument in self.instrument_box.instruments:
+        for instrument in self.__instrument_box.instruments:
             resulting_application_config = merge_dict_configs(
                 resulting_application_config,
                 instrument.bootstrap(),
