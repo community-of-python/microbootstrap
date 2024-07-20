@@ -1,4 +1,5 @@
 from __future__ import annotations
+import abc
 import dataclasses
 import typing
 
@@ -21,7 +22,7 @@ DataclassT_co = typing.TypeVar("DataclassT_co", bound="DataclassInstance", covar
 
 
 @dataclasses.dataclass()
-class ApplicationBootstrapper(typing.Generic[SettingsT, ApplicationT, DataclassT_co]):
+class ApplicationBootstrapper(abc.ABC, typing.Generic[SettingsT, ApplicationT, DataclassT_co]):
     settings: SettingsT
     application_type: type[ApplicationT] = dataclasses.field(init=False)
     application_config: dataclasses._DataclassT = dataclasses.field(init=False)
