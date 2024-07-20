@@ -10,8 +10,14 @@ from microbootstrap.settings import SettingsT
 
 @dataclasses.dataclass
 class InstrumentBox:
-    __instruments__: list[type[Instrument[typing.Any]]] = dataclasses.field(default_factory=list, init=False)
-    __initialized_instruments__: list[Instrument[typing.Any]] = dataclasses.field(default_factory=list, init=False)
+    __instruments__: list[type[Instrument[typing.Any]]] = dataclasses.field(
+        default_factory=list,
+        init=False,
+    )
+    __initialized_instruments__: list[Instrument[typing.Any]] = dataclasses.field(
+        default_factory=list,
+        init=False,
+    )
 
     def initialize(self, settings: SettingsT) -> None:
         settings_dump = settings.model_dump()

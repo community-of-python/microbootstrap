@@ -28,7 +28,7 @@ class LitestarBootstrapper(
     application_config = AppConfig()
     application_type = litestar.Litestar
 
-    def extra_bootstrap_before(self: typing_extensions.Self) -> dict[str, typing.Any]:
+    def bootstrap_before(self: typing_extensions.Self) -> dict[str, typing.Any]:
         return {"on_shutdown": [self.teardown]}
 
 
@@ -45,15 +45,13 @@ class LitestarSentryInstrument(SentryInstrument):
         ):
             sentry_sdk.capture_exception(exception)
 
-    @property
-    def bootsrap_final_result(self) -> dict[str, typing.Any]:
+    def bootstrap_before(self) -> dict[str, typing.Any]:
         return {"after_exception": [self.sentry_exception_catcher_hook]}
 
 
 @LitestarBootstrapper.use_instrument()
 class LitetstarOpentelemetryInstrument(OpentelemetryInstrument):
-    @property
-    def bootsrap_final_result(self) -> dict[str, typing.Any]:
+    def bootstrap_before(self) -> dict[str, typing.Any]:
         return {
             "middleware": OpenTelemetryInstrumentationMiddleware(
                 LitestarOpentelemetryConfig(
@@ -66,15 +64,13 @@ class LitetstarOpentelemetryInstrument(OpentelemetryInstrument):
 
 @LitestarBootstrapper.use_instrument()
 class LitestarLoggingInstrument(LoggingInstrument):
-    @property
-    def bootsrap_final_result(self) -> dict[str, typing.Any]:
+    def bootstrap_before(self) -> dict[str, typing.Any]:
         return {"middleware": build_litestar_logging_middleware(self.instrument_config.logging_exclude_endpoings)}
 
 
 @LitestarBootstrapper.use_instrument()
 class LitestarPrometheusInstrument(PrometheusInstrument):
-    @property
-    def bootsrap_final_result(self) -> dict[str, typing.Any]:
+    def bootstrap_before(self) -> dict[str, typing.Any]:
         class LitestarPrometheusController(PrometheusController):
             path = self.instrument_config.prometheus_metrics_path
             openmetrics_format = True

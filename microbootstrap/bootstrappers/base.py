@@ -48,7 +48,10 @@ class ApplicationBootstrapper(abc.ABC, typing.Generic[SettingsT, ApplicationT, D
     @classmethod
     def use_instrument(
         cls,
-    ) -> typing.Callable[[type[Instrument[InstrumentConfigT]]], type[Instrument[InstrumentConfigT]]]:
+    ) -> typing.Callable[
+        [type[Instrument[InstrumentConfigT]]],
+        type[Instrument[InstrumentConfigT]],
+    ]:
         return cls.__instrument_box.extend_instruments
 
     def bootstrap(self: typing_extensions.Self) -> ApplicationT:
@@ -58,16 +61,20 @@ class ApplicationBootstrapper(abc.ABC, typing.Generic[SettingsT, ApplicationT, D
                 resulting_application_config,
                 instrument.bootstrap(),
             )
-        application = self.application_type(
-            **merge_dict_configs(resulting_application_config, self.extra_bootstrap_before()),
-        )
-        return self.extra_bootstrap_after(application)
 
-    def extra_bootstrap_before(self: typing_extensions.Self) -> dict[str, typing.Any]:
+        application = self.application_type(
+            **merge_dict_configs(resulting_application_config, self.bootstrap_before()),
+        )
+
+        for instrument in self.__instrument_box.instruments:
+            application = instrument.bootstrap_after(application)
+        return self.bootstrap_after(application)
+
+    def bootstrap_before(self: typing_extensions.Self) -> dict[str, typing.Any]:
         """Add some framework-related parameters to final bootstrap result before application creation."""
         return {}
 
-    def extra_bootstrap_after(self: typing_extensions.Self, application: ApplicationT) -> ApplicationT:
+    def bootstrap_after(self: typing_extensions.Self, application: ApplicationT) -> ApplicationT:
         """Add some framework-related parameters to final bootstrap result after application creation."""
         return application
 

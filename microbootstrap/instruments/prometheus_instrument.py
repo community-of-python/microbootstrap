@@ -30,7 +30,7 @@ class PrometheusInstrument(Instrument[PrometheusConfig]):
             print("Prometheus is not ready for bootstrapping. Provide a valid prometheus_metrics_path")  # noqa: T201
             return {}
 
-        return self.bootsrap_final_result
+        return self.bootstrap_before()
 
     @classmethod
     def get_config_type(cls) -> type[PrometheusConfig]:

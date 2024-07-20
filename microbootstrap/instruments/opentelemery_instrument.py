@@ -69,7 +69,7 @@ class OpentelemetryInstrument(Instrument[OpentelemetryConfig]):
                 tracer_provider=self.tracer_provider,
             )
         set_tracer_provider(self.tracer_provider)
-        return self.bootsrap_final_result
+        return self.bootstrap_before()
 
     @classmethod
     def get_config_type(cls) -> type[OpentelemetryConfig]:
