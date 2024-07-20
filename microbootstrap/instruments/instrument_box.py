@@ -33,7 +33,10 @@ class InstrumentBox:
             f"Instrument for config {instrument_config.__class__.__name__} is not supported yet.",
         )
 
-    def extend_instruments(self, instrument_class: type[Instrument[typing.Any]]) -> type[Instrument[typing.Any]]:
+    def extend_instruments(
+        self,
+        instrument_class: type[Instrument[InstrumentConfigT]],
+    ) -> type[Instrument[InstrumentConfigT]]:
         self.__instruments__ = list(
             filter(
                 lambda instrument: instrument.get_config_type() is not instrument_class.get_config_type(),

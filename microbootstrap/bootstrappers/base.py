@@ -46,7 +46,9 @@ class ApplicationBootstrapper(abc.ABC, typing.Generic[SettingsT, ApplicationT, D
         return self
 
     @classmethod
-    def use_instrument(cls) -> typing.Callable[[type[Instrument[typing.Any]]], type[Instrument[typing.Any]]]:
+    def use_instrument(
+        cls,
+    ) -> typing.Callable[[type[Instrument[InstrumentConfigT]]], type[Instrument[InstrumentConfigT]]]:
         return cls.__instrument_box.extend_instruments
 
     def bootstrap(self: typing_extensions.Self) -> ApplicationT:
