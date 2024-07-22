@@ -13,7 +13,7 @@ ApplicationT = typing.TypeVar("ApplicationT")
 
 
 class BaseInstrumentConfig(pydantic.BaseModel):
-    pass
+    model_config = pydantic.ConfigDict(arbitrary_types_allowed=True)
 
 
 @dataclasses.dataclass
