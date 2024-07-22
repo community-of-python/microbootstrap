@@ -8,7 +8,7 @@ from microbootstrap.instruments.base import BaseInstrumentConfig, Instrument
 
 
 class PrometheusConfig(BaseInstrumentConfig):
-    service_name: str | None = None
+    service_name: str = pydantic.Field(default="micro-service")
 
     prometheus_metrics_path: str = pydantic.Field(default="/metrics")
     prometheus_additional_params: dict[str, typing.Any] = pydantic.Field(default_factory=dict)

@@ -5,7 +5,7 @@ from microbootstrap.instruments.logging_instrument import LoggingConfig
 from microbootstrap.instruments.opentelemery_instrument import OpentelemetryConfig
 from microbootstrap.instruments.prometheus_instrument import PrometheusConfig
 from microbootstrap.instruments.sentry_instrument import SentryConfig
-from microbootstrap.settings import BootstrapSettings
+from microbootstrap.settings import LitestarSettings
 
 
 __all__ = (
@@ -14,5 +14,5 @@ __all__ = (
     "PrometheusConfig",
     "LoggingConfig",
     "LitestarBootstrapper",
-    "BootstrapSettings",
+    "LitestarSettings",
 )

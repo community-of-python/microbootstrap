@@ -87,7 +87,7 @@ DEFAULT_STRUCTLOG_FORMATTER_PROCESSOR: typing.Final[typing.Any] = structlog.stdl
 
 
 class LoggingConfig(BaseInstrumentConfig):
-    service_debug: bool = False
+    service_debug: bool = True
 
     logging_log_level: int = pydantic.Field(default=logging.INFO)
     logging_flush_level: int = pydantic.Field(default=logging.ERROR)

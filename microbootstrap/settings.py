@@ -7,17 +7,11 @@ import pydantic_settings
 from microbootstrap.instruments import LoggingConfig, OpentelemetryConfig, PrometheusConfig, SentryConfig
 
 
-SettingsT = typing.TypeVar("SettingsT", bound="BootstrapSettings")
+SettingsT = typing.TypeVar("SettingsT", bound="BaseBootstrapSettings")
 
 
 # TODO: add offline docs and cors support  # noqa: TD002
-class BootstrapSettings(
-    pydantic_settings.BaseSettings,
-    LoggingConfig,
-    OpentelemetryConfig,
-    SentryConfig,
-    PrometheusConfig,
-):
+class BaseBootstrapSettings(pydantic_settings.BaseSettings):
     service_debug: bool = True
     service_environment: str | None = None
     service_name: str = pydantic.Field(default="micro-service")
@@ -35,3 +29,13 @@ class BootstrapSettings(
         env_file_encoding="utf-8",
         populate_by_name=True,
     )
+
+
+class LitestarSettings(
+    BaseBootstrapSettings,
+    LoggingConfig,
+    OpentelemetryConfig,
+    SentryConfig,
+    PrometheusConfig,
+):
+    """Settings for a litestar botstrap."""

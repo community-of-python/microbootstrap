@@ -79,5 +79,5 @@ class ApplicationBootstrapper(abc.ABC, typing.Generic[SettingsT, ApplicationT, D
         return application
 
     def teardown(self: typing_extensions.Self) -> None:
-        for instrument in self.__instruments:
+        for instrument in self.__instrument_box.instruments:
             instrument.teardown()

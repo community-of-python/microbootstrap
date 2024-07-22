@@ -13,8 +13,8 @@ from microbootstrap.instruments.base import BaseInstrumentConfig, Instrument
 
 
 class OpentelemetryConfig(BaseInstrumentConfig):
-    service_name: str | None = None
-    service_version: str | None = None
+    service_name: str = pydantic.Field(default="micro-service")
+    service_version: str = pydantic.Field(default="1.0.0")
 
     opentelemetry_container_name: str | None = None
     opentelemetry_endpoint: str | None = None

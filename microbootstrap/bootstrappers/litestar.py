@@ -6,7 +6,7 @@ import litestar.types
 import sentry_sdk
 import typing_extensions
 from litestar import status_codes
-from litestar.config.app import AppConfig
+from litestar.config.app import AppConfig as LitestarConfig
 from litestar.contrib.opentelemetry.config import OpenTelemetryConfig as LitestarOpentelemetryConfig
 from litestar.contrib.opentelemetry.middleware import OpenTelemetryInstrumentationMiddleware
 from litestar.contrib.prometheus import PrometheusConfig as LitestarPrometheusConfig
@@ -19,13 +19,13 @@ from microbootstrap.instruments.opentelemery_instrument import OpentelemetryInst
 from microbootstrap.instruments.prometheus_instrument import PrometheusInstrument
 from microbootstrap.instruments.sentry_instrument import SentryInstrument
 from microbootstrap.middlewares.litestar import build_litestar_logging_middleware
-from microbootstrap.settings import BootstrapSettings
+from microbootstrap.settings import LitestarSettings
 
 
 class LitestarBootstrapper(
-    ApplicationBootstrapper[BootstrapSettings, litestar.Litestar, AppConfig],
+    ApplicationBootstrapper[LitestarSettings, litestar.Litestar, LitestarConfig],
 ):
-    application_config = AppConfig()
+    application_config = LitestarConfig()
     application_type = litestar.Litestar
 
     def bootstrap_before(self: typing_extensions.Self) -> dict[str, typing.Any]:
