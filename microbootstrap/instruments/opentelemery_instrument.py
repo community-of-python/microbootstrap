@@ -7,7 +7,6 @@ from opentelemetry.instrumentation.instrumentor import BaseInstrumentor  # noqa:
 from opentelemetry.sdk import resources
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
-from opentelemetry.trace import set_tracer_provider
 
 from microbootstrap.instruments.base import BaseInstrumentConfig, Instrument
 
@@ -32,11 +31,12 @@ class OpentelemetryInstrument(Instrument[OpentelemetryConfig]):
                 self.instrument_config.opentelemetry_namespace,
                 self.instrument_config.service_name,
                 self.instrument_config.service_version,
+                self.instrument_config.opentelemetry_container_name,
             ],
         )
 
     def teardown(self) -> None:
-        for instrumentor_with_params in self.instruments:
+        for instrumentor_with_params in self.instrument_config.opentelemetry_insrumentors:
             instrumentor_with_params.instrumentor.uninstrument()
 
     def bootstrap(self) -> dict[str, typing.Any]:
@@ -50,7 +50,7 @@ class OpentelemetryInstrument(Instrument[OpentelemetryConfig]):
                 resources.TELEMETRY_SDK_LANGUAGE: "python",
                 resources.SERVICE_NAMESPACE: self.instrument_config.opentelemetry_namespace,
                 resources.SERVICE_VERSION: self.instrument_config.service_version,
-                resources.CONTAINER_NAME: self.instrument_config.container_name,
+                resources.CONTAINER_NAME: self.instrument_config.opentelemetry_container_name,
             },
         )
 
@@ -67,7 +67,6 @@ class OpentelemetryInstrument(Instrument[OpentelemetryConfig]):
             opentelemetry_insrumentor.instrumentor.instrument(
                 tracer_provider=self.tracer_provider,
             )
-        set_tracer_provider(self.tracer_provider)
         return self.bootstrap_before()
 
     @classmethod

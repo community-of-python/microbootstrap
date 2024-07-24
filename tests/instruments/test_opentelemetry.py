@@ -1,0 +1,73 @@
+import contextlib
+import typing
+from unittest.mock import AsyncMock
+
+import litestar
+from litestar.middleware.base import DefineMiddleware
+from litestar.testing import AsyncTestClient
+
+from microbootstrap import OpentelemetryConfig
+from microbootstrap.bootstrappers.litestar import LitetstarOpentelemetryInstrument
+from microbootstrap.instruments.opentelemery_instrument import OpentelemetryInstrument
+
+
+def test_opentelemetry_is_ready(minimum_opentelemetry_config: OpentelemetryConfig) -> None:
+    opentelemetry_instrument: typing.Final = OpentelemetryInstrument(minimum_opentelemetry_config)
+    assert opentelemetry_instrument.is_ready()
+
+
+def test_opentelemetry_bootstrap_is_not_ready(minimum_opentelemetry_config: OpentelemetryConfig) -> None:
+    minimum_opentelemetry_config.service_name = ""
+    opentelemetry_instrument: typing.Final = OpentelemetryInstrument(minimum_opentelemetry_config)
+    assert opentelemetry_instrument.bootstrap() == {}
+
+
+def test_opentelemetry_bootstrap_after(
+    default_litestar_app: litestar.Litestar,
+    minimum_opentelemetry_config: OpentelemetryConfig,
+) -> None:
+    opentelemetry_instrument: typing.Final = OpentelemetryInstrument(minimum_opentelemetry_config)
+    assert opentelemetry_instrument.bootstrap_after(default_litestar_app) == default_litestar_app
+
+
+def test_opentelemetry_teardown(
+    minimum_opentelemetry_config: OpentelemetryConfig,
+) -> None:
+    opentelemetry_instrument: typing.Final = OpentelemetryInstrument(minimum_opentelemetry_config)
+    assert opentelemetry_instrument.teardown() is None  # type: ignore[func-returns-value]
+
+
+def test_litestar_opentelemetry_bootstrap(minimum_opentelemetry_config: OpentelemetryConfig) -> None:
+    opentelemetry_instrument: typing.Final = LitetstarOpentelemetryInstrument(minimum_opentelemetry_config)
+    opentelemetry_bootstrap_result: typing.Final = opentelemetry_instrument.bootstrap()
+    assert opentelemetry_bootstrap_result
+    assert "middleware" in opentelemetry_bootstrap_result
+    assert isinstance(opentelemetry_bootstrap_result["middleware"], list)
+    assert len(opentelemetry_bootstrap_result["middleware"]) == 1
+    assert isinstance(opentelemetry_bootstrap_result["middleware"][0], DefineMiddleware)
+
+
+async def test_litestar_opentelemetry_bootstrap_working(
+    minimum_opentelemetry_config: OpentelemetryConfig,
+    async_mock: AsyncMock,
+) -> None:
+    opentelemetry_instrument: typing.Final = LitetstarOpentelemetryInstrument(minimum_opentelemetry_config)
+    opentelemetry_bootstrap_result: typing.Final = opentelemetry_instrument.bootstrap()
+
+    opentelemetry_middleware = opentelemetry_bootstrap_result["middleware"][0]
+    assert isinstance(opentelemetry_middleware, DefineMiddleware)
+    opentelemetry_middleware.middleware.__call__ = async_mock
+
+    @litestar.get("/test-handler")
+    async def test_handler() -> None:
+        return None
+
+    litestar_application: typing.Final = litestar.Litestar(
+        route_handlers=[test_handler],
+        **opentelemetry_bootstrap_result,
+    )
+    async with AsyncTestClient(app=litestar_application) as async_client:
+        # Silencing error, cause we are mocking middleware call, so ASGI scope remains unchanged.
+        with contextlib.suppress(AssertionError):
+            await async_client.get("/test-handler")
+        assert async_mock.called

@@ -8,7 +8,6 @@ import typing_extensions
 from litestar import status_codes
 from litestar.config.app import AppConfig as LitestarConfig
 from litestar.contrib.opentelemetry.config import OpenTelemetryConfig as LitestarOpentelemetryConfig
-from litestar.contrib.opentelemetry.middleware import OpenTelemetryInstrumentationMiddleware
 from litestar.contrib.prometheus import PrometheusConfig as LitestarPrometheusConfig
 from litestar.contrib.prometheus import PrometheusController
 from litestar.exceptions.http_exceptions import HTTPException
@@ -53,12 +52,12 @@ class LitestarSentryInstrument(SentryInstrument):
 class LitetstarOpentelemetryInstrument(OpentelemetryInstrument):
     def bootstrap_before(self) -> dict[str, typing.Any]:
         return {
-            "middleware": OpenTelemetryInstrumentationMiddleware(
+            "middleware": [
                 LitestarOpentelemetryConfig(
                     tracer_provider=self.tracer_provider,
                     exclude=self.instrument_config.opentelemetry_exclude_urls,
-                ),
-            ),
+                ).middleware,
+            ],
         }
 
 

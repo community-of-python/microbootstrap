@@ -1,77 +1,56 @@
 from __future__ import annotations
-import typing
-from uuid import uuid4
+from unittest.mock import AsyncMock, MagicMock
 
 import litestar
 import pytest
-import structlog
-from fastapi import APIRouter, FastAPI
-from fastapi.responses import JSONResponse
-from litestar.contrib.prometheus import PrometheusController
+
+from microbootstrap import OpentelemetryConfig, PrometheusConfig, SentryConfig
 
 
-if typing.TYPE_CHECKING:
-    from litestar.handlers.http_handlers.base import HTTPRouteHandler
+pytestmark = [pytest.mark.anyio]
 
 
-def simple_request_hook(*_args: object, **_kwargs: object) -> None:
-    """Request hook that do nothing."""
-
-
-class CustomPrometheusController(PrometheusController):
-    path = "/custom-metrics"
-    openmetrics_format = True
-
-
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="session", autouse=True)
 def anyio_backend() -> str:
-    """Anyio backend.
-
-    Backend for anyio pytest plugin.
-    """
     return "asyncio"
 
 
 @pytest.fixture()
-def default_response_content() -> dict[str, str]:
-    """Just default response content."""
-    return {uuid4().hex: uuid4().hex}
+def default_litestar_app() -> litestar.Litestar:
+    return litestar.Litestar()
 
 
 @pytest.fixture()
-def fastapi_app(default_response_content: dict[str, str]) -> FastAPI:
-    """Build fastapi application with one endpoint."""
-    test_fastapi_app: typing.Final[FastAPI] = FastAPI()
-    test_fastapi_router: typing.Final[APIRouter] = APIRouter()
+def minimum_sentry_config() -> SentryConfig:
+    class TestSentryConfig(SentryConfig):
+        sentry_dsn: str = "https://examplePublicKey@o0.ingest.sentry.io/0"
 
-    @test_fastapi_router.get("/test")
-    async def for_test_endpoint() -> JSONResponse:
-        structlog.get_logger().info("Test log here!")
-        return JSONResponse(content=default_response_content)
-
-    test_fastapi_app.include_router(test_fastapi_router)
-
-    return test_fastapi_app
+    return TestSentryConfig()
 
 
 @pytest.fixture()
-def test_litestar_endpoint(
-    default_response_content: dict[str, str],
-) -> HTTPRouteHandler:
-    @litestar.get("/test")
-    async def endpoint() -> typing.Dict[str, str]:  # noqa: UP006
-        structlog.get_logger().info("Test log here!")
-        return default_response_content
-
-    return endpoint
+def minimum_prometheus_config() -> PrometheusConfig:
+    return PrometheusConfig()
 
 
 @pytest.fixture()
-def health_litestar_endpoint(
-    default_response_content: dict[str, str],
-) -> HTTPRouteHandler:
-    @litestar.get("/health")
-    async def endpoint() -> typing.Dict[str, str]:  # noqa: UP006
-        return default_response_content
+def minimum_opentelemetry_config() -> OpentelemetryConfig:
+    class TestOpentelemetryConfig(OpentelemetryConfig):
+        service_name: str = "test-micro-service"
+        service_version: str = "1.0.0"
 
-    return endpoint
+        opentelemetry_endpoint: str = "/my-engdpoint"
+        opentelemetry_namespace: str = "namespace"
+        opentelemetry_container_name: str = "container-name"
+
+    return TestOpentelemetryConfig()
+
+
+@pytest.fixture()
+def magic_mock() -> MagicMock:
+    return MagicMock()
+
+
+@pytest.fixture()
+def async_mock() -> AsyncMock:
+    return AsyncMock()
