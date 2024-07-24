@@ -26,7 +26,7 @@ class ApplicationBootstrapper(abc.ABC, typing.Generic[SettingsT, ApplicationT, D
     application_type: type[ApplicationT] = dataclasses.field(init=False)
     application_config: dataclasses._DataclassT = dataclasses.field(init=False)
 
-    __instrument_box: InstrumentBox = dataclasses.field(default=InstrumentBox())
+    __instrument_box: InstrumentBox = InstrumentBox()  # noqa: RUF009
 
     def __post_init__(self) -> None:
         self.__instrument_box.initialize(self.settings)
