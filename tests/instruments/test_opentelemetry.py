@@ -1,6 +1,6 @@
 import contextlib
 import typing
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, MagicMock
 
 import litestar
 from litestar.middleware.base import DefineMiddleware
@@ -37,7 +37,11 @@ def test_opentelemetry_teardown(
     assert opentelemetry_instrument.teardown() is None  # type: ignore[func-returns-value]
 
 
-def test_litestar_opentelemetry_bootstrap(minimum_opentelemetry_config: OpentelemetryConfig) -> None:
+def test_litestar_opentelemetry_bootstrap(
+    minimum_opentelemetry_config: OpentelemetryConfig,
+    magic_mock: MagicMock,
+) -> None:
+    minimum_opentelemetry_config.opentelemetry_insrumentors = [magic_mock]
     opentelemetry_instrument: typing.Final = LitetstarOpentelemetryInstrument(minimum_opentelemetry_config)
     opentelemetry_bootstrap_result: typing.Final = opentelemetry_instrument.bootstrap()
     assert opentelemetry_bootstrap_result
