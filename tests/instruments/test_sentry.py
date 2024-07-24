@@ -37,6 +37,7 @@ def test_sentry_teardown(
 
 def test_litestar_sentry_bootstrap(minimum_sentry_config: SentryConfig) -> None:
     sentry_instrument: typing.Final = LitestarSentryInstrument(minimum_sentry_config)
+
     assert sentry_instrument.bootstrap() == {
         "after_exception": [sentry_instrument.sentry_exception_catcher_hook],
     }

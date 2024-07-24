@@ -43,7 +43,9 @@ def test_litestar_opentelemetry_bootstrap(
 ) -> None:
     minimum_opentelemetry_config.opentelemetry_insrumentors = [magic_mock]
     opentelemetry_instrument: typing.Final = LitetstarOpentelemetryInstrument(minimum_opentelemetry_config)
+
     opentelemetry_bootstrap_result: typing.Final = opentelemetry_instrument.bootstrap()
+
     assert opentelemetry_bootstrap_result
     assert "middleware" in opentelemetry_bootstrap_result
     assert isinstance(opentelemetry_bootstrap_result["middleware"], list)

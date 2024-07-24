@@ -38,7 +38,9 @@ def test_prometheus_teardown(
 
 def test_litestar_prometheus_bootstrap(minimum_prometheus_config: PrometheusConfig) -> None:
     prometheus_instrument: typing.Final = LitestarPrometheusInstrument(minimum_prometheus_config)
+
     prometheus_bootstrap_result: typing.Final = prometheus_instrument.bootstrap()
+
     assert prometheus_bootstrap_result
     assert "route_handlers" in prometheus_bootstrap_result
     assert isinstance(prometheus_bootstrap_result["route_handlers"], list)
