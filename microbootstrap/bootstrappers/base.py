@@ -1,6 +1,5 @@
 from __future__ import annotations
 import abc
-import dataclasses
 import typing
 
 import typing_extensions
@@ -11,6 +10,8 @@ from microbootstrap.settings import SettingsT
 
 
 if typing.TYPE_CHECKING:
+    import dataclasses
+
     from _typeshed import DataclassInstance
 
     from microbootstrap.instruments.base import Instrument, InstrumentConfigT
@@ -20,13 +21,13 @@ ApplicationT = typing.TypeVar("ApplicationT")
 DataclassT_co = typing.TypeVar("DataclassT_co", bound="DataclassInstance", covariant=True)
 
 
-@dataclasses.dataclass()
 class ApplicationBootstrapper(abc.ABC, typing.Generic[SettingsT, ApplicationT, DataclassT_co]):
-    settings: SettingsT
-    application_type: type[ApplicationT] = dataclasses.field(init=False)
-    application_config: dataclasses._DataclassT = dataclasses.field(init=False)
+    application_type: type[ApplicationT]
+    application_config: dataclasses._DataclassT
+    __instrument_box: InstrumentBox = InstrumentBox()
 
-    __instrument_box: InstrumentBox = InstrumentBox()  # noqa: RUF009
+    def __init__(self, settings: SettingsT) -> None:
+        self.settings = settings
 
     def __post_init__(self) -> None:
         self.__instrument_box.initialize(self.settings)
