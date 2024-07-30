@@ -1,5 +1,3 @@
-"""Contains all instruments that can be used for bootstrapping."""
-
 from microbootstrap.instruments.logging_instrument import LoggingConfig
 from microbootstrap.instruments.opentelemetry_instrument import OpentelemetryConfig
 from microbootstrap.instruments.prometheus_instrument import PrometheusConfig

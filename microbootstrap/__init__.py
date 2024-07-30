@@ -1,5 +1,3 @@
-"""Contains everything that's needed for bootstrapping."""
-
 from microbootstrap.bootstrappers.litestar import LitestarBootstrapper
 from microbootstrap.instruments.logging_instrument import LoggingConfig
 from microbootstrap.instruments.opentelemetry_instrument import OpentelemetryConfig

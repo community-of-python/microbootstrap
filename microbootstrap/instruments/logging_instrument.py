@@ -94,7 +94,7 @@ class LoggingConfig(BaseInstrumentConfig):
     logging_buffer_capacity: int = pydantic.Field(default=100)
     logging_extra_processors: list[typing.Any] = pydantic.Field(default_factory=list)
     logging_unset_handlers: list[str] = pydantic.Field(default_factory=lambda: ["uvicorn", "uvicorn.access"])
-    logging_exclude_endpoings: list[str] = pydantic.Field(default_factory=lambda: ["/health"])
+    logging_exclude_endpoints: list[str] = pydantic.Field(default_factory=lambda: ["/health"])
 
 
 class LoggingInstrument(Instrument[LoggingConfig]):
