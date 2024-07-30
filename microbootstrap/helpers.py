@@ -55,18 +55,32 @@ def merge_dict_configs(
 ) -> dict[str, typing.Any]:
     for change_key, change_value in changes_dict.items():
         config_value = config_dict.get(change_key)
+
+        if isinstance(config_value, set):
+            if not isinstance(change_value, set):
+                raise exceptions.ConfigMergeError(f"Can't merge {config_value} and {change_value}")
+            config_dict[change_key] = {*config_value, *change_value}
+            continue
+
+        if isinstance(config_value, tuple):
+            if not isinstance(change_value, tuple):
+                raise exceptions.ConfigMergeError(f"Can't merge {config_value} and {change_value}")
+            config_dict[change_key] = (*config_value, *change_value)
+            continue
+
         if isinstance(config_value, list):
             if not isinstance(change_value, list):
                 raise exceptions.ConfigMergeError(f"Can't merge {config_value} and {change_value}")
             config_dict[change_key] = [*config_value, *change_value]
+            continue
 
-        elif isinstance(config_value, dict):
+        if isinstance(config_value, dict):
             if not isinstance(change_value, dict):
                 raise exceptions.ConfigMergeError(f"Can't merge {config_value} and {change_value}")
             config_dict[change_key] = {**config_value, **change_value}
+            continue
 
-        else:
-            config_dict[change_key] = change_value
+        config_dict[change_key] = change_value
 
     return config_dict
 
