@@ -12,6 +12,7 @@ if typing.TYPE_CHECKING:
 
 
 PydanticConfigT = typing.TypeVar("PydanticConfigT", bound="BaseModel")
+VALID_PATH_PATTERN: typing.Final = r"^(/[a-zA-Z0-9_-]+)+/?$"
 
 
 def dataclass_to_dict_no_defaults(dataclass_to_convert: "_DataclassT") -> dict[str, typing.Any]:
@@ -71,5 +72,4 @@ def merge_dict_configs(
 
 
 def is_valid_path(maybe_path: str) -> bool:
-    pattern: typing.Final = r"^(/[a-zA-Z0-9_-]+)+/?$"
-    return bool(re.fullmatch(pattern, maybe_path))
+    return bool(re.fullmatch(VALID_PATH_PATTERN, maybe_path))

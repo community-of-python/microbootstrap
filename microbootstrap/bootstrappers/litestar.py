@@ -14,7 +14,7 @@ from litestar.exceptions.http_exceptions import HTTPException
 
 from microbootstrap.bootstrappers.base import ApplicationBootstrapper
 from microbootstrap.instruments.logging_instrument import LoggingInstrument
-from microbootstrap.instruments.opentelemery_instrument import OpentelemetryInstrument
+from microbootstrap.instruments.opentelemetry_instrument import OpentelemetryInstrument
 from microbootstrap.instruments.prometheus_instrument import PrometheusInstrument
 from microbootstrap.instruments.sentry_instrument import SentryInstrument
 from microbootstrap.middlewares.litestar import build_litestar_logging_middleware

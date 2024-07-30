@@ -83,7 +83,7 @@ DEFAULT_STRUCTLOG_PROCESSORS: typing.Final[list[typing.Any]] = [
     structlog.processors.format_exc_info,
     structlog.processors.UnicodeDecoder(),
 ]
-DEFAULT_STRUCTLOG_FORMATTER_PROCESSOR: typing.Final[typing.Any] = structlog.stdlib.ProcessorFormatter.wrap_for_formatter
+DEFAULT_STRUCTLOG_FORMATTER_PROCESSOR: typing.Final = structlog.stdlib.ProcessorFormatter.wrap_for_formatter
 
 
 class LoggingConfig(BaseInstrumentConfig):

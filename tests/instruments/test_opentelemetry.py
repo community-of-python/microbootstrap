@@ -8,7 +8,7 @@ from litestar.testing import AsyncTestClient
 
 from microbootstrap import OpentelemetryConfig
 from microbootstrap.bootstrappers.litestar import LitetstarOpentelemetryInstrument
-from microbootstrap.instruments.opentelemery_instrument import OpentelemetryInstrument
+from microbootstrap.instruments.opentelemetry_instrument import OpentelemetryInstrument
 
 
 def test_opentelemetry_is_ready(minimum_opentelemetry_config: OpentelemetryConfig) -> None:
@@ -41,7 +41,7 @@ def test_litestar_opentelemetry_bootstrap(
     minimum_opentelemetry_config: OpentelemetryConfig,
     magic_mock: MagicMock,
 ) -> None:
-    minimum_opentelemetry_config.opentelemetry_insrumentors = [magic_mock]
+    minimum_opentelemetry_config.opentelemetry_insrtumentors = [magic_mock]
     opentelemetry_instrument: typing.Final = LitetstarOpentelemetryInstrument(minimum_opentelemetry_config)
 
     opentelemetry_bootstrap_result: typing.Final = opentelemetry_instrument.bootstrap()

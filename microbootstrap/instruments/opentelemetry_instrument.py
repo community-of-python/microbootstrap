@@ -1,4 +1,5 @@
 from __future__ import annotations
+import dataclasses
 import typing
 
 import pydantic
@@ -11,6 +12,12 @@ from opentelemetry.sdk.trace.export import BatchSpanProcessor
 from microbootstrap.instruments.base import BaseInstrumentConfig, Instrument
 
 
+@dataclasses.dataclass()
+class OpenTelemetryInstrumentor:
+    instrumentor: BaseInstrumentor
+    additional_params: dict[str, typing.Any] = dataclasses.field(default_factory=dict)
+
+
 class OpentelemetryConfig(BaseInstrumentConfig):
     service_name: str = pydantic.Field(default="micro-service")
     service_version: str = pydantic.Field(default="1.0.0")
@@ -19,7 +26,7 @@ class OpentelemetryConfig(BaseInstrumentConfig):
     opentelemetry_endpoint: str | None = None
     opentelemetry_namespace: str | None = None
     opentelemetry_insecure: bool = pydantic.Field(default=True)
-    opentelemetry_insrumentors: list[BaseInstrumentor] = pydantic.Field(default_factory=list)
+    opentelemetry_insrtumentors: list[OpenTelemetryInstrumentor] = pydantic.Field(default_factory=list)
     opentelemetry_exclude_urls: list[str] = pydantic.Field(default=["/health"])
 
 
@@ -36,8 +43,8 @@ class OpentelemetryInstrument(Instrument[OpentelemetryConfig]):
         )
 
     def teardown(self) -> None:
-        for instrumentor_with_params in self.instrument_config.opentelemetry_insrumentors:
-            instrumentor_with_params.instrumentor.uninstrument()
+        for instrumentor_with_params in self.instrument_config.opentelemetry_insrtumentors:
+            instrumentor_with_params.instrumentor.uninstrument(**instrumentor_with_params.additional_params)
 
     def bootstrap(self) -> dict[str, typing.Any]:
         if not self.is_ready():
@@ -63,9 +70,10 @@ class OpentelemetryInstrument(Instrument[OpentelemetryConfig]):
                 ),
             ),
         )
-        for opentelemetry_insrumentor in self.instrument_config.opentelemetry_insrumentors:
-            opentelemetry_insrumentor.instrumentor.instrument(
+        for opentelemetry_instrumentor in self.instrument_config.opentelemetry_insrtumentors:
+            opentelemetry_instrumentor.instrumentor.instrument(
                 tracer_provider=self.tracer_provider,
+                **opentelemetry_instrumentor.additional_params,
             )
         return self.bootstrap_before()
 

@@ -11,7 +11,13 @@ SettingsT = typing.TypeVar("SettingsT", bound="BaseBootstrapSettings")
 
 
 # TODO: add offline docs and cors support  # noqa: TD002
-class BaseBootstrapSettings(pydantic_settings.BaseSettings):
+class BaseBootstrapSettings(
+    pydantic_settings.BaseSettings,
+    LoggingConfig,
+    OpentelemetryConfig,
+    SentryConfig,
+    PrometheusConfig,
+):
     service_debug: bool = True
     service_environment: str | None = None
     service_name: str = pydantic.Field(default="micro-service")
@@ -31,11 +37,5 @@ class BaseBootstrapSettings(pydantic_settings.BaseSettings):
     )
 
 
-class LitestarSettings(
-    BaseBootstrapSettings,
-    LoggingConfig,
-    OpentelemetryConfig,
-    SentryConfig,
-    PrometheusConfig,
-):
+class LitestarSettings(BaseBootstrapSettings):
     """Settings for a litestar botstrap."""
