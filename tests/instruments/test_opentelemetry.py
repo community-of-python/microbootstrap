@@ -53,6 +53,16 @@ def test_litestar_opentelemetry_bootstrap(
     assert isinstance(opentelemetry_bootstrap_result["middleware"][0], DefineMiddleware)
 
 
+def test_litestar_opentelemetry_terdown(
+    minimum_opentelemetry_config: OpentelemetryConfig,
+    magic_mock: MagicMock,
+) -> None:
+    minimum_opentelemetry_config.opentelemetry_insrtumentors = [magic_mock]
+    opentelemetry_instrument: typing.Final = LitetstarOpentelemetryInstrument(minimum_opentelemetry_config)
+
+    opentelemetry_instrument.teardown()
+
+
 async def test_litestar_opentelemetry_bootstrap_working(
     minimum_opentelemetry_config: OpentelemetryConfig,
     async_mock: AsyncMock,
