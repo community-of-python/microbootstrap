@@ -10,31 +10,27 @@ from microbootstrap.settings import SettingsT
 
 
 if typing.TYPE_CHECKING:
-    import dataclasses
-
     from _typeshed import DataclassInstance
 
     from microbootstrap.instruments.base import Instrument, InstrumentConfigT
 
 
 ApplicationT = typing.TypeVar("ApplicationT")
-DataclassT_co = typing.TypeVar("DataclassT_co", bound="DataclassInstance", covariant=True)
+DataclassT = typing.TypeVar("DataclassT", bound="DataclassInstance")
 
 
-class ApplicationBootstrapper(abc.ABC, typing.Generic[SettingsT, ApplicationT, DataclassT_co]):
+class ApplicationBootstrapper(abc.ABC, typing.Generic[SettingsT, ApplicationT, DataclassT]):
     application_type: type[ApplicationT]
-    application_config: dataclasses._DataclassT
+    application_config: DataclassT
     __instrument_box: InstrumentBox = InstrumentBox()
 
     def __init__(self, settings: SettingsT) -> None:
         self.settings = settings
-
-    def __post_init__(self) -> None:
         self.__instrument_box.initialize(self.settings)
 
     def configure_application(
         self: typing_extensions.Self,
-        application_config: dataclasses._DataclassT,
+        application_config: DataclassT,
     ) -> typing_extensions.Self:
         self.application_config = merge_dataclasses_configs(self.application_config, application_config)
         return self

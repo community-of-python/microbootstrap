@@ -43,6 +43,7 @@ class InstrumentBox:
         self,
         instrument_class: type[Instrument[InstrumentConfigT]],
     ) -> type[Instrument[InstrumentConfigT]]:
+        """Extend list of instruments, excluding one whose config is already in use."""
         self.__instruments__ = list(
             filter(
                 lambda instrument: instrument.get_config_type() is not instrument_class.get_config_type(),

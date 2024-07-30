@@ -28,7 +28,7 @@ class LitestarBootstrapper(
     application_type = litestar.Litestar
 
     def bootstrap_before(self: typing_extensions.Self) -> dict[str, typing.Any]:
-        return {"on_shutdown": [self.teardown]}
+        return {"debug": self.settings.service_debug, "on_shutdown": [self.teardown]}
 
 
 @LitestarBootstrapper.use_instrument()
