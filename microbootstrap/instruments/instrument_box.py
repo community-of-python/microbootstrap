@@ -1,4 +1,3 @@
-import dataclasses
 import typing
 
 import typing_extensions
@@ -8,16 +7,9 @@ from microbootstrap.instruments.base import Instrument, InstrumentConfigT
 from microbootstrap.settings import SettingsT
 
 
-@dataclasses.dataclass
 class InstrumentBox:
-    __instruments__: list[type[Instrument[typing.Any]]] = dataclasses.field(
-        default_factory=list,
-        init=False,
-    )
-    __initialized_instruments__: list[Instrument[typing.Any]] = dataclasses.field(
-        default_factory=list,
-        init=False,
-    )
+    __instruments__: typing.ClassVar[list[type[Instrument[typing.Any]]]] = []
+    __initialized_instruments__: list[Instrument[typing.Any]]
 
     def initialize(self, settings: SettingsT) -> None:
         settings_dump = settings.model_dump()
@@ -39,18 +31,19 @@ class InstrumentBox:
             f"Instrument for config {instrument_config.__class__.__name__} is not supported yet.",
         )
 
+    @classmethod
     def extend_instruments(
-        self,
+        cls,
         instrument_class: type[Instrument[InstrumentConfigT]],
     ) -> type[Instrument[InstrumentConfigT]]:
         """Extend list of instruments, excluding one whose config is already in use."""
-        self.__instruments__ = list(
+        cls.__instruments__ = list(
             filter(
                 lambda instrument: instrument.get_config_type() is not instrument_class.get_config_type(),
-                self.__instruments__,
+                cls.__instruments__,
             ),
         )
-        self.__instruments__.append(instrument_class)
+        cls.__instruments__.append(instrument_class)
         return instrument_class
 
     @property

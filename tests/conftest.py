@@ -4,7 +4,8 @@ from unittest.mock import AsyncMock, MagicMock
 import litestar
 import pytest
 
-from microbootstrap import OpentelemetryConfig, PrometheusConfig, SentryConfig
+from microbootstrap import LoggingConfig, OpentelemetryConfig, PrometheusConfig, SentryConfig
+from microbootstrap.settings import BaseBootstrapSettings
 
 
 pytestmark = [pytest.mark.anyio]
@@ -22,10 +23,12 @@ def default_litestar_app() -> litestar.Litestar:
 
 @pytest.fixture()
 def minimum_sentry_config() -> SentryConfig:
-    class TestSentryConfig(SentryConfig):
-        sentry_dsn: str = "https://examplePublicKey@o0.ingest.sentry.io/0"
+    return SentryConfig(sentry_dsn="https://examplePublicKey@o0.ingest.sentry.io/0")
 
-    return TestSentryConfig()
+
+@pytest.fixture()
+def minimum_logging_config() -> LoggingConfig:
+    return LoggingConfig(service_debug=False)
 
 
 @pytest.fixture()
@@ -35,15 +38,18 @@ def minimum_prometheus_config() -> PrometheusConfig:
 
 @pytest.fixture()
 def minimum_opentelemetry_config() -> OpentelemetryConfig:
-    class TestOpentelemetryConfig(OpentelemetryConfig):
-        service_name: str = "test-micro-service"
-        service_version: str = "1.0.0"
+    return OpentelemetryConfig(
+        service_name="test-micro-service",
+        service_version="1.0.0",
+        opentelemetry_endpoint="/my-engdpoint",
+        opentelemetry_namespace="namespace",
+        opentelemetry_container_name="container-name",
+    )
 
-        opentelemetry_endpoint: str = "/my-engdpoint"
-        opentelemetry_namespace: str = "namespace"
-        opentelemetry_container_name: str = "container-name"
 
-    return TestOpentelemetryConfig()
+@pytest.fixture()
+def base_settings() -> BaseBootstrapSettings:
+    return BaseBootstrapSettings()
 
 
 @pytest.fixture()

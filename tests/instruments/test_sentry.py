@@ -59,3 +59,21 @@ async def test_litestar_sentry_bootstrap_working(minimum_sentry_config: SentryCo
     async with AsyncTestClient(app=litestar_application) as async_client:
         await async_client.get("/test-error-handler")
         assert magic_mock.called
+
+
+async def test_litestar_sentry_bootstrap_catch_exception(
+    minimum_sentry_config: SentryConfig,
+) -> None:
+    sentry_instrument: typing.Final = LitestarSentryInstrument(minimum_sentry_config)
+
+    @litestar.get("/test-error-handler")
+    async def error_handler() -> None:
+        raise ValueError("I'm test error")
+
+    litestar_application: typing.Final = litestar.Litestar(
+        route_handlers=[error_handler],
+        **sentry_instrument.bootstrap(),
+    )
+
+    async with AsyncTestClient(app=litestar_application) as async_client:
+        await async_client.get("/test-error-handler")

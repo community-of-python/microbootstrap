@@ -64,7 +64,7 @@ class LitetstarOpentelemetryInstrument(OpentelemetryInstrument):
 @LitestarBootstrapper.use_instrument()
 class LitestarLoggingInstrument(LoggingInstrument):
     def bootstrap_before(self) -> dict[str, typing.Any]:
-        return {"middleware": build_litestar_logging_middleware(self.instrument_config.logging_exclude_endpoints)}
+        return {"middleware": [build_litestar_logging_middleware(self.instrument_config.logging_exclude_endpoints)]}
 
 
 @LitestarBootstrapper.use_instrument()
