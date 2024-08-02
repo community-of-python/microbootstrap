@@ -1,5 +1,4 @@
 # microbootstrap
-
 This package helps you create application with all necessary instruments already set up
 
 - `sentry`
