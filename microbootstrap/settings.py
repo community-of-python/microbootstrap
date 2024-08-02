@@ -1,4 +1,5 @@
 from __future__ import annotations
+import os
 import typing
 
 import pydantic
@@ -8,6 +9,7 @@ from microbootstrap.instruments import LoggingConfig, OpentelemetryConfig, Prome
 
 
 SettingsT = typing.TypeVar("SettingsT", bound="BaseBootstrapSettings")
+ENVIRONMENT_PREFIX: typing.Final = "ENVIRONMENT_PREFIX"
 
 
 # TODO: add offline docs and cors support  # noqa: TD002
@@ -31,7 +33,7 @@ class BaseBootstrapSettings(
 
     model_config = pydantic_settings.SettingsConfigDict(
         env_file=".env",
-        env_prefix="BOOTSTRAP_",
+        env_prefix=os.getenv(ENVIRONMENT_PREFIX, ""),
         env_file_encoding="utf-8",
         populate_by_name=True,
     )
