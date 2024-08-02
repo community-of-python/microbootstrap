@@ -1,4 +1,6 @@
+<p align="center">
 <img src="./logo.svg" width="350"/>
+</p>
 
 [![codecov](https://codecov.io/gh/community-of-python/microbootstrap/branch/main/graph/badge.svg)](https://codecov.io/gh/yourusername/yourrepo)
 
