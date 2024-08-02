@@ -1,4 +1,9 @@
+<img src="./logo.svg" width="350"/>
+
+[![codecov](https://codecov.io/gh/community-of-python/microbootstrap/branch/main/graph/badge.svg)](https://codecov.io/gh/yourusername/yourrepo)
+
 # microbootstrap
+
 This package helps you create application with all necessary instruments already set up
 
 - `sentry`
