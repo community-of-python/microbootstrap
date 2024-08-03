@@ -23,12 +23,15 @@ DataclassT = typing.TypeVar("DataclassT", bound="DataclassInstance")
 class ApplicationBootstrapper(abc.ABC, typing.Generic[SettingsT, ApplicationT, DataclassT]):
     application_type: type[ApplicationT]
     application_config: DataclassT
-    __instrument_box: InstrumentBox = InstrumentBox()
     console_writer: ConsoleWriter
+    __instrument_box: InstrumentBox
 
     def __init__(self, settings: SettingsT) -> None:
         self.settings = settings
         self.console_writer = ConsoleWriter(writer_enabled=settings.service_debug)
+
+        if not hasattr(self, "__instrument_box"):
+            self.__instrument_box = InstrumentBox()
         self.__instrument_box.initialize(self.settings)
 
     def configure_application(
@@ -60,6 +63,8 @@ class ApplicationBootstrapper(abc.ABC, typing.Generic[SettingsT, ApplicationT, D
         [type[Instrument[InstrumentConfigT]]],
         type[Instrument[InstrumentConfigT]],
     ]:
+        if not hasattr(cls, "__instrument_box"):
+            cls.__instrument_box = InstrumentBox()
         return cls.__instrument_box.extend_instruments
 
     def bootstrap(self: typing_extensions.Self) -> ApplicationT:
