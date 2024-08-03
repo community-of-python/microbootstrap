@@ -1,8 +1,9 @@
 <p align="center">
-<img src="./logo.svg" width="350"/>
+    <img src="./logo.svg" width="350">
 </p>
-
-[![codecov](https://codecov.io/gh/community-of-python/microbootstrap/branch/main/graph/badge.svg)](https://codecov.io/gh/yourusername/yourrepo)
+<p align="center">
+    <a href="https://codecov.io/gh/community-of-python/microbootstrap" target="_blank"><img src="https://codecov.io/gh/community-of-python/microbootstrap/branch/main/graph/badge.svg"></a>
+</p>
 
 # microbootstrap
 
