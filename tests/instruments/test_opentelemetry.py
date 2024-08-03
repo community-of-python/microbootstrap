@@ -8,12 +8,17 @@ from litestar.testing import AsyncTestClient
 
 from microbootstrap import OpentelemetryConfig
 from microbootstrap.bootstrappers.litestar import LitetstarOpentelemetryInstrument
+from microbootstrap.console_writer import ConsoleWriter
 from microbootstrap.instruments.opentelemetry_instrument import OpentelemetryInstrument
 
 
-def test_opentelemetry_is_ready(minimum_opentelemetry_config: OpentelemetryConfig) -> None:
+def test_opentelemetry_is_ready(
+    minimum_opentelemetry_config: OpentelemetryConfig,
+    console_writer: ConsoleWriter,
+) -> None:
     opentelemetry_instrument: typing.Final = OpentelemetryInstrument(minimum_opentelemetry_config)
     assert opentelemetry_instrument.is_ready()
+    opentelemetry_instrument.write_status(console_writer)
 
 
 def test_opentelemetry_bootstrap_is_not_ready(minimum_opentelemetry_config: OpentelemetryConfig) -> None:
