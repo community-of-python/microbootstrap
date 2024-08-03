@@ -5,6 +5,7 @@ import litestar
 import pytest
 
 from microbootstrap import LoggingConfig, OpentelemetryConfig, PrometheusConfig, SentryConfig
+from microbootstrap.console_writer import ConsoleWriter
 from microbootstrap.settings import BaseBootstrapSettings
 
 
@@ -60,3 +61,8 @@ def magic_mock() -> MagicMock:
 @pytest.fixture()
 def async_mock() -> AsyncMock:
     return AsyncMock()
+
+
+@pytest.fixture()
+def console_writer() -> ConsoleWriter:
+    return ConsoleWriter(writer_enabled=False)

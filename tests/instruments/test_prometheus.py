@@ -7,12 +7,14 @@ from litestar.testing import AsyncTestClient
 
 from microbootstrap import PrometheusConfig
 from microbootstrap.bootstrappers.litestar import LitestarPrometheusInstrument
+from microbootstrap.console_writer import ConsoleWriter
 from microbootstrap.instruments.prometheus_instrument import PrometheusInstrument
 
 
-def test_prometheus_is_ready(minimum_prometheus_config: PrometheusConfig) -> None:
+def test_prometheus_is_ready(minimum_prometheus_config: PrometheusConfig, console_writer: ConsoleWriter) -> None:
     prometheus_instrument: typing.Final = PrometheusInstrument(minimum_prometheus_config)
     assert prometheus_instrument.is_ready()
+    prometheus_instrument.write_status(console_writer)
 
 
 def test_prometheus_bootstrap_is_not_ready(minimum_prometheus_config: PrometheusConfig) -> None:

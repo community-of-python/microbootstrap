@@ -12,6 +12,10 @@ from opentelemetry.sdk.trace.export import BatchSpanProcessor
 from microbootstrap.instruments.base import BaseInstrumentConfig, Instrument
 
 
+if typing.TYPE_CHECKING:
+    from microbootstrap.console_writer import ConsoleWriter
+
+
 @dataclasses.dataclass()
 class OpenTelemetryInstrumentor:
     instrumentor: BaseInstrumentor
@@ -31,6 +35,16 @@ class OpentelemetryConfig(BaseInstrumentConfig):
 
 
 class OpentelemetryInstrument(Instrument[OpentelemetryConfig]):
+    def write_status(self, console_writer: ConsoleWriter) -> None:
+        if self.is_ready():
+            console_writer.write_instrument_status("Opentelemetry", is_enabled=True)
+        else:
+            console_writer.write_instrument_status(
+                "Opentelemetry",
+                is_enabled=False,
+                disable_reason="Provide all necessary config parameters",
+            )
+
     def is_ready(self) -> bool:
         return all(
             [
@@ -47,10 +61,6 @@ class OpentelemetryInstrument(Instrument[OpentelemetryConfig]):
             instrumentor_with_params.instrumentor.uninstrument(**instrumentor_with_params.additional_params)
 
     def bootstrap(self) -> dict[str, typing.Any]:
-        if not self.is_ready():
-            print("Opentelemetry is not ready for bootstrapping. Provide required params.")  # noqa: T201
-            return {}
-
         resource: typing.Final = resources.Resource.create(
             attributes={
                 resources.SERVICE_NAME: self.instrument_config.service_name,

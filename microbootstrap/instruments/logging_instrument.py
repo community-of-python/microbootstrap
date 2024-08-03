@@ -17,6 +17,8 @@ if typing.TYPE_CHECKING:
     import litestar
     from structlog.typing import EventDict, WrappedLogger
 
+    from microbootstrap.console_writer import ConsoleWriter
+
 
 ScopeType = typing.MutableMapping[str, typing.Any]
 
@@ -129,6 +131,16 @@ class LoggingConfig(BaseInstrumentConfig):
 
 
 class LoggingInstrument(Instrument[LoggingConfig]):
+    def write_status(self, console_writer: ConsoleWriter) -> None:
+        if self.is_ready():
+            console_writer.write_instrument_status("Logging", is_enabled=True)
+        else:
+            console_writer.write_instrument_status(
+                "Logging",
+                is_enabled=False,
+                disable_reason="Works only in non-debug mode",
+            )
+
     def is_ready(self) -> bool:
         return not self.instrument_config.service_debug
 
@@ -136,10 +148,6 @@ class LoggingInstrument(Instrument[LoggingConfig]):
         structlog.reset_defaults()
 
     def bootstrap(self) -> dict[str, typing.Any]:
-        if not self.is_ready():
-            print("Skipping logging bootstrap. Service must be in non-debug mode.")  # noqa: T201
-            return {}
-
         for unset_handlers_logger in self.instrument_config.logging_unset_handlers:
             logging.getLogger(unset_handlers_logger).handlers = []
 

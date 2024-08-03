@@ -8,6 +8,10 @@ import pydantic
 from microbootstrap.helpers import merge_pydantic_configs
 
 
+if typing.TYPE_CHECKING:
+    from microbootstrap.console_writer import ConsoleWriter
+
+
 InstrumentConfigT = typing.TypeVar("InstrumentConfigT", bound="BaseInstrumentConfig")
 ApplicationT = typing.TypeVar("ApplicationT")
 
@@ -25,6 +29,10 @@ class Instrument(abc.ABC, typing.Generic[InstrumentConfigT]):
         incoming_config: InstrumentConfigT,
     ) -> None:
         self.instrument_config = merge_pydantic_configs(self.instrument_config, incoming_config)
+
+    @abc.abstractmethod
+    def write_status(self, console_writer: ConsoleWriter) -> None:
+        raise NotImplementedError
 
     @abc.abstractmethod
     def is_ready(self) -> bool:

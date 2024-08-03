@@ -8,6 +8,10 @@ from sentry_sdk.integrations import Integration  # noqa: TCH002
 from microbootstrap.instruments.base import BaseInstrumentConfig, Instrument
 
 
+if typing.TYPE_CHECKING:
+    from microbootstrap.console_writer import ConsoleWriter
+
+
 class SentryConfig(BaseInstrumentConfig):
     service_environment: str | None = None
 
@@ -21,6 +25,16 @@ class SentryConfig(BaseInstrumentConfig):
 
 
 class SentryInstrument(Instrument[SentryConfig]):
+    def write_status(self, console_writer: ConsoleWriter) -> None:
+        if self.is_ready():
+            console_writer.write_instrument_status("Sentry", is_enabled=True)
+        else:
+            console_writer.write_instrument_status(
+                "Sentry",
+                is_enabled=False,
+                disable_reason="Provide sentry_dsn",
+            )
+
     def is_ready(self) -> bool:
         return bool(self.instrument_config.sentry_dsn)
 
@@ -28,11 +42,6 @@ class SentryInstrument(Instrument[SentryConfig]):
         return
 
     def bootstrap(self) -> dict[str, typing.Any]:
-        if not self.is_ready():
-            # TODO: use some logger  # noqa: TD002
-            print("Sentry is not ready for bootstrapping. Provide a sentry_dsn")  # noqa: T201
-            return {}
-
         sentry_sdk.init(
             dsn=self.instrument_config.sentry_dsn,
             sample_rate=self.instrument_config.sentry_sample_rate,

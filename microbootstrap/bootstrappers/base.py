@@ -4,6 +4,7 @@ import typing
 
 import typing_extensions
 
+from microbootstrap.console_writer import ConsoleWriter
 from microbootstrap.helpers import dataclass_to_dict_no_defaults, merge_dataclasses_configs, merge_dict_configs
 from microbootstrap.instruments.instrument_box import InstrumentBox
 from microbootstrap.settings import SettingsT
@@ -23,9 +24,11 @@ class ApplicationBootstrapper(abc.ABC, typing.Generic[SettingsT, ApplicationT, D
     application_type: type[ApplicationT]
     application_config: DataclassT
     __instrument_box: InstrumentBox = InstrumentBox()
+    console_writer: ConsoleWriter
 
     def __init__(self, settings: SettingsT) -> None:
         self.settings = settings
+        self.console_writer = ConsoleWriter(writer_enabled=settings.service_debug)
         self.__instrument_box.initialize(self.settings)
 
     def configure_application(
@@ -54,17 +57,21 @@ class ApplicationBootstrapper(abc.ABC, typing.Generic[SettingsT, ApplicationT, D
     def bootstrap(self: typing_extensions.Self) -> ApplicationT:
         resulting_application_config = dataclass_to_dict_no_defaults(self.application_config)
         for instrument in self.__instrument_box.instruments:
-            resulting_application_config = merge_dict_configs(
-                resulting_application_config,
-                instrument.bootstrap(),
-            )
+            if instrument.is_ready():
+                resulting_application_config = merge_dict_configs(
+                    resulting_application_config,
+                    instrument.bootstrap(),
+                )
+            instrument.write_status(self.console_writer)
 
         application = self.application_type(
             **merge_dict_configs(resulting_application_config, self.bootstrap_before()),
         )
 
         for instrument in self.__instrument_box.instruments:
-            application = instrument.bootstrap_after(application)
+            if instrument.is_ready():
+                application = instrument.bootstrap_after(application)
+
         return self.bootstrap_after(application)
 
     def bootstrap_before(self: typing_extensions.Self) -> dict[str, typing.Any]:
