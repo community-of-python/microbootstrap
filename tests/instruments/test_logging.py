@@ -23,7 +23,7 @@ def test_logging_is_ready(minimum_logging_config: LoggingConfig, console_writer:
 def test_logging_bootstrap_is_not_ready(minimum_logging_config: LoggingConfig) -> None:
     minimum_logging_config.service_debug = True
     logging_instrument: typing.Final = LoggingInstrument(minimum_logging_config)
-    assert logging_instrument.bootstrap() == {}
+    assert logging_instrument.bootstrap_before() == {}
 
 
 def test_logging_bootstrap_after(
@@ -43,7 +43,8 @@ def test_logging_teardown(
 
 def test_litestar_logging_bootstrap(minimum_logging_config: LoggingConfig) -> None:
     logging_instrument: typing.Final = LitestarLoggingInstrument(minimum_logging_config)
-    bootsrap_result: typing.Final = logging_instrument.bootstrap()
+    logging_instrument.bootstrap()
+    bootsrap_result: typing.Final = logging_instrument.bootstrap_before()
     assert "middleware" in bootsrap_result
     assert isinstance(bootsrap_result["middleware"], list)
     assert len(bootsrap_result["middleware"]) == 1
@@ -56,9 +57,10 @@ async def test_litestar_logging_bootstrap_working(minimum_logging_config: Loggin
     async def error_handler() -> str:
         return "Ok"
 
+    logging_instrument.bootstrap()
     litestar_application: typing.Final = litestar.Litestar(
         route_handlers=[error_handler],
-        **logging_instrument.bootstrap(),
+        **logging_instrument.bootstrap_before(),
     )
 
     async with AsyncTestClient(app=litestar_application) as async_client:
@@ -77,9 +79,10 @@ async def test_litestar_logging_bootstrap_tracer_injection(minimum_logging_confi
     async def error_handler() -> str:
         return "Ok"
 
+    logging_instrument.bootstrap()
     litestar_application: typing.Final = litestar.Litestar(
         route_handlers=[error_handler],
-        **logging_instrument.bootstrap(),
+        **logging_instrument.bootstrap_before(),
     )
     with tracer.start_as_current_span("my_fake_span") as span:
         # Do some fake work inside the span

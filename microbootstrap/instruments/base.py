@@ -39,7 +39,7 @@ class Instrument(abc.ABC, typing.Generic[InstrumentConfigT]):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def bootstrap(self) -> dict[str, typing.Any]:
+    def bootstrap(self) -> None:
         raise NotImplementedError
 
     @abc.abstractmethod

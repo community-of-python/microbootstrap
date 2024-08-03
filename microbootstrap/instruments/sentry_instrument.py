@@ -41,7 +41,7 @@ class SentryInstrument(Instrument[SentryConfig]):
     def teardown(self) -> None:
         return
 
-    def bootstrap(self) -> dict[str, typing.Any]:
+    def bootstrap(self) -> None:
         sentry_sdk.init(
             dsn=self.instrument_config.sentry_dsn,
             sample_rate=self.instrument_config.sentry_sample_rate,
@@ -52,7 +52,6 @@ class SentryInstrument(Instrument[SentryConfig]):
             integrations=self.instrument_config.sentry_integrations,
             **self.instrument_config.sentry_additional_params,
         )
-        return self.bootstrap_before()
 
     @classmethod
     def get_config_type(cls) -> type[SentryConfig]:

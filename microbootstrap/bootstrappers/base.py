@@ -45,6 +45,14 @@ class ApplicationBootstrapper(abc.ABC, typing.Generic[SettingsT, ApplicationT, D
         self.__instrument_box.configure_instrument(instrument_config)
         return self
 
+    def configure_instruments(
+        self: typing_extensions.Self,
+        *instrument_configs: InstrumentConfigT,
+    ) -> typing_extensions.Self:
+        for instrument_config in instrument_configs:
+            self.configure_instrument(instrument_config)
+        return self
+
     @classmethod
     def use_instrument(
         cls,
@@ -58,9 +66,11 @@ class ApplicationBootstrapper(abc.ABC, typing.Generic[SettingsT, ApplicationT, D
         resulting_application_config = dataclass_to_dict_no_defaults(self.application_config)
         for instrument in self.__instrument_box.instruments:
             if instrument.is_ready():
+                instrument.bootstrap()
+
                 resulting_application_config = merge_dict_configs(
                     resulting_application_config,
-                    instrument.bootstrap(),
+                    instrument.bootstrap_before(),
                 )
             instrument.write_status(self.console_writer)
 

@@ -147,7 +147,7 @@ class LoggingInstrument(Instrument[LoggingConfig]):
     def teardown(self) -> None:
         structlog.reset_defaults()
 
-    def bootstrap(self) -> dict[str, typing.Any]:
+    def bootstrap(self) -> None:
         for unset_handlers_logger in self.instrument_config.logging_unset_handlers:
             logging.getLogger(unset_handlers_logger).handlers = []
 
@@ -166,8 +166,6 @@ class LoggingInstrument(Instrument[LoggingConfig]):
             wrapper_class=structlog.stdlib.BoundLogger,
             cache_logger_on_first_use=True,
         )
-
-        return self.bootstrap_before()
 
     @classmethod
     def get_config_type(cls) -> type[LoggingConfig]:

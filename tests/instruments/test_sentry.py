@@ -19,7 +19,7 @@ def test_sentry_is_ready(minimum_sentry_config: SentryConfig, console_writer: Co
 def test_sentry_bootstrap_is_not_ready(minimum_sentry_config: SentryConfig) -> None:
     minimum_sentry_config.sentry_dsn = ""
     sentry_instrument: typing.Final = SentryInstrument(minimum_sentry_config)
-    assert sentry_instrument.bootstrap() == {}
+    assert not sentry_instrument.is_ready()
 
 
 def test_sentry_bootstrap_after(
@@ -40,7 +40,8 @@ def test_sentry_teardown(
 def test_litestar_sentry_bootstrap(minimum_sentry_config: SentryConfig) -> None:
     sentry_instrument: typing.Final = LitestarSentryInstrument(minimum_sentry_config)
 
-    assert sentry_instrument.bootstrap() == {
+    sentry_instrument.bootstrap()
+    assert sentry_instrument.bootstrap_before() == {
         "after_exception": [sentry_instrument.sentry_exception_catcher_hook],
     }
 
@@ -53,9 +54,10 @@ async def test_litestar_sentry_bootstrap_working(minimum_sentry_config: SentryCo
     async def error_handler() -> None:
         raise ValueError("I'm test error")
 
+    sentry_instrument.bootstrap()
     litestar_application: typing.Final = litestar.Litestar(
         route_handlers=[error_handler],
-        **sentry_instrument.bootstrap(),
+        **sentry_instrument.bootstrap_before(),
     )
 
     async with AsyncTestClient(app=litestar_application) as async_client:
@@ -72,9 +74,10 @@ async def test_litestar_sentry_bootstrap_catch_exception(
     async def error_handler() -> None:
         raise ValueError("I'm test error")
 
+    sentry_instrument.bootstrap()
     litestar_application: typing.Final = litestar.Litestar(
         route_handlers=[error_handler],
-        **sentry_instrument.bootstrap(),
+        **sentry_instrument.bootstrap_before(),
     )
 
     async with AsyncTestClient(app=litestar_application) as async_client:
