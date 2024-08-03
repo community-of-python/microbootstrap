@@ -26,7 +26,7 @@ class PrometheusInstrument(Instrument[PrometheusConfig]):
             console_writer.write_instrument_status(
                 "Prometheus",
                 is_enabled=False,
-                disable_reason="Provide path for metrics exposure",
+                disable_reason="Provide metrics_path for metrics exposure",
             )
 
     def is_ready(self) -> bool:
