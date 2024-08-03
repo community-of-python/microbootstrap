@@ -37,6 +37,8 @@ With <b>microbootstrap</b>, you get an application with built-in support for:
 - `opentelemetry`
 - `logging`
 
+That are available only for `litestar` yet
+
 Interested? Let's jump right into it ⚡
 
 ## Installation
