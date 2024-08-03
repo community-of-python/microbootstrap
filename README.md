@@ -37,7 +37,7 @@ With <b>microbootstrap</b>, you get an application with built-in support for:
 - `opentelemetry`
 - `logging`
 
-That are available only for `litestar` yet
+Instruments are available only for `litestar` and `fastapi` frameworks.
 
 Interested? Let's jump right into it ⚡
 
