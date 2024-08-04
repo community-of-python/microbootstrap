@@ -27,6 +27,21 @@ async def test_litestar_configure_instrument() -> None:
         assert response.status_code == status_codes.HTTP_200_OK
 
 
+async def test_litestar_configure_instruments() -> None:
+    test_metrics_path: typing.Final = "/test-metrics-path"
+    application: typing.Final = (
+        LitestarBootstrapper(LitestarSettings())
+        .configure_instruments(
+            PrometheusConfig(prometheus_metrics_path=test_metrics_path),
+        )
+        .bootstrap()
+    )
+
+    async with AsyncTestClient(app=application) as async_client:
+        response: typing.Final = await async_client.get(test_metrics_path)
+        assert response.status_code == status_codes.HTTP_200_OK
+
+
 async def test_litestar_configure_application_add_handler() -> None:
     test_handler_path: typing.Final = "/test-handler"
     test_response: typing.Final = {"hello": "world"}

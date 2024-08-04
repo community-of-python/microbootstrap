@@ -20,7 +20,7 @@ def test_prometheus_is_ready(minimum_prometheus_config: PrometheusConfig, consol
 def test_prometheus_bootstrap_is_not_ready(minimum_prometheus_config: PrometheusConfig) -> None:
     minimum_prometheus_config.prometheus_metrics_path = ""
     prometheus_instrument: typing.Final = PrometheusInstrument(minimum_prometheus_config)
-    assert prometheus_instrument.bootstrap() == {}
+    assert not prometheus_instrument.is_ready()
 
 
 def test_prometheus_bootstrap_after(
@@ -40,8 +40,8 @@ def test_prometheus_teardown(
 
 def test_litestar_prometheus_bootstrap(minimum_prometheus_config: PrometheusConfig) -> None:
     prometheus_instrument: typing.Final = LitestarPrometheusInstrument(minimum_prometheus_config)
-
-    prometheus_bootstrap_result: typing.Final = prometheus_instrument.bootstrap()
+    prometheus_instrument.bootstrap()
+    prometheus_bootstrap_result: typing.Final = prometheus_instrument.bootstrap_before()
 
     assert prometheus_bootstrap_result
     assert "route_handlers" in prometheus_bootstrap_result
@@ -57,8 +57,9 @@ async def test_litestar_prometheus_bootstrap_working(minimum_prometheus_config: 
     minimum_prometheus_config.prometheus_metrics_path = "/custom-metrics-path"
     prometheus_instrument: typing.Final = LitestarPrometheusInstrument(minimum_prometheus_config)
 
+    prometheus_instrument.bootstrap()
     litestar_application: typing.Final = litestar.Litestar(
-        **prometheus_instrument.bootstrap(),
+        **prometheus_instrument.bootstrap_before(),
     )
 
     async with AsyncTestClient(app=litestar_application) as async_client:

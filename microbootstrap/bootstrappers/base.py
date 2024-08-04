@@ -23,12 +23,15 @@ DataclassT = typing.TypeVar("DataclassT", bound="DataclassInstance")
 class ApplicationBootstrapper(abc.ABC, typing.Generic[SettingsT, ApplicationT, DataclassT]):
     application_type: type[ApplicationT]
     application_config: DataclassT
-    __instrument_box: InstrumentBox = InstrumentBox()
     console_writer: ConsoleWriter
+    __instrument_box: InstrumentBox
 
     def __init__(self, settings: SettingsT) -> None:
         self.settings = settings
         self.console_writer = ConsoleWriter(writer_enabled=settings.service_debug)
+
+        if not hasattr(self, "__instrument_box"):
+            self.__instrument_box = InstrumentBox()
         self.__instrument_box.initialize(self.settings)
 
     def configure_application(
@@ -45,6 +48,14 @@ class ApplicationBootstrapper(abc.ABC, typing.Generic[SettingsT, ApplicationT, D
         self.__instrument_box.configure_instrument(instrument_config)
         return self
 
+    def configure_instruments(
+        self: typing_extensions.Self,
+        *instrument_configs: InstrumentConfigT,
+    ) -> typing_extensions.Self:
+        for instrument_config in instrument_configs:
+            self.configure_instrument(instrument_config)
+        return self
+
     @classmethod
     def use_instrument(
         cls,
@@ -52,15 +63,19 @@ class ApplicationBootstrapper(abc.ABC, typing.Generic[SettingsT, ApplicationT, D
         [type[Instrument[InstrumentConfigT]]],
         type[Instrument[InstrumentConfigT]],
     ]:
+        if not hasattr(cls, "__instrument_box"):
+            cls.__instrument_box = InstrumentBox()
         return cls.__instrument_box.extend_instruments
 
     def bootstrap(self: typing_extensions.Self) -> ApplicationT:
         resulting_application_config = dataclass_to_dict_no_defaults(self.application_config)
         for instrument in self.__instrument_box.instruments:
             if instrument.is_ready():
+                instrument.bootstrap()
+
                 resulting_application_config = merge_dict_configs(
                     resulting_application_config,
-                    instrument.bootstrap(),
+                    instrument.bootstrap_before(),
                 )
             instrument.write_status(self.console_writer)
 

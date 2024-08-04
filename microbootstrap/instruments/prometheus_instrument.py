@@ -37,8 +37,8 @@ class PrometheusInstrument(Instrument[PrometheusConfig]):
     def teardown(self) -> None:
         return
 
-    def bootstrap(self) -> dict[str, typing.Any]:
-        return self.bootstrap_before()
+    def bootstrap(self) -> None:
+        pass
 
     @classmethod
     def get_config_type(cls) -> type[PrometheusConfig]:

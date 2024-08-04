@@ -31,7 +31,7 @@ class OpentelemetryConfig(BaseInstrumentConfig):
     opentelemetry_namespace: str | None = None
     opentelemetry_insecure: bool = pydantic.Field(default=True)
     opentelemetry_insrtumentors: list[OpenTelemetryInstrumentor] = pydantic.Field(default_factory=list)
-    opentelemetry_exclude_urls: list[str] = pydantic.Field(default=["/health"])
+    opentelemetry_exclude_urls: list[str] = pydantic.Field(default=[])
 
 
 class OpentelemetryInstrument(Instrument[OpentelemetryConfig]):
@@ -60,7 +60,7 @@ class OpentelemetryInstrument(Instrument[OpentelemetryConfig]):
         for instrumentor_with_params in self.instrument_config.opentelemetry_insrtumentors:
             instrumentor_with_params.instrumentor.uninstrument(**instrumentor_with_params.additional_params)
 
-    def bootstrap(self) -> dict[str, typing.Any]:
+    def bootstrap(self) -> None:
         resource: typing.Final = resources.Resource.create(
             attributes={
                 resources.SERVICE_NAME: self.instrument_config.service_name,
@@ -85,7 +85,6 @@ class OpentelemetryInstrument(Instrument[OpentelemetryConfig]):
                 tracer_provider=self.tracer_provider,
                 **opentelemetry_instrumentor.additional_params,
             )
-        return self.bootstrap_before()
 
     @classmethod
     def get_config_type(cls) -> type[OpentelemetryConfig]:

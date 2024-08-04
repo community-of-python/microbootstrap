@@ -24,7 +24,7 @@ def test_opentelemetry_is_ready(
 def test_opentelemetry_bootstrap_is_not_ready(minimum_opentelemetry_config: OpentelemetryConfig) -> None:
     minimum_opentelemetry_config.service_name = ""
     opentelemetry_instrument: typing.Final = OpentelemetryInstrument(minimum_opentelemetry_config)
-    assert opentelemetry_instrument.bootstrap() == {}
+    assert not opentelemetry_instrument.is_ready()
 
 
 def test_opentelemetry_bootstrap_after(
@@ -49,7 +49,8 @@ def test_litestar_opentelemetry_bootstrap(
     minimum_opentelemetry_config.opentelemetry_insrtumentors = [magic_mock]
     opentelemetry_instrument: typing.Final = LitetstarOpentelemetryInstrument(minimum_opentelemetry_config)
 
-    opentelemetry_bootstrap_result: typing.Final = opentelemetry_instrument.bootstrap()
+    opentelemetry_instrument.bootstrap()
+    opentelemetry_bootstrap_result: typing.Final = opentelemetry_instrument.bootstrap_before()
 
     assert opentelemetry_bootstrap_result
     assert "middleware" in opentelemetry_bootstrap_result
@@ -73,7 +74,8 @@ async def test_litestar_opentelemetry_bootstrap_working(
     async_mock: AsyncMock,
 ) -> None:
     opentelemetry_instrument: typing.Final = LitetstarOpentelemetryInstrument(minimum_opentelemetry_config)
-    opentelemetry_bootstrap_result: typing.Final = opentelemetry_instrument.bootstrap()
+    opentelemetry_instrument.bootstrap()
+    opentelemetry_bootstrap_result: typing.Final = opentelemetry_instrument.bootstrap_before()
 
     opentelemetry_middleware = opentelemetry_bootstrap_result["middleware"][0]
     assert isinstance(opentelemetry_middleware, DefineMiddleware)
