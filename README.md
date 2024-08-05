@@ -6,10 +6,10 @@
     <a href="https://codecov.io/gh/community-of-python/microbootstrap" target="_blank">
         <img src="https://codecov.io/gh/community-of-python/microbootstrap/branch/main/graph/badge.svg">
     </a>
-    <a href="https://codecov.io/gh/community-of-python/microbootstrap" target="_blank">
+    <a href="https://pypi.org/project/microbootstrap/" target="_blank">
         <img src="https://img.shields.io/pypi/pyversions/microbootstrap">
     </a>
-    <a href="https://codecov.io/gh/community-of-python/microbootstrap" target="_blank">
+    <a href="https://pypi.org/project/microbootstrap/" target="_blank">
         <img src="https://img.shields.io/pypi/v/microbootstrap">
     </a>
 </p>
