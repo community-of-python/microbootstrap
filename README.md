@@ -410,7 +410,7 @@ application: litestar.Litestar = (
 > ```
 >
 > In this case prometheus will receive `{"first_value: 1", "second_value": 2}` inside `prometheus_additional_params`  
-> This is also true for `list`, `tuple` and `set`s
+> This is also true for `list`, `tuple` and `set`
 
 ## Advanced
 
