@@ -1,5 +1,5 @@
 <p align="center">
-    <img src="./logo.svg" width="350">
+    <img src="https://raw.githubusercontent.com/community-of-python/microbootstrap/main/logo.svg" width="350">
 </p>
 <br>
 <p align="center">

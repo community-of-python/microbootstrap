@@ -2742,4 +2742,4 @@ litestar = ["litestar", "prometheus-client"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.9"
-content-hash = "a91266f0773989691e5e3c1b5bf02b86a317c9d06b65e2ecc707ce5df789e233"
+content-hash = "482d6689c17424535f53e54f516c49c39485e30cc2201cbe22466a8d54eafe33"
