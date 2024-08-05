@@ -39,13 +39,25 @@ With <b>microbootstrap</b>, you get an application with built-in support for:
 - `opentelemetry`
 - `logging`
 
-<b>microbootstrap</b> supports `litestar` and `fastapi` frameworks for now.
+<b>microbootstrap</b> supports only `litestar` framework for now.
 
 Interested? Let's jump right into it ⚡
 
 ## Installation
 
-`microbootstrap` is not available on pypi yet.
+You can install package with `pip` or `poetry`.
+
+poetry:
+
+```bash
+$ poetry add microbootstrap -E litestar
+```
+
+pip:
+
+```bash
+$ poetry add microbootstrap[litestar]
+```
 
 ## Quickstart
 
