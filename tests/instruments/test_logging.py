@@ -10,14 +10,12 @@ from opentelemetry.sdk.trace.export import ConsoleSpanExporter, SimpleSpanProces
 
 from microbootstrap import LoggingConfig
 from microbootstrap.bootstrappers.litestar import LitestarLoggingInstrument
-from microbootstrap.console_writer import ConsoleWriter
 from microbootstrap.instruments.logging_instrument import LoggingInstrument, MemoryLoggerFactory
 
 
-def test_logging_is_ready(minimum_logging_config: LoggingConfig, console_writer: ConsoleWriter) -> None:
+def test_logging_is_ready(minimum_logging_config: LoggingConfig) -> None:
     logging_instrument: typing.Final = LoggingInstrument(minimum_logging_config)
     assert logging_instrument.is_ready()
-    logging_instrument.write_status(console_writer)
 
 
 def test_logging_bootstrap_is_not_ready(minimum_logging_config: LoggingConfig) -> None:

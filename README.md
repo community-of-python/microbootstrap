@@ -434,8 +434,8 @@ from microbootstrap.instruments.base import Instrument
 
 
 class MyInstrument(Instrument[MyInstrumentConfig]):
-    def write_status(self, console_writer: ConsoleWriter) -> None:
-        pass
+    instrument_name: str
+    ready_condition: str
 
     def is_ready(self) -> bool:
         pass
@@ -453,10 +453,16 @@ class MyInstrument(Instrument[MyInstrumentConfig]):
 
 And now you can define behaviour of your instrument
 
-- `write_status` - writes status to console, indicating, is instrument bootstrapped.
-- `is_ready` - defines ready for bootstrapping state of instrument, based on it's config values.
-- `teardown` - graceful shutdown for instrument during application shutdown.
-- `bootstrap` - main instrument's logic.
+Attributes:
+
+- `instrument_name` - Will be displayed in your console during bootstrap.
+- `ready_condition` - Will be displayed in your console during bootstrap if instument is not ready.
+
+Methods:
+
+- `is_ready` - defines ready for bootstrapping state of instrument, based on it's config values. Required.
+- `teardown` - graceful shutdown for instrument during application shutdown. Not required.
+- `bootstrap` - main instrument's logic. Not required.
 
 When you have a carcass of instrument, you can adapt it for every framework existing.  
 Let's adapt it for litestar for example

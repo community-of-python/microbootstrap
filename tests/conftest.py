@@ -6,6 +6,8 @@ import pytest
 
 from microbootstrap import LoggingConfig, OpentelemetryConfig, PrometheusConfig, SentryConfig
 from microbootstrap.console_writer import ConsoleWriter
+from microbootstrap.instruments.cors_instrument import CorsConfig
+from microbootstrap.instruments.swagger_instrument import SwaggerConfig
 from microbootstrap.settings import BaseBootstrapSettings
 
 
@@ -35,6 +37,16 @@ def minimum_logging_config() -> LoggingConfig:
 @pytest.fixture()
 def minimum_prometheus_config() -> PrometheusConfig:
     return PrometheusConfig()
+
+
+@pytest.fixture()
+def minimum_swagger_config() -> SwaggerConfig:
+    return SwaggerConfig()
+
+
+@pytest.fixture()
+def minimum_cors_config() -> SwaggerConfig:
+    return CorsConfig(cors_allowed_origins=["*"])
 
 
 @pytest.fixture()
