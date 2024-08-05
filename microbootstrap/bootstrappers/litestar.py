@@ -73,6 +73,7 @@ class LitestarSwaggerInstrument(SwaggerInstrument):
             version=self.instrument_config.service_version,
             description=self.instrument_config.service_description,
             openapi_controller=LitestarOpenAPIController,
+            **self.instrument_config.swagger_extra_params,
         )
 
         bootstrap_result = {}

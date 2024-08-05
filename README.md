@@ -40,12 +40,14 @@ from your_application.settings import settings
 application: litestar.Litestar = LitestarBootstrapper(settings).bootstrap()
 ```
 
-With <b>microbootstrap</b>, you get an application with built-in support for:
+With <b>microbootstrap</b>, you get an application with lightweight built-in support for:
 
 - `sentry`
 - `prometheus`
 - `opentelemetry`
 - `logging`
+- `cors`
+- `swagger` - additional offline version support
 
 <b>microbootstrap</b> supports only `litestar` framework for now.
 
@@ -169,6 +171,8 @@ Currently, these instruments are already supported for bootstrapping:
 - `prometheus`
 - `opentelemetry`
 - `logging`
+- `cors`
+- `swagger`
 
 Let's make it clear, what it takes to bootstrap them.
 
@@ -253,7 +257,7 @@ class YourSettings(BaseBootstrapSettings):
 
 All these settings are then passed to [opentelemetry](https://opentelemetry.io/), completing your Opentelemetry integration.
 
-## Logging
+### Logging
 
 <b>microbootstrap</b> provides in-memory json logging using [structlog](https://pypi.org/project/structlog/).  
 To learn more about in-memory logging, check out [MemoryHandler](https://docs.python.org/3/library/logging.handlers.html#memoryhandler)
@@ -286,6 +290,59 @@ Parameters description:
 - `logging_extra_processors` - set additional structlog processors if you have some.
 - `logging_exclude_endpoints` - remove logging on certain endpoints.
 
+### Swagger
+
+```python
+from microbootstrap.bootstrappers.litestar import BaseBootstrapSettings
+
+
+class YourSettings(BaseBootstrapSettings):
+    service_name: str = pydantic.Field(default="micro-service")
+    service_description: str = pydantic.Field(default="Micro service description")
+    service_version: str = pydantic.Field(default="1.0.0")
+    service_static_path: str = pydantic.Field(default="/static")
+
+    swagger_path: str = "/docs"
+    swagger_offline_docs: bool = False
+    swagger_extra_params: dict[str, Any] = {}
+```
+
+Parameters description:
+
+- `service_environment` - will be displayed in docs.
+- `service_name` - will be displayed in docs.
+- `service_description` - will be displayed in docs.
+- `service_static_path` - set additional structlog processors if you have some.
+- `swagger_path` - path of the docs.
+- `swagger_offline_docs` - makes swagger js bundles access offline, because service starts to host via static.
+- `swagger_extra_params` - additional params to pass into openapi config.
+
+### Cors
+
+```python
+from microbootstrap.bootstrappers.litestar import BaseBootstrapSettings
+
+
+class YourSettings(BaseBootstrapSettings):
+    cors_allowed_origins: list[str] = pydantic.Field(default_factory=list)
+    cors_allowed_methods: list[str] = pydantic.Field(default_factory=list)
+    cors_allowed_headers: list[str] = pydantic.Field(default_factory=list)
+    cors_exposed_headers: list[str] = pydantic.Field(default_factory=list)
+    cors_allowed_credentials: bool = False
+    cors_allowed_origin_regex: str | None = None
+    cors_max_age: int = 600
+```
+
+Parameters description:
+
+- `cors_allowed_origins` - list of origins that are allowed.
+- `cors_allowed_methods` - list of allowed HTTP methods.
+- `cors_allowed_headers` - list of allowed headers.
+- `cors_exposed_headers` - list of headers that are exposed via the 'Access-Control-Expose-Headers' header.
+- `cors_allowed_credentials` - boolean dictating whether or not to set the 'Access-Control-Allow-Credentials' header.
+- `cors_allowed_origin_regex` - regex to match origins against.
+- `cors_max_age` - response caching TTL in seconds, defaults to 600.
+
 ## Configuration
 
 Despite settings being pretty convenient mechanism, it's not always possible to store everything in settings.
@@ -300,6 +357,8 @@ To configure instruemt manually, you have to import one of available configs fro
 - `OpentelemetryConfig`
 - `PrometheusConfig`
 - `LoggingConfig`
+- `SwaggerConfig`
+- `CorsConfig`
 
 And pass them into `.configure_instrument` or `.configure_instruments` bootstrapper method.
 

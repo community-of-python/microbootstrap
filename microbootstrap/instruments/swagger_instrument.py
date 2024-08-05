@@ -1,4 +1,5 @@
 from __future__ import annotations
+import typing
 
 import pydantic
 
@@ -7,7 +8,6 @@ from microbootstrap.instruments.base import BaseInstrumentConfig, Instrument
 
 
 class SwaggerConfig(BaseInstrumentConfig):
-    service_environment: str | None = None
     service_name: str = pydantic.Field(default="micro-service")
     service_description: str = pydantic.Field(default="Micro service description")
     service_version: str = pydantic.Field(default="1.0.0")
@@ -15,6 +15,7 @@ class SwaggerConfig(BaseInstrumentConfig):
 
     swagger_path: str = "/docs"
     swagger_offline_docs: bool = False
+    swagger_extra_params: dict[str, typing.Any] = pydantic.Field(default_factory=dict)
 
 
 class SwaggerInstrument(Instrument[SwaggerConfig]):
