@@ -26,7 +26,7 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
 ]
-version = "0.0.4"
+version = "0.1.0"
 description = "Package for bootstrapping new micro-services"
 authors = ["community-of-python"]
 readme = "README.md"
