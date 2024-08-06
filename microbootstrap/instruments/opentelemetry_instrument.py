@@ -19,8 +19,8 @@ class OpenTelemetryInstrumentor:
 
 
 class OpentelemetryConfig(BaseInstrumentConfig):
-    service_name: str = pydantic.Field(default="micro-service")
-    service_version: str = pydantic.Field(default="1.0.0")
+    service_name: str = "micro-service"
+    service_version: str = "1.0.0"
 
     opentelemetry_container_name: str | None = None
     opentelemetry_endpoint: str | None = None

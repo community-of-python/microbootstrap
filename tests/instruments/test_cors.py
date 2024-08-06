@@ -8,29 +8,29 @@ from microbootstrap.bootstrappers.litestar import LitestarCorsInstrument
 from microbootstrap.instruments.cors_instrument import CorsInstrument
 
 
-def test_cors_is_ready(minimum_cors_config: CorsConfig) -> None:
-    cors_instrument: typing.Final = CorsInstrument(minimum_cors_config)
+def test_cors_is_ready(minimal_cors_config: CorsConfig) -> None:
+    cors_instrument: typing.Final = CorsInstrument(minimal_cors_config)
     assert cors_instrument.is_ready()
 
 
-def test_cors_bootstrap_is_not_ready(minimum_cors_config: CorsConfig) -> None:
-    minimum_cors_config.cors_allowed_origins = []
-    cors_instrument: typing.Final = CorsInstrument(minimum_cors_config)
+def test_cors_bootstrap_is_not_ready(minimal_cors_config: CorsConfig) -> None:
+    minimal_cors_config.cors_allowed_origins = []
+    cors_instrument: typing.Final = CorsInstrument(minimal_cors_config)
     assert not cors_instrument.is_ready()
 
 
 def test_cors_bootstrap_after(
     default_litestar_app: litestar.Litestar,
-    minimum_cors_config: CorsConfig,
+    minimal_cors_config: CorsConfig,
 ) -> None:
-    cors_instrument: typing.Final = CorsInstrument(minimum_cors_config)
+    cors_instrument: typing.Final = CorsInstrument(minimal_cors_config)
     assert cors_instrument.bootstrap_after(default_litestar_app) == default_litestar_app
 
 
 def test_cors_teardown(
-    minimum_cors_config: CorsConfig,
+    minimal_cors_config: CorsConfig,
 ) -> None:
-    cors_instrument: typing.Final = CorsInstrument(minimum_cors_config)
+    cors_instrument: typing.Final = CorsInstrument(minimal_cors_config)
     assert cors_instrument.teardown() is None  # type: ignore[func-returns-value]
 
 

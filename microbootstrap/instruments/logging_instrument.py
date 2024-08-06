@@ -118,14 +118,14 @@ class MemoryLoggerFactory(structlog.stdlib.LoggerFactory):
 class LoggingConfig(BaseInstrumentConfig):
     service_debug: bool = True
 
-    logging_log_level: int = pydantic.Field(default=logging.INFO)
-    logging_flush_level: int = pydantic.Field(default=logging.ERROR)
-    logging_buffer_capacity: int = pydantic.Field(default=10)
+    logging_log_level: int = logging.INFO
+    logging_flush_level: int = logging.ERROR
+    logging_buffer_capacity: int = 10
     logging_extra_processors: list[typing.Any] = pydantic.Field(default_factory=list)
     logging_unset_handlers: list[str] = pydantic.Field(
         default_factory=lambda: ["uvicorn", "uvicorn.access"],
     )
-    logging_exclude_endpoints: list[str] = pydantic.Field(default_factory=lambda: ["/health"])
+    logging_exclude_endpoints: list[str] = pydantic.Field(default_factory=list)
 
 
 class LoggingInstrument(Instrument[LoggingConfig]):

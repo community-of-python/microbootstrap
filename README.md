@@ -297,10 +297,10 @@ from microbootstrap.bootstrappers.litestar import BaseBootstrapSettings
 
 
 class YourSettings(BaseBootstrapSettings):
-    service_name: str = pydantic.Field(default="micro-service")
-    service_description: str = pydantic.Field(default="Micro service description")
-    service_version: str = pydantic.Field(default="1.0.0")
-    service_static_path: str = pydantic.Field(default="/static")
+    service_name: str = "micro-service"
+    service_description: str = "Micro service description"
+    service_version: str = "1.0.0"
+    service_static_path: str = "/static"
 
     swagger_path: str = "/docs"
     swagger_offline_docs: bool = False

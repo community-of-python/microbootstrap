@@ -23,8 +23,8 @@ class BaseInstrumentConfig(pydantic.BaseModel):
 @dataclasses.dataclass
 class Instrument(abc.ABC, typing.Generic[InstrumentConfigT]):
     instrument_config: InstrumentConfigT
-    instrument_name: str = dataclasses.field(init=False)
-    ready_condition: str = dataclasses.field(init=False)
+    instrument_name: typing.ClassVar[str]
+    ready_condition: typing.ClassVar[str]
 
     def configure_instrument(
         self,

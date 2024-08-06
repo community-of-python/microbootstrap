@@ -9,34 +9,34 @@ from microbootstrap.bootstrappers.litestar import LitestarSentryInstrument
 from microbootstrap.instruments.sentry_instrument import SentryInstrument
 
 
-def test_sentry_is_ready(minimum_sentry_config: SentryConfig) -> None:
-    sentry_instrument: typing.Final = SentryInstrument(minimum_sentry_config)
+def test_sentry_is_ready(minimal_sentry_config: SentryConfig) -> None:
+    sentry_instrument: typing.Final = SentryInstrument(minimal_sentry_config)
     assert sentry_instrument.is_ready()
 
 
-def test_sentry_bootstrap_is_not_ready(minimum_sentry_config: SentryConfig) -> None:
-    minimum_sentry_config.sentry_dsn = ""
-    sentry_instrument: typing.Final = SentryInstrument(minimum_sentry_config)
+def test_sentry_bootstrap_is_not_ready(minimal_sentry_config: SentryConfig) -> None:
+    minimal_sentry_config.sentry_dsn = ""
+    sentry_instrument: typing.Final = SentryInstrument(minimal_sentry_config)
     assert not sentry_instrument.is_ready()
 
 
 def test_sentry_bootstrap_after(
     default_litestar_app: litestar.Litestar,
-    minimum_sentry_config: SentryConfig,
+    minimal_sentry_config: SentryConfig,
 ) -> None:
-    sentry_instrument: typing.Final = SentryInstrument(minimum_sentry_config)
+    sentry_instrument: typing.Final = SentryInstrument(minimal_sentry_config)
     assert sentry_instrument.bootstrap_after(default_litestar_app) == default_litestar_app
 
 
 def test_sentry_teardown(
-    minimum_sentry_config: SentryConfig,
+    minimal_sentry_config: SentryConfig,
 ) -> None:
-    sentry_instrument: typing.Final = SentryInstrument(minimum_sentry_config)
+    sentry_instrument: typing.Final = SentryInstrument(minimal_sentry_config)
     assert sentry_instrument.teardown() is None  # type: ignore[func-returns-value]
 
 
-def test_litestar_sentry_bootstrap(minimum_sentry_config: SentryConfig) -> None:
-    sentry_instrument: typing.Final = LitestarSentryInstrument(minimum_sentry_config)
+def test_litestar_sentry_bootstrap(minimal_sentry_config: SentryConfig) -> None:
+    sentry_instrument: typing.Final = LitestarSentryInstrument(minimal_sentry_config)
 
     sentry_instrument.bootstrap()
     assert sentry_instrument.bootstrap_before() == {
@@ -44,8 +44,8 @@ def test_litestar_sentry_bootstrap(minimum_sentry_config: SentryConfig) -> None:
     }
 
 
-async def test_litestar_sentry_bootstrap_working(minimum_sentry_config: SentryConfig, magic_mock: MagicMock) -> None:
-    sentry_instrument: typing.Final = LitestarSentryInstrument(minimum_sentry_config)
+async def test_litestar_sentry_bootstrap_working(minimal_sentry_config: SentryConfig, magic_mock: MagicMock) -> None:
+    sentry_instrument: typing.Final = LitestarSentryInstrument(minimal_sentry_config)
     sentry_instrument.sentry_exception_catcher_hook = magic_mock  # type: ignore[method-assign]
 
     @litestar.get("/test-error-handler")
@@ -64,9 +64,9 @@ async def test_litestar_sentry_bootstrap_working(minimum_sentry_config: SentryCo
 
 
 async def test_litestar_sentry_bootstrap_catch_exception(
-    minimum_sentry_config: SentryConfig,
+    minimal_sentry_config: SentryConfig,
 ) -> None:
-    sentry_instrument: typing.Final = LitestarSentryInstrument(minimum_sentry_config)
+    sentry_instrument: typing.Final = LitestarSentryInstrument(minimal_sentry_config)
 
     @litestar.get("/test-error-handler")
     async def error_handler() -> None:

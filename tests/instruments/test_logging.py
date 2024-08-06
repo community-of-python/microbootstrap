@@ -13,34 +13,34 @@ from microbootstrap.bootstrappers.litestar import LitestarLoggingInstrument
 from microbootstrap.instruments.logging_instrument import LoggingInstrument, MemoryLoggerFactory
 
 
-def test_logging_is_ready(minimum_logging_config: LoggingConfig) -> None:
-    logging_instrument: typing.Final = LoggingInstrument(minimum_logging_config)
+def test_logging_is_ready(minimal_logging_config: LoggingConfig) -> None:
+    logging_instrument: typing.Final = LoggingInstrument(minimal_logging_config)
     assert logging_instrument.is_ready()
 
 
-def test_logging_bootstrap_is_not_ready(minimum_logging_config: LoggingConfig) -> None:
-    minimum_logging_config.service_debug = True
-    logging_instrument: typing.Final = LoggingInstrument(minimum_logging_config)
+def test_logging_bootstrap_is_not_ready(minimal_logging_config: LoggingConfig) -> None:
+    minimal_logging_config.service_debug = True
+    logging_instrument: typing.Final = LoggingInstrument(minimal_logging_config)
     assert logging_instrument.bootstrap_before() == {}
 
 
 def test_logging_bootstrap_after(
     default_litestar_app: litestar.Litestar,
-    minimum_logging_config: LoggingConfig,
+    minimal_logging_config: LoggingConfig,
 ) -> None:
-    logging_instrument: typing.Final = LoggingInstrument(minimum_logging_config)
+    logging_instrument: typing.Final = LoggingInstrument(minimal_logging_config)
     assert logging_instrument.bootstrap_after(default_litestar_app) == default_litestar_app
 
 
 def test_logging_teardown(
-    minimum_logging_config: LoggingConfig,
+    minimal_logging_config: LoggingConfig,
 ) -> None:
-    logging_instrument: typing.Final = LoggingInstrument(minimum_logging_config)
+    logging_instrument: typing.Final = LoggingInstrument(minimal_logging_config)
     assert logging_instrument.teardown() is None  # type: ignore[func-returns-value]
 
 
-def test_litestar_logging_bootstrap(minimum_logging_config: LoggingConfig) -> None:
-    logging_instrument: typing.Final = LitestarLoggingInstrument(minimum_logging_config)
+def test_litestar_logging_bootstrap(minimal_logging_config: LoggingConfig) -> None:
+    logging_instrument: typing.Final = LitestarLoggingInstrument(minimal_logging_config)
     logging_instrument.bootstrap()
     bootsrap_result: typing.Final = logging_instrument.bootstrap_before()
     assert "middleware" in bootsrap_result
@@ -48,8 +48,8 @@ def test_litestar_logging_bootstrap(minimum_logging_config: LoggingConfig) -> No
     assert len(bootsrap_result["middleware"]) == 1
 
 
-async def test_litestar_logging_bootstrap_working(minimum_logging_config: LoggingConfig) -> None:
-    logging_instrument: typing.Final = LitestarLoggingInstrument(minimum_logging_config)
+async def test_litestar_logging_bootstrap_working(minimal_logging_config: LoggingConfig) -> None:
+    logging_instrument: typing.Final = LitestarLoggingInstrument(minimal_logging_config)
 
     @litestar.get("/test-handler")
     async def error_handler() -> str:
@@ -66,12 +66,12 @@ async def test_litestar_logging_bootstrap_working(minimum_logging_config: Loggin
         await async_client.get("/test-handler")
 
 
-async def test_litestar_logging_bootstrap_tracer_injection(minimum_logging_config: LoggingConfig) -> None:
+async def test_litestar_logging_bootstrap_tracer_injection(minimal_logging_config: LoggingConfig) -> None:
     trace.set_tracer_provider(TracerProvider())
     tracer = trace.get_tracer(__name__)
     span_processor = SimpleSpanProcessor(ConsoleSpanExporter())
     trace.get_tracer_provider().add_span_processor(span_processor)
-    logging_instrument: typing.Final = LitestarLoggingInstrument(minimum_logging_config)
+    logging_instrument: typing.Final = LitestarLoggingInstrument(minimal_logging_config)
 
     @litestar.get("/test-handler")
     async def error_handler() -> str:

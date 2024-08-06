@@ -10,36 +10,36 @@ from microbootstrap.bootstrappers.litestar import LitestarPrometheusInstrument
 from microbootstrap.instruments.prometheus_instrument import PrometheusInstrument
 
 
-def test_prometheus_is_ready(minimum_prometheus_config: PrometheusConfig) -> None:
-    prometheus_instrument: typing.Final = PrometheusInstrument(minimum_prometheus_config)
+def test_prometheus_is_ready(minimal_prometheus_config: PrometheusConfig) -> None:
+    prometheus_instrument: typing.Final = PrometheusInstrument(minimal_prometheus_config)
     assert prometheus_instrument.is_ready()
 
 
 def test_prometheus_bootstrap_is_not_ready(
-    minimum_prometheus_config: PrometheusConfig,
+    minimal_prometheus_config: PrometheusConfig,
 ) -> None:
-    minimum_prometheus_config.prometheus_metrics_path = ""
-    prometheus_instrument: typing.Final = PrometheusInstrument(minimum_prometheus_config)
+    minimal_prometheus_config.prometheus_metrics_path = ""
+    prometheus_instrument: typing.Final = PrometheusInstrument(minimal_prometheus_config)
     assert not prometheus_instrument.is_ready()
 
 
 def test_prometheus_bootstrap_after(
     default_litestar_app: litestar.Litestar,
-    minimum_prometheus_config: PrometheusConfig,
+    minimal_prometheus_config: PrometheusConfig,
 ) -> None:
-    prometheus_instrument: typing.Final = PrometheusInstrument(minimum_prometheus_config)
+    prometheus_instrument: typing.Final = PrometheusInstrument(minimal_prometheus_config)
     assert prometheus_instrument.bootstrap_after(default_litestar_app) == default_litestar_app
 
 
 def test_prometheus_teardown(
-    minimum_prometheus_config: PrometheusConfig,
+    minimal_prometheus_config: PrometheusConfig,
 ) -> None:
-    prometheus_instrument: typing.Final = PrometheusInstrument(minimum_prometheus_config)
+    prometheus_instrument: typing.Final = PrometheusInstrument(minimal_prometheus_config)
     assert prometheus_instrument.teardown() is None  # type: ignore[func-returns-value]
 
 
-def test_litestar_prometheus_bootstrap(minimum_prometheus_config: PrometheusConfig) -> None:
-    prometheus_instrument: typing.Final = LitestarPrometheusInstrument(minimum_prometheus_config)
+def test_litestar_prometheus_bootstrap(minimal_prometheus_config: PrometheusConfig) -> None:
+    prometheus_instrument: typing.Final = LitestarPrometheusInstrument(minimal_prometheus_config)
     prometheus_instrument.bootstrap()
     prometheus_bootstrap_result: typing.Final = prometheus_instrument.bootstrap_before()
 
@@ -53,9 +53,9 @@ def test_litestar_prometheus_bootstrap(minimum_prometheus_config: PrometheusConf
     assert isinstance(prometheus_bootstrap_result["middleware"][0], DefineMiddleware)
 
 
-async def test_litestar_prometheus_bootstrap_working(minimum_prometheus_config: PrometheusConfig) -> None:
-    minimum_prometheus_config.prometheus_metrics_path = "/custom-metrics-path"
-    prometheus_instrument: typing.Final = LitestarPrometheusInstrument(minimum_prometheus_config)
+async def test_litestar_prometheus_bootstrap_working(minimal_prometheus_config: PrometheusConfig) -> None:
+    minimal_prometheus_config.prometheus_metrics_path = "/custom-metrics-path"
+    prometheus_instrument: typing.Final = LitestarPrometheusInstrument(minimal_prometheus_config)
 
     prometheus_instrument.bootstrap()
     litestar_application: typing.Final = litestar.Litestar(
@@ -63,6 +63,6 @@ async def test_litestar_prometheus_bootstrap_working(minimum_prometheus_config: 
     )
 
     async with AsyncTestClient(app=litestar_application) as async_client:
-        response: typing.Final = await async_client.get(minimum_prometheus_config.prometheus_metrics_path)
+        response: typing.Final = await async_client.get(minimal_prometheus_config.prometheus_metrics_path)
         assert response.status_code == status_codes.HTTP_200_OK
         assert response.text
