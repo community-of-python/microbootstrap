@@ -66,7 +66,7 @@ $ poetry add microbootstrap -E litestar
 pip:
 
 ```bash
-$ poetry add microbootstrap[litestar]
+$ pip install microbootstrap[litestar]
 ```
 
 ## Quickstart
