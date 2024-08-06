@@ -8,46 +8,43 @@ from litestar.testing import AsyncTestClient
 
 from microbootstrap import OpentelemetryConfig
 from microbootstrap.bootstrappers.litestar import LitetstarOpentelemetryInstrument
-from microbootstrap.console_writer import ConsoleWriter
 from microbootstrap.instruments.opentelemetry_instrument import OpentelemetryInstrument
 
 
 def test_opentelemetry_is_ready(
-    minimum_opentelemetry_config: OpentelemetryConfig,
-    console_writer: ConsoleWriter,
+    minimal_opentelemetry_config: OpentelemetryConfig,
 ) -> None:
-    opentelemetry_instrument: typing.Final = OpentelemetryInstrument(minimum_opentelemetry_config)
+    opentelemetry_instrument: typing.Final = OpentelemetryInstrument(minimal_opentelemetry_config)
     assert opentelemetry_instrument.is_ready()
-    opentelemetry_instrument.write_status(console_writer)
 
 
-def test_opentelemetry_bootstrap_is_not_ready(minimum_opentelemetry_config: OpentelemetryConfig) -> None:
-    minimum_opentelemetry_config.service_name = ""
-    opentelemetry_instrument: typing.Final = OpentelemetryInstrument(minimum_opentelemetry_config)
+def test_opentelemetry_bootstrap_is_not_ready(minimal_opentelemetry_config: OpentelemetryConfig) -> None:
+    minimal_opentelemetry_config.service_name = ""
+    opentelemetry_instrument: typing.Final = OpentelemetryInstrument(minimal_opentelemetry_config)
     assert not opentelemetry_instrument.is_ready()
 
 
 def test_opentelemetry_bootstrap_after(
     default_litestar_app: litestar.Litestar,
-    minimum_opentelemetry_config: OpentelemetryConfig,
+    minimal_opentelemetry_config: OpentelemetryConfig,
 ) -> None:
-    opentelemetry_instrument: typing.Final = OpentelemetryInstrument(minimum_opentelemetry_config)
+    opentelemetry_instrument: typing.Final = OpentelemetryInstrument(minimal_opentelemetry_config)
     assert opentelemetry_instrument.bootstrap_after(default_litestar_app) == default_litestar_app
 
 
 def test_opentelemetry_teardown(
-    minimum_opentelemetry_config: OpentelemetryConfig,
+    minimal_opentelemetry_config: OpentelemetryConfig,
 ) -> None:
-    opentelemetry_instrument: typing.Final = OpentelemetryInstrument(minimum_opentelemetry_config)
+    opentelemetry_instrument: typing.Final = OpentelemetryInstrument(minimal_opentelemetry_config)
     assert opentelemetry_instrument.teardown() is None  # type: ignore[func-returns-value]
 
 
 def test_litestar_opentelemetry_bootstrap(
-    minimum_opentelemetry_config: OpentelemetryConfig,
+    minimal_opentelemetry_config: OpentelemetryConfig,
     magic_mock: MagicMock,
 ) -> None:
-    minimum_opentelemetry_config.opentelemetry_insrtumentors = [magic_mock]
-    opentelemetry_instrument: typing.Final = LitetstarOpentelemetryInstrument(minimum_opentelemetry_config)
+    minimal_opentelemetry_config.opentelemetry_insrtumentors = [magic_mock]
+    opentelemetry_instrument: typing.Final = LitetstarOpentelemetryInstrument(minimal_opentelemetry_config)
 
     opentelemetry_instrument.bootstrap()
     opentelemetry_bootstrap_result: typing.Final = opentelemetry_instrument.bootstrap_before()
@@ -60,20 +57,20 @@ def test_litestar_opentelemetry_bootstrap(
 
 
 def test_litestar_opentelemetry_terdown(
-    minimum_opentelemetry_config: OpentelemetryConfig,
+    minimal_opentelemetry_config: OpentelemetryConfig,
     magic_mock: MagicMock,
 ) -> None:
-    minimum_opentelemetry_config.opentelemetry_insrtumentors = [magic_mock]
-    opentelemetry_instrument: typing.Final = LitetstarOpentelemetryInstrument(minimum_opentelemetry_config)
+    minimal_opentelemetry_config.opentelemetry_insrtumentors = [magic_mock]
+    opentelemetry_instrument: typing.Final = LitetstarOpentelemetryInstrument(minimal_opentelemetry_config)
 
     opentelemetry_instrument.teardown()
 
 
 async def test_litestar_opentelemetry_bootstrap_working(
-    minimum_opentelemetry_config: OpentelemetryConfig,
+    minimal_opentelemetry_config: OpentelemetryConfig,
     async_mock: AsyncMock,
 ) -> None:
-    opentelemetry_instrument: typing.Final = LitetstarOpentelemetryInstrument(minimum_opentelemetry_config)
+    opentelemetry_instrument: typing.Final = LitetstarOpentelemetryInstrument(minimal_opentelemetry_config)
     opentelemetry_instrument.bootstrap()
     opentelemetry_bootstrap_result: typing.Final = opentelemetry_instrument.bootstrap_before()
 

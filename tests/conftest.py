@@ -6,6 +6,8 @@ import pytest
 
 from microbootstrap import LoggingConfig, OpentelemetryConfig, PrometheusConfig, SentryConfig
 from microbootstrap.console_writer import ConsoleWriter
+from microbootstrap.instruments.cors_instrument import CorsConfig
+from microbootstrap.instruments.swagger_instrument import SwaggerConfig
 from microbootstrap.settings import BaseBootstrapSettings
 
 
@@ -23,22 +25,32 @@ def default_litestar_app() -> litestar.Litestar:
 
 
 @pytest.fixture()
-def minimum_sentry_config() -> SentryConfig:
+def minimal_sentry_config() -> SentryConfig:
     return SentryConfig(sentry_dsn="https://examplePublicKey@o0.ingest.sentry.io/0")
 
 
 @pytest.fixture()
-def minimum_logging_config() -> LoggingConfig:
+def minimal_logging_config() -> LoggingConfig:
     return LoggingConfig(service_debug=False)
 
 
 @pytest.fixture()
-def minimum_prometheus_config() -> PrometheusConfig:
+def minimal_prometheus_config() -> PrometheusConfig:
     return PrometheusConfig()
 
 
 @pytest.fixture()
-def minimum_opentelemetry_config() -> OpentelemetryConfig:
+def minimal_swagger_config() -> SwaggerConfig:
+    return SwaggerConfig()
+
+
+@pytest.fixture()
+def minimal_cors_config() -> SwaggerConfig:
+    return CorsConfig(cors_allowed_origins=["*"])
+
+
+@pytest.fixture()
+def minimal_opentelemetry_config() -> OpentelemetryConfig:
     return OpentelemetryConfig(
         service_name="test-micro-service",
         service_version="1.0.0",

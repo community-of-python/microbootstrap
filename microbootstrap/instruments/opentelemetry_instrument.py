@@ -12,10 +12,6 @@ from opentelemetry.sdk.trace.export import BatchSpanProcessor
 from microbootstrap.instruments.base import BaseInstrumentConfig, Instrument
 
 
-if typing.TYPE_CHECKING:
-    from microbootstrap.console_writer import ConsoleWriter
-
-
 @dataclasses.dataclass()
 class OpenTelemetryInstrumentor:
     instrumentor: BaseInstrumentor
@@ -23,8 +19,8 @@ class OpenTelemetryInstrumentor:
 
 
 class OpentelemetryConfig(BaseInstrumentConfig):
-    service_name: str = pydantic.Field(default="micro-service")
-    service_version: str = pydantic.Field(default="1.0.0")
+    service_name: str = "micro-service"
+    service_version: str = "1.0.0"
 
     opentelemetry_container_name: str | None = None
     opentelemetry_endpoint: str | None = None
@@ -35,15 +31,8 @@ class OpentelemetryConfig(BaseInstrumentConfig):
 
 
 class OpentelemetryInstrument(Instrument[OpentelemetryConfig]):
-    def write_status(self, console_writer: ConsoleWriter) -> None:
-        if self.is_ready():
-            console_writer.write_instrument_status("Opentelemetry", is_enabled=True)
-        else:
-            console_writer.write_instrument_status(
-                "Opentelemetry",
-                is_enabled=False,
-                disable_reason="Provide all necessary config parameters",
-            )
+    instrument_name = "Opentelemetry"
+    ready_condition = "Provide all necessary config parameters"
 
     def is_ready(self) -> bool:
         return all(

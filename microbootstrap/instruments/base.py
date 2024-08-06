@@ -23,6 +23,8 @@ class BaseInstrumentConfig(pydantic.BaseModel):
 @dataclasses.dataclass
 class Instrument(abc.ABC, typing.Generic[InstrumentConfigT]):
     instrument_config: InstrumentConfigT
+    instrument_name: typing.ClassVar[str]
+    ready_condition: typing.ClassVar[str]
 
     def configure_instrument(
         self,
@@ -30,26 +32,27 @@ class Instrument(abc.ABC, typing.Generic[InstrumentConfigT]):
     ) -> None:
         self.instrument_config = merge_pydantic_configs(self.instrument_config, incoming_config)
 
-    @abc.abstractmethod
     def write_status(self, console_writer: ConsoleWriter) -> None:
-        raise NotImplementedError
+        console_writer.write_instrument_status(
+            self.instrument_name,
+            is_enabled=self.is_ready(),
+            disable_reason=None if self.is_ready() else self.ready_condition,
+        )
 
     @abc.abstractmethod
     def is_ready(self) -> bool:
-        raise NotImplementedError
-
-    @abc.abstractmethod
-    def bootstrap(self) -> None:
-        raise NotImplementedError
-
-    @abc.abstractmethod
-    def teardown(self) -> None:
         raise NotImplementedError
 
     @classmethod
     @abc.abstractmethod
     def get_config_type(cls) -> type[InstrumentConfigT]:
         raise NotImplementedError
+
+    def bootstrap(self) -> None:
+        return None
+
+    def teardown(self) -> None:
+        return None
 
     def bootstrap_before(self) -> dict[str, typing.Any]:
         """Add some framework-related parameters to final bootstrap result before application creation."""

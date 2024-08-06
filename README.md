@@ -34,14 +34,15 @@ from your_application.settings import settings
 application: litestar.Litestar = LitestarBootstrapper(settings).bootstrap()
 ```
 
-With <b>microbootstrap</b>, you get an application with built-in support for:
+Only `litestar` is supported yet.  
+With <b>microbootstrap</b>, you get an application with lightweight built-in support for:
 
 - `sentry`
 - `prometheus`
 - `opentelemetry`
 - `logging`
-
-<b>microbootstrap</b> supports only `litestar` framework for now.
+- `cors`
+- `swagger` - additional offline version support
 
 Interested? Let's jump right into it ⚡
 
@@ -58,7 +59,7 @@ $ poetry add microbootstrap -E litestar
 pip:
 
 ```bash
-$ poetry add microbootstrap[litestar]
+$ pip install microbootstrap[litestar]
 ```
 
 ## Quickstart
@@ -163,6 +164,8 @@ Currently, these instruments are already supported for bootstrapping:
 - `prometheus`
 - `opentelemetry`
 - `logging`
+- `cors`
+- `swagger`
 
 Let's make it clear, what it takes to bootstrap them.
 
@@ -247,7 +250,7 @@ class YourSettings(BaseBootstrapSettings):
 
 All these settings are then passed to [opentelemetry](https://opentelemetry.io/), completing your Opentelemetry integration.
 
-## Logging
+### Logging
 
 <b>microbootstrap</b> provides in-memory json logging using [structlog](https://pypi.org/project/structlog/).  
 To learn more about in-memory logging, check out [MemoryHandler](https://docs.python.org/3/library/logging.handlers.html#memoryhandler)
@@ -280,6 +283,59 @@ Parameters description:
 - `logging_extra_processors` - set additional structlog processors if you have some.
 - `logging_exclude_endpoints` - remove logging on certain endpoints.
 
+### Swagger
+
+```python
+from microbootstrap.bootstrappers.litestar import BaseBootstrapSettings
+
+
+class YourSettings(BaseBootstrapSettings):
+    service_name: str = "micro-service"
+    service_description: str = "Micro service description"
+    service_version: str = "1.0.0"
+    service_static_path: str = "/static"
+
+    swagger_path: str = "/docs"
+    swagger_offline_docs: bool = False
+    swagger_extra_params: dict[str, Any] = {}
+```
+
+Parameters description:
+
+- `service_environment` - will be displayed in docs.
+- `service_name` - will be displayed in docs.
+- `service_description` - will be displayed in docs.
+- `service_static_path` - set additional structlog processors if you have some.
+- `swagger_path` - path of the docs.
+- `swagger_offline_docs` - makes swagger js bundles access offline, because service starts to host via static.
+- `swagger_extra_params` - additional params to pass into openapi config.
+
+### Cors
+
+```python
+from microbootstrap.bootstrappers.litestar import BaseBootstrapSettings
+
+
+class YourSettings(BaseBootstrapSettings):
+    cors_allowed_origins: list[str] = pydantic.Field(default_factory=list)
+    cors_allowed_methods: list[str] = pydantic.Field(default_factory=list)
+    cors_allowed_headers: list[str] = pydantic.Field(default_factory=list)
+    cors_exposed_headers: list[str] = pydantic.Field(default_factory=list)
+    cors_allowed_credentials: bool = False
+    cors_allowed_origin_regex: str | None = None
+    cors_max_age: int = 600
+```
+
+Parameters description:
+
+- `cors_allowed_origins` - list of origins that are allowed.
+- `cors_allowed_methods` - list of allowed HTTP methods.
+- `cors_allowed_headers` - list of allowed headers.
+- `cors_exposed_headers` - list of headers that are exposed via the 'Access-Control-Expose-Headers' header.
+- `cors_allowed_credentials` - boolean dictating whether or not to set the 'Access-Control-Allow-Credentials' header.
+- `cors_allowed_origin_regex` - regex to match origins against.
+- `cors_max_age` - response caching TTL in seconds, defaults to 600.
+
 ## Configuration
 
 Despite settings being pretty convenient mechanism, it's not always possible to store everything in settings.
@@ -294,6 +350,8 @@ To configure instruemt manually, you have to import one of available configs fro
 - `OpentelemetryConfig`
 - `PrometheusConfig`
 - `LoggingConfig`
+- `SwaggerConfig`
+- `CorsConfig`
 
 And pass them into `.configure_instrument` or `.configure_instruments` bootstrapper method.
 
@@ -428,8 +486,8 @@ from microbootstrap.instruments.base import Instrument
 
 
 class MyInstrument(Instrument[MyInstrumentConfig]):
-    def write_status(self, console_writer: ConsoleWriter) -> None:
-        pass
+    instrument_name: str
+    ready_condition: str
 
     def is_ready(self) -> bool:
         pass
@@ -447,10 +505,16 @@ class MyInstrument(Instrument[MyInstrumentConfig]):
 
 And now you can define behaviour of your instrument
 
-- `write_status` - writes status to console, indicating, is instrument bootstrapped.
-- `is_ready` - defines ready for bootstrapping state of instrument, based on it's config values.
-- `teardown` - graceful shutdown for instrument during application shutdown.
-- `bootstrap` - main instrument's logic.
+Attributes:
+
+- `instrument_name` - Will be displayed in your console during bootstrap.
+- `ready_condition` - Will be displayed in your console during bootstrap if instument is not ready.
+
+Methods:
+
+- `is_ready` - defines ready for bootstrapping state of instrument, based on it's config values. Required.
+- `teardown` - graceful shutdown for instrument during application shutdown. Not required.
+- `bootstrap` - main instrument's logic. Not required.
 
 When you have a carcass of instrument, you can adapt it for every framework existing.  
 Let's adapt it for litestar for example

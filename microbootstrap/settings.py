@@ -2,10 +2,9 @@ from __future__ import annotations
 import os
 import typing
 
-import pydantic
 import pydantic_settings
 
-from microbootstrap.instruments import LoggingConfig, OpentelemetryConfig, PrometheusConfig, SentryConfig
+from microbootstrap import CorsConfig, LoggingConfig, OpentelemetryConfig, PrometheusConfig, SentryConfig, SwaggerConfig
 
 
 SettingsT = typing.TypeVar("SettingsT", bound="BaseBootstrapSettings")
@@ -19,12 +18,15 @@ class BaseBootstrapSettings(
     OpentelemetryConfig,
     SentryConfig,
     PrometheusConfig,
+    SwaggerConfig,
+    CorsConfig,
 ):
     service_debug: bool = True
     service_environment: str | None = None
-    service_name: str = pydantic.Field(default="micro-service")
-    service_description: str = pydantic.Field(default="Micro service description")
-    service_version: str = pydantic.Field(default="1.0.0")
+    service_name: str = "micro-service"
+    service_description: str = "Micro service description"
+    service_version: str = "1.0.0"
+    service_static_path: str = "/static"
 
     server_host: str = "0.0.0.0"  # noqa: S104
     server_port: int = 8000

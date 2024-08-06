@@ -17,8 +17,6 @@ if typing.TYPE_CHECKING:
     import litestar
     from structlog.typing import EventDict, WrappedLogger
 
-    from microbootstrap.console_writer import ConsoleWriter
-
 
 ScopeType = typing.MutableMapping[str, typing.Any]
 
@@ -120,26 +118,19 @@ class MemoryLoggerFactory(structlog.stdlib.LoggerFactory):
 class LoggingConfig(BaseInstrumentConfig):
     service_debug: bool = True
 
-    logging_log_level: int = pydantic.Field(default=logging.INFO)
-    logging_flush_level: int = pydantic.Field(default=logging.ERROR)
-    logging_buffer_capacity: int = pydantic.Field(default=10)
+    logging_log_level: int = logging.INFO
+    logging_flush_level: int = logging.ERROR
+    logging_buffer_capacity: int = 10
     logging_extra_processors: list[typing.Any] = pydantic.Field(default_factory=list)
     logging_unset_handlers: list[str] = pydantic.Field(
         default_factory=lambda: ["uvicorn", "uvicorn.access"],
     )
-    logging_exclude_endpoints: list[str] = pydantic.Field(default_factory=lambda: ["/health"])
+    logging_exclude_endpoints: list[str] = pydantic.Field(default_factory=list)
 
 
 class LoggingInstrument(Instrument[LoggingConfig]):
-    def write_status(self, console_writer: ConsoleWriter) -> None:
-        if self.is_ready():
-            console_writer.write_instrument_status("Logging", is_enabled=True)
-        else:
-            console_writer.write_instrument_status(
-                "Logging",
-                is_enabled=False,
-                disable_reason="Works only in non-debug mode",
-            )
+    instrument_name = "Logging"
+    ready_condition = "Works only in non-debug mode"
 
     def is_ready(self) -> bool:
         return not self.instrument_config.service_debug
