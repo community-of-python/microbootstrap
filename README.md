@@ -46,6 +46,24 @@ With <b>microbootstrap</b>, you get an application with lightweight built-in sup
 
 Interested? Let's jump right into it ⚡
 
+## Table of contents
+
+- [Installation](#installation)
+- [Quickstart](#quickstart)
+- [Settings](#settings)
+- [Service settings](#service-settings)
+- [Instruments](#instruments)
+  - [Sentry](#sentry)
+  - [Prometheus](#prometheus)
+  - [Opentelemetry](#opentelemetry)
+  - [Logging](#logging)
+  - [Cors](#cors)
+  - [Swagger](#swagger)
+- [Configuration](#configuration)
+  - [Instruments configuration](#instruments-configuration)
+  - [Application configuration](#application-configuration)
+- [Advanced](#advanced)
+
 ## Installation
 
 You can install package with `pip` or `poetry`.
@@ -283,6 +301,32 @@ Parameters description:
 - `logging_extra_processors` - set additional structlog processors if you have some.
 - `logging_exclude_endpoints` - remove logging on certain endpoints.
 
+### Cors
+
+```python
+from microbootstrap.bootstrappers.litestar import BaseBootstrapSettings
+
+
+class YourSettings(BaseBootstrapSettings):
+    cors_allowed_origins: list[str] = pydantic.Field(default_factory=list)
+    cors_allowed_methods: list[str] = pydantic.Field(default_factory=list)
+    cors_allowed_headers: list[str] = pydantic.Field(default_factory=list)
+    cors_exposed_headers: list[str] = pydantic.Field(default_factory=list)
+    cors_allowed_credentials: bool = False
+    cors_allowed_origin_regex: str | None = None
+    cors_max_age: int = 600
+```
+
+Parameters description:
+
+- `cors_allowed_origins` - list of origins that are allowed.
+- `cors_allowed_methods` - list of allowed HTTP methods.
+- `cors_allowed_headers` - list of allowed headers.
+- `cors_exposed_headers` - list of headers that are exposed via the 'Access-Control-Expose-Headers' header.
+- `cors_allowed_credentials` - boolean dictating whether or not to set the 'Access-Control-Allow-Credentials' header.
+- `cors_allowed_origin_regex` - regex to match origins against.
+- `cors_max_age` - response caching TTL in seconds, defaults to 600.
+
 ### Swagger
 
 ```python
@@ -309,32 +353,6 @@ Parameters description:
 - `swagger_path` - path of the docs.
 - `swagger_offline_docs` - makes swagger js bundles access offline, because service starts to host via static.
 - `swagger_extra_params` - additional params to pass into openapi config.
-
-### Cors
-
-```python
-from microbootstrap.bootstrappers.litestar import BaseBootstrapSettings
-
-
-class YourSettings(BaseBootstrapSettings):
-    cors_allowed_origins: list[str] = pydantic.Field(default_factory=list)
-    cors_allowed_methods: list[str] = pydantic.Field(default_factory=list)
-    cors_allowed_headers: list[str] = pydantic.Field(default_factory=list)
-    cors_exposed_headers: list[str] = pydantic.Field(default_factory=list)
-    cors_allowed_credentials: bool = False
-    cors_allowed_origin_regex: str | None = None
-    cors_max_age: int = 600
-```
-
-Parameters description:
-
-- `cors_allowed_origins` - list of origins that are allowed.
-- `cors_allowed_methods` - list of allowed HTTP methods.
-- `cors_allowed_headers` - list of allowed headers.
-- `cors_exposed_headers` - list of headers that are exposed via the 'Access-Control-Expose-Headers' header.
-- `cors_allowed_credentials` - boolean dictating whether or not to set the 'Access-Control-Allow-Credentials' header.
-- `cors_allowed_origin_regex` - regex to match origins against.
-- `cors_max_age` - response caching TTL in seconds, defaults to 600.
 
 ## Configuration
 
