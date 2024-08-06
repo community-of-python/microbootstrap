@@ -40,6 +40,7 @@ from your_application.settings import settings
 application: litestar.Litestar = LitestarBootstrapper(settings).bootstrap()
 ```
 
+Only `litestar` is supported yet.  
 With <b>microbootstrap</b>, you get an application with lightweight built-in support for:
 
 - `sentry`
@@ -48,8 +49,6 @@ With <b>microbootstrap</b>, you get an application with lightweight built-in sup
 - `logging`
 - `cors`
 - `swagger` - additional offline version support
-
-<b>microbootstrap</b> supports only `litestar` framework for now.
 
 Interested? Let's jump right into it ⚡
 
