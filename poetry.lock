@@ -501,7 +501,7 @@ files = [
 name = "dnspython"
 version = "2.6.1"
 description = "DNS toolkit"
-optional = false
+optional = true
 python-versions = ">=3.8"
 files = [
     {file = "dnspython-2.6.1-py3-none-any.whl", hash = "sha256:5ef3b9680161f6fa89daf8ad451b5f1a33b18ae8a1c6778cdf4b43f08c0a6e50"},
@@ -521,7 +521,7 @@ wmi = ["wmi (>=1.5.1)"]
 name = "editorconfig"
 version = "0.12.4"
 description = "EditorConfig File Locator and Interpreter for Python"
-optional = false
+optional = true
 python-versions = "*"
 files = [
     {file = "EditorConfig-0.12.4.tar.gz", hash = "sha256:24857fa1793917dd9ccf0c7810a07e05404ce9b823521c7dce22a4fb5d125f80"},
@@ -531,7 +531,7 @@ files = [
 name = "email-validator"
 version = "2.2.0"
 description = "A robust email address syntax and deliverability validation library."
-optional = false
+optional = true
 python-versions = ">=3.8"
 files = [
     {file = "email_validator-2.2.0-py3-none-any.whl", hash = "sha256:561977c2d73ce3611850a06fa56b414621e0c8faa9d66f2611407d87465da631"},
@@ -588,7 +588,7 @@ testing = ["hatch", "pre-commit", "pytest", "tox"]
 name = "faker"
 version = "26.1.0"
 description = "Faker is a Python package that generates fake data for you."
-optional = false
+optional = true
 python-versions = ">=3.8"
 files = [
     {file = "Faker-26.1.0-py3-none-any.whl", hash = "sha256:e8c5ef795223e945d9166aea3c0ecaf85ac54b4ade2af068d8e3c6524c2c0aa7"},
@@ -602,7 +602,7 @@ python-dateutil = ">=2.4"
 name = "fast-query-parsers"
 version = "1.0.3"
 description = "Ultra-fast query string and url-encoded form-data parsers"
-optional = false
+optional = true
 python-versions = ">=3.8"
 files = [
     {file = "fast_query_parsers-1.0.3-cp38-abi3-macosx_10_7_x86_64.whl", hash = "sha256:afbf71c1b4398dacfb9d84755eb026f8e759f68a066f1f3cc19e471fc342e74f"},
@@ -627,7 +627,7 @@ files = [
 name = "fastapi"
 version = "0.111.1"
 description = "FastAPI framework, high performance, easy to learn, fast to code, ready for production"
-optional = false
+optional = true
 python-versions = ">=3.8"
 files = [
     {file = "fastapi-0.111.1-py3-none-any.whl", hash = "sha256:4f51cfa25d72f9fbc3280832e84b32494cf186f50158d364a8765aabf22587bf"},
@@ -652,7 +652,7 @@ all = ["email_validator (>=2.0.0)", "httpx (>=0.23.0)", "itsdangerous (>=1.1.0)"
 name = "fastapi-cli"
 version = "0.0.5"
 description = "Run and manage FastAPI apps from the command line with FastAPI CLI. 🚀"
-optional = false
+optional = true
 python-versions = ">=3.8"
 files = [
     {file = "fastapi_cli-0.0.5-py3-none-any.whl", hash = "sha256:e94d847524648c748a5350673546bbf9bcaeb086b33c24f2e82e021436866a46"},
@@ -879,7 +879,7 @@ trio = ["trio (>=0.22.0,<0.26.0)"]
 name = "httptools"
 version = "0.6.1"
 description = "A collection of framework independent HTTP protocol utils."
-optional = false
+optional = true
 python-versions = ">=3.8.0"
 files = [
     {file = "httptools-0.6.1-cp310-cp310-macosx_10_9_universal2.whl", hash = "sha256:d2f6c3c4cb1948d912538217838f6e9960bc4a521d7f9b323b3da579cd14532f"},
@@ -1006,7 +1006,7 @@ files = [
 name = "jinja2"
 version = "3.1.4"
 description = "A very fast and expressive template engine."
-optional = false
+optional = true
 python-versions = ">=3.7"
 files = [
     {file = "jinja2-3.1.4-py3-none-any.whl", hash = "sha256:bc5dd2abb727a5319567b7a813e6a2e7318c39f4f487cfe6c89c6f9c7d25197d"},
@@ -1023,7 +1023,7 @@ i18n = ["Babel (>=2.7)"]
 name = "jsbeautifier"
 version = "1.15.1"
 description = "JavaScript unobfuscator and beautifier."
-optional = false
+optional = true
 python-versions = "*"
 files = [
     {file = "jsbeautifier-1.15.1.tar.gz", hash = "sha256:ebd733b560704c602d744eafc839db60a1ee9326e30a2a80c4adb8718adc1b24"},
@@ -1037,7 +1037,7 @@ six = ">=1.13.0"
 name = "litestar"
 version = "2.9.1"
 description = "Litestar - A production-ready, highly performant, extensible ASGI API Framework"
-optional = false
+optional = true
 python-versions = "<4.0,>=3.8"
 files = [
     {file = "litestar-2.9.1-py3-none-any.whl", hash = "sha256:fe3e4ec91a9c24af652775fed5fa4d789902f165cabbd7d2e62821fec1f69462"},
@@ -1088,7 +1088,7 @@ structlog = ["structlog"]
 name = "litestar-offline-docs"
 version = "1.0.1"
 description = "Offline API docs for Litestar"
-optional = false
+optional = true
 python-versions = "<4.0,>=3.9"
 files = [
     {file = "litestar_offline_docs-1.0.1-py3-none-any.whl", hash = "sha256:414a36c02ea7f310c26523718be4b5ade5c43585a9cdba439faf298711ac1574"},
@@ -1126,7 +1126,7 @@ testing = ["coverage", "pytest", "pytest-cov", "pytest-regressions"]
 name = "markupsafe"
 version = "2.1.5"
 description = "Safely add untrusted strings to HTML/XML markup."
-optional = false
+optional = true
 python-versions = ">=3.7"
 files = [
     {file = "MarkupSafe-2.1.5-cp310-cp310-macosx_10_9_universal2.whl", hash = "sha256:a17a92de5231666cfbe003f0e4b9b3a7ae3afb1ec2845aadc2bacc93ff85febc"},
@@ -1206,7 +1206,7 @@ files = [
 name = "msgspec"
 version = "0.18.6"
 description = "A fast serialization and validation library, with builtin support for JSON, MessagePack, YAML, and TOML."
-optional = false
+optional = true
 python-versions = ">=3.8"
 files = [
     {file = "msgspec-0.18.6-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:77f30b0234eceeff0f651119b9821ce80949b4d667ad38f3bfed0d0ebf9d6d8f"},
@@ -1258,7 +1258,7 @@ yaml = ["pyyaml"]
 name = "multidict"
 version = "6.0.5"
 description = "multidict implementation"
-optional = false
+optional = true
 python-versions = ">=3.7"
 files = [
     {file = "multidict-6.0.5-cp310-cp310-macosx_10_9_universal2.whl", hash = "sha256:228b644ae063c10e7f324ab1ab6b548bdf6f8b47f3ec234fef1093bc2735e5f9"},
@@ -1678,7 +1678,7 @@ testing = ["pytest", "pytest-benchmark"]
 name = "polyfactory"
 version = "2.16.2"
 description = "Mock data generation factories"
-optional = false
+optional = true
 python-versions = "<4.0,>=3.8"
 files = [
     {file = "polyfactory-2.16.2-py3-none-any.whl", hash = "sha256:e5eaf97358fee07d0d8de86a93e81dc56e3be1e1514d145fea6c5f486cda6ea1"},
@@ -2042,7 +2042,7 @@ testing = ["filelock"]
 name = "python-dateutil"
 version = "2.9.0.post0"
 description = "Extensions to the standard Python datetime module"
-optional = false
+optional = true
 python-versions = "!=3.0.*,!=3.1.*,!=3.2.*,>=2.7"
 files = [
     {file = "python-dateutil-2.9.0.post0.tar.gz", hash = "sha256:37dd54208da7e1cd875388217d5e00ebd4179249f90fb72437e91a35459a0ad3"},
@@ -2070,7 +2070,7 @@ cli = ["click (>=5.0)"]
 name = "python-multipart"
 version = "0.0.9"
 description = "A streaming multipart parser for Python"
-optional = false
+optional = true
 python-versions = ">=3.8"
 files = [
     {file = "python_multipart-0.0.9-py3-none-any.whl", hash = "sha256:97ca7b8ea7b05f977dc3849c3ba99d51689822fab725c3703af7c866a0c2b215"},
@@ -2214,7 +2214,7 @@ jupyter = ["ipywidgets (>=7.5.1,<9)"]
 name = "rich-click"
 version = "1.8.3"
 description = "Format click help output nicely with rich"
-optional = false
+optional = true
 python-versions = ">=3.7"
 files = [
     {file = "rich_click-1.8.3-py3-none-any.whl", hash = "sha256:636d9c040d31c5eee242201b5bf4f2d358bfae4db14bb22ec1cafa717cfd02cd"},
@@ -2300,7 +2300,7 @@ test = ["build[virtualenv] (>=1.0.3)", "filelock (>=3.4.0)", "importlib-metadata
 name = "shellingham"
 version = "1.5.4"
 description = "Tool to Detect Surrounding Shell"
-optional = false
+optional = true
 python-versions = ">=3.7"
 files = [
     {file = "shellingham-1.5.4-py2.py3-none-any.whl", hash = "sha256:7ecfff8f2fd72616f7481040475a65b2bf8af90a56c89140852d1120324e8686"},
@@ -2311,7 +2311,7 @@ files = [
 name = "six"
 version = "1.16.0"
 description = "Python 2 and 3 compatibility utilities"
-optional = false
+optional = true
 python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*"
 files = [
     {file = "six-1.16.0-py2.py3-none-any.whl", hash = "sha256:8abb2f1d86890a2dfb989f9a77cfcfd3e47c2a354b01111771326f8aa26e0254"},
@@ -2344,7 +2344,7 @@ files = [
 name = "starlette"
 version = "0.37.2"
 description = "The little ASGI library that shines."
-optional = false
+optional = true
 python-versions = ">=3.8"
 files = [
     {file = "starlette-0.37.2-py3-none-any.whl", hash = "sha256:6fe59f29268538e5d0d182f2791a479a0c64638e6935d1c6989e63fb2699c6ee"},
@@ -2410,7 +2410,7 @@ sortedcontainers = "*"
 name = "typer"
 version = "0.12.3"
 description = "Typer, build great CLIs. Easy to code. Based on Python type hints."
-optional = false
+optional = true
 python-versions = ">=3.7"
 files = [
     {file = "typer-0.12.3-py3-none-any.whl", hash = "sha256:070d7ca53f785acbccba8e7d28b08dcd88f79f1fbda035ade0aecec71ca5c914"},
@@ -2455,7 +2455,7 @@ zstd = ["zstandard (>=0.18.0)"]
 name = "uvicorn"
 version = "0.30.5"
 description = "The lightning-fast ASGI server."
-optional = false
+optional = true
 python-versions = ">=3.8"
 files = [
     {file = "uvicorn-0.30.5-py3-none-any.whl", hash = "sha256:b2d86de274726e9878188fa07576c9ceeff90a839e2b6e25c917fe05f5a6c835"},
@@ -2632,7 +2632,7 @@ anyio = ">=3.0.0"
 name = "websockets"
 version = "12.0"
 description = "An implementation of the WebSocket Protocol (RFC 6455 & 7692)"
-optional = false
+optional = true
 python-versions = ">=3.8"
 files = [
     {file = "websockets-12.0-cp310-cp310-macosx_10_9_universal2.whl", hash = "sha256:d554236b2a2006e0ce16315c16eaa0d628dab009c33b63ea03f41c6107958374"},
@@ -2810,4 +2810,4 @@ litestar = ["litestar", "litestar-offline-docs", "prometheus-client"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.9"
-content-hash = "ae0895942d8e4362684aea6214c1ab35db1abd31062ade474a4ae151bb600d05"
+content-hash = "589329194f0a1b3a4c816e7b91a3b4669d761c67ed0cf2af0d4aaf909b550a70"
