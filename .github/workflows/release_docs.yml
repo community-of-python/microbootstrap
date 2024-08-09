@@ -6,31 +6,29 @@ permissions:
   contents: write
 
 jobs:
-  deploy_docs:
+  deploy-gh-pages:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v2
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          # if your docs needs submodules, uncomment the following line
+          # submodules: true
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: 18
-          cache: pnpm
-      - name: Install deps
-        run: pnpm install
-      - name: Build
-        run: pnpm docs:build -d docs_dist
-
-      - name: Setup git
-        run: |
-          git config --global lfs.allowincompletepush true
-
-      - name: Deploy
-        uses: peaceiris/actions-gh-pages@v3
+          node-version: 20
+          cache: npm
+      - name: Install Deps
+        run: npm ci
+      - name: Build Docs
+        env:
+          NODE_OPTIONS: --max_old_space_size=8192
+        run: |-
+          npm run docs:build
+          > docs/.vuepress/dist/.nojekyll
+      - name: Deploy Docs
+        uses: JamesIves/github-pages-deploy-action@v4
         with:
-          personal_token: ${{ secrets.PERSONAL_TOKEN }}
-          external_repository: community-of-python/microbootstrap.github.io
-          publish_dir: ./docs_dist
-          user_name: "github-actions[bot]"
-          user_email: "github-actions[bot]@users.noreply.github.com"
+          folder: docs/.vuepress/dist
