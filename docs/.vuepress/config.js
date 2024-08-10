@@ -20,5 +20,9 @@ export default defineUserConfig({
     navbar: ["/", "/get-started"],
   }),
 
-  bundler: viteBundler(),
+  bundler: viteBundler({
+    viteOptions: {
+      base: "https://community-of-python.github.io/assets/microbootstrap/",
+    },
+  }),
 });
