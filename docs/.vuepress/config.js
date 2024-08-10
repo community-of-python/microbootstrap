@@ -7,6 +7,7 @@ export default defineUserConfig({
 
   title: "VuePress",
   description: "My first VuePress Site",
+  base: "/microbootstrap/",
 
   theme: defaultTheme({
     repo: "community-of-python/microbootstrap",
