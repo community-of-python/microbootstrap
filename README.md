@@ -93,7 +93,7 @@ class YourSettings(LitestarSettings):
     service_name: str = "my-awesome-service"
 
     # Sentry settings
-    sentry_dsn: str = "your-setnry-dsn"
+    sentry_dsn: str = "your-sentry-dsn"
 
     # Prometheus settings
     prometheus_metrics_path: str "/my-path"
@@ -259,7 +259,7 @@ class YourSettings(BaseBootstrapSettings):
     opentelemetry_endpoint: str | None = None
     opentelemetry_namespace: str | None = None
     opentelemetry_insecure: bool = True
-    opentelemetry_insrtumentors: list[OpenTelemetryInstrumentor] = []
+    opentelemetry_instrumentors: list[OpenTelemetryInstrumentor] = []
     opentelemetry_exclude_urls: list[str] = []
 
     ... # Other settings here
@@ -424,7 +424,7 @@ async def my_handler() -> str:
 
 application: litestar.Litestar = (
     LitestarBootstrapper(settings)
-    .configur_application(AppConfig(route_handlers=[my_handler]))
+    .configure_application(AppConfig(route_handlers=[my_handler]))
     .bootstrap()
 )
 ```
@@ -484,7 +484,7 @@ application: litestar.Litestar = (
 ## Advanced
 
 If you miss some instrument, you can add your own.  
-Essentialy, `Instrument` is just a class with some abstractmethods.  
+Essentially, `Instrument` is just a class with some abstract methods.  
 Every instrument uses some config, so that's first thing, you have to define.
 
 ```python
