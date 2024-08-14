@@ -3,16 +3,15 @@ import typing
 
 import litestar
 import litestar.types
-import sentry_sdk
 import typing_extensions
-from litestar import openapi, status_codes
+from litestar import openapi
 from litestar.config.app import AppConfig as LitestarConfig
 from litestar.config.cors import CORSConfig as LitestarCorsConfig
 from litestar.contrib.opentelemetry.config import OpenTelemetryConfig as LitestarOpentelemetryConfig
 from litestar.contrib.prometheus import PrometheusConfig as LitestarPrometheusConfig
 from litestar.contrib.prometheus import PrometheusController
-from litestar.exceptions.http_exceptions import HTTPException
 from litestar_offline_docs import generate_static_files_config
+from sentry_sdk.integrations.litestar import LitestarIntegration
 
 from microbootstrap.bootstrappers.base import ApplicationBootstrapper
 from microbootstrap.instruments.cors_instrument import CorsInstrument
@@ -41,19 +40,13 @@ class LitestarBootstrapper(
 
 @LitestarBootstrapper.use_instrument()
 class LitestarSentryInstrument(SentryInstrument):
-    @staticmethod
-    async def sentry_exception_catcher_hook(
-        exception: Exception,
-        _request_scope: litestar.types.Scope,
-    ) -> None:
-        if (
-            not isinstance(exception, HTTPException)
-            or exception.status_code >= status_codes.HTTP_500_INTERNAL_SERVER_ERROR
-        ):
-            sentry_sdk.capture_exception(exception)
-
-    def bootstrap_before(self) -> dict[str, typing.Any]:
-        return {"after_exception": [self.sentry_exception_catcher_hook]}
+    def bootstrap(self) -> None:
+        for sentry_integration in self.instrument_config.sentry_integrations:
+            if isinstance(sentry_integration, LitestarIntegration):
+                break
+        else:
+            self.instrument_config.sentry_integrations.append(LitestarIntegration())
+        super().bootstrap()
 
 
 @LitestarBootstrapper.use_instrument()

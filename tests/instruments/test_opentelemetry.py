@@ -76,6 +76,7 @@ async def test_litestar_opentelemetry_bootstrap_working(
 
     opentelemetry_middleware = opentelemetry_bootstrap_result["middleware"][0]
     assert isinstance(opentelemetry_middleware, DefineMiddleware)
+    async_mock.__name__ = "test-name"
     opentelemetry_middleware.middleware.__call__ = async_mock
 
     @litestar.get("/test-handler")
