@@ -46,7 +46,6 @@ class LitestarSentryInstrument(SentryInstrument):
                 break
         else:
             self.instrument_config.sentry_integrations.append(LitestarIntegration())
-        super().bootstrap()
 
 
 @LitestarBootstrapper.use_instrument()
