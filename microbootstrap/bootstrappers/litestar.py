@@ -5,7 +5,6 @@ import litestar
 import litestar.types
 import typing_extensions
 from litestar import openapi
-from litestar.config.app import AppConfig as LitestarConfig
 from litestar.config.cors import CORSConfig as LitestarCorsConfig
 from litestar.contrib.opentelemetry.config import OpenTelemetryConfig as LitestarOpentelemetryConfig
 from litestar.contrib.prometheus import PrometheusConfig as LitestarPrometheusConfig
@@ -14,6 +13,7 @@ from litestar_offline_docs import generate_static_files_config
 from sentry_sdk.integrations.litestar import LitestarIntegration
 
 from microbootstrap.bootstrappers.base import ApplicationBootstrapper
+from microbootstrap.config.litestar import LitestarConfig
 from microbootstrap.instruments.cors_instrument import CorsInstrument
 from microbootstrap.instruments.logging_instrument import LoggingInstrument
 from microbootstrap.instruments.opentelemetry_instrument import OpentelemetryInstrument
