@@ -412,8 +412,8 @@ The application can be configured in a similar manner:
 
 ```python
 import litestar
-from litestar.config.app import AppConfig
 
+from microbootstrap.config.litestar import LitestarConfig
 from microbootstrap.bootstrappers.litestar import LitestarBootstrapper
 from microbootstrap import SentryConfig, OpentelemetryConfig
 
@@ -424,7 +424,7 @@ async def my_handler() -> str:
 
 application: litestar.Litestar = (
     LitestarBootstrapper(settings)
-    .configure_application(AppConfig(route_handlers=[my_handler]))
+    .configure_application(LitestarConfig(route_handlers=[my_handler]))
     .bootstrap()
 )
 ```
