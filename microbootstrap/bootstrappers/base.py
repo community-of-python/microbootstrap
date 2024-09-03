@@ -83,10 +83,12 @@ class ApplicationBootstrapper(abc.ABC, typing.Generic[SettingsT, ApplicationT, D
                 **merge_dict_configs(resulting_application_config, self.bootstrap_before()),
             )
         except TypeError:
+            print("------- RESULTING CONFIG --------")  # noqa: T201
             print(resulting_application_config)  # noqa: T201
+            print("------- BOOSTRAPPER BOOTSTRAP BEFORE --------")  # noqa: T201
             print(self.bootstrap_before())  # noqa: T201
+            print("------- INSTRUMENT --------")  # noqa: T201
             print(instrument)  # noqa: T201
-            print(merge_dict_configs(resulting_application_config, self.bootstrap_before()))  # noqa: T201
             raise
 
         for instrument in self.__instrument_box.instruments:
