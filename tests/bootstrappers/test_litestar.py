@@ -1,4 +1,4 @@
-import typing
+import typing  # noqa: I001
 from unittest.mock import MagicMock
 
 import litestar
@@ -10,10 +10,12 @@ from litestar.types import ASGIApp, Receive, Scope, Send
 from microbootstrap import LitestarSettings, PrometheusConfig
 from microbootstrap.bootstrappers.litestar import LitestarBootstrapper
 from microbootstrap.config.litestar import LitestarConfig
+from microbootstrap.bootstrappers.fastapi import FastApiBootstrapper  # noqa: F401
 
 
 async def test_litestar_configure_instrument() -> None:
     test_metrics_path: typing.Final = "/test-metrics-path"
+
     application: typing.Final = (
         LitestarBootstrapper(LitestarSettings())
         .configure_instrument(

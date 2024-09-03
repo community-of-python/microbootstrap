@@ -25,8 +25,8 @@ def test_instrument_box_initialize(
     instruments_in_box: list[type[Instrument[typing.Any]]],
     base_settings: BaseBootstrapSettings,
 ) -> None:
-    InstrumentBox.__instruments__ = instruments_in_box
     instrument_box: typing.Final = InstrumentBox()
+    instrument_box.__instruments__ = instruments_in_box
     instrument_box.initialize(base_settings)
 
     assert len(instrument_box.instruments) == len(instruments_in_box)
@@ -37,8 +37,8 @@ def test_instrument_box_initialize(
 def test_instrument_box_configure_instrument(
     base_settings: BaseBootstrapSettings,
 ) -> None:
-    InstrumentBox.__instruments__ = [SentryInstrument]
     instrument_box: typing.Final = InstrumentBox()
+    instrument_box.__instruments__ = [SentryInstrument]
     instrument_box.initialize(base_settings)
     test_dsn: typing.Final = "my-test-dsn"
     instrument_box.configure_instrument(SentryConfig(sentry_dsn=test_dsn))
@@ -51,8 +51,8 @@ def test_instrument_box_configure_instrument(
 def test_instrument_box_configure_instrument_error(
     base_settings: BaseBootstrapSettings,
 ) -> None:
-    InstrumentBox.__instruments__ = [SentryInstrument]
     instrument_box: typing.Final = InstrumentBox()
+    instrument_box.__instruments__ = [SentryInstrument]
     instrument_box.initialize(base_settings)
 
     with pytest.raises(MissingInstrumentError):
@@ -63,7 +63,8 @@ def test_instrument_box_extend_instruments() -> None:
     class TestSentryInstrument(SentryInstrument):
         pass
 
-    InstrumentBox.__instruments__ = [SentryInstrument]
-    InstrumentBox.extend_instruments(TestSentryInstrument)
-    assert len(InstrumentBox.__instruments__) == 1
-    assert issubclass(InstrumentBox.__instruments__[0], TestSentryInstrument)
+    instrument_box: typing.Final = InstrumentBox()
+    instrument_box.__instruments__ = [SentryInstrument]
+    instrument_box.extend_instruments(TestSentryInstrument)
+    assert len(instrument_box.__instruments__) == 1
+    assert issubclass(instrument_box.__instruments__[0], TestSentryInstrument)
