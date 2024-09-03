@@ -167,7 +167,7 @@ Each settings object for every framework includes service parameters that can be
 You can configure them manually, or set the corresponding environment variables and let <b>microbootstrap</b> to source them automatically.
 
 ```python
-from microbootstrap.bootstrappers.litestar import BaseBootstrapSettings
+from microbootstrap.settings import BaseBootstrapSettings
 
 
 class ServiceSettings(BaseBootstrapSettings):
@@ -200,7 +200,7 @@ To bootstrap Sentry, you must provide at least the `sentry_dsn`.
 Additional parameters can also be supplied through the settings object.
 
 ```python
-from microbootstrap.bootstrappers.litestar import BaseBootstrapSettings
+from microbootstrap.settings import BaseBootstrapSettings
 
 
 class YourSettings(BaseBootstrapSettings):
@@ -225,7 +225,7 @@ To bootstrap Prometheus, you must provide at least the `prometheus_metrics_path`
 Additional parameters can also be supplied through the settings object.
 
 ```python
-from microbootstrap.bootstrappers.litestar import BaseBootstrapSettings
+from microbootstrap.settings import BaseBootstrapSettings
 
 
 class YourSettings(BaseBootstrapSettings):
@@ -255,7 +255,7 @@ To bootstrap Opentelemetry, you must provide several parameters:
 However, additional parameters can also be supplied if needed.
 
 ```python
-from microbootstrap.bootstrappers.litestar import BaseBootstrapSettings
+from microbootstrap.settings import BaseBootstrapSettings
 from microbootstrap.instruments.opentelemetry_instrument import OpenTelemetryInstrumentor
 
 
@@ -285,7 +285,7 @@ To utilize this feature, your application must be in non-debug mode, meaning `se
 ```python
 import logging
 
-from microbootstrap.bootstrappers.litestar import BaseBootstrapSettings
+from microbootstrap.settings import BaseBootstrapSettings
 
 
 class YourSettings(BaseBootstrapSettings):
@@ -311,7 +311,7 @@ Parameter descriptions:
 ### CORS
 
 ```python
-from microbootstrap.bootstrappers.litestar import BaseBootstrapSettings
+from microbootstrap.settings import BaseBootstrapSettings
 
 
 class YourSettings(BaseBootstrapSettings):
@@ -337,7 +337,7 @@ Parameter descriptions:
 ### Swagger
 
 ```python
-from microbootstrap.bootstrappers.litestar import BaseBootstrapSettings
+from microbootstrap.settings import BaseBootstrapSettings
 
 
 class YourSettings(BaseBootstrapSettings):
