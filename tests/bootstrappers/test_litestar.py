@@ -3,13 +3,13 @@ from unittest.mock import MagicMock
 
 import litestar
 from litestar import status_codes
-from litestar.config.app import AppConfig
 from litestar.middleware.base import MiddlewareProtocol
 from litestar.testing import AsyncTestClient
 from litestar.types import ASGIApp, Receive, Scope, Send
 
 from microbootstrap import LitestarSettings, PrometheusConfig
 from microbootstrap.bootstrappers.litestar import LitestarBootstrapper
+from microbootstrap.config.litestar import LitestarConfig
 
 
 async def test_litestar_configure_instrument() -> None:
@@ -52,7 +52,7 @@ async def test_litestar_configure_application_add_handler() -> None:
 
     application: typing.Final = (
         LitestarBootstrapper(LitestarSettings())
-        .configure_application(AppConfig(route_handlers=[test_handler]))
+        .configure_application(LitestarConfig(route_handlers=[test_handler]))
         .bootstrap()
     )
 
@@ -79,7 +79,7 @@ async def test_litestar_configure_application_add_middleware(magic_mock: MagicMo
 
     application: typing.Final = (
         LitestarBootstrapper(LitestarSettings())
-        .configure_application(AppConfig(route_handlers=[test_handler], middleware=[TestMiddleware]))
+        .configure_application(LitestarConfig(route_handlers=[test_handler], middleware=[TestMiddleware]))
         .bootstrap()
     )
 
