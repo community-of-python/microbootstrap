@@ -82,7 +82,7 @@ class ApplicationBootstrapper(abc.ABC, typing.Generic[SettingsT, ApplicationT, D
                 print(  # noqa: T201
                     instrument.bootstrap_before(),
                 )
-                print(instrument.get_config_type())  # noqa: T201
+                print(type(instrument))  # noqa: T201
                 print("---------------------------")  # noqa: T201
             instrument.write_status(self.console_writer)
         try:
