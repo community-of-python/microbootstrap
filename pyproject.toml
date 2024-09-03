@@ -65,7 +65,7 @@ litestar-offline-docs = { version = "^1.0.1", optional = true }
 fastapi = { version = "^0.111.0", optional = true }
 prometheus-fastapi-instrumentator = { version = "^6.1.0", optional = true }
 opentelemetry-instrumentation-fastapi = { version = "^0.46b0", optional = true }
-
+fastapi-offline-docs = { version = "^1.0.1", optional = true }
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.2.2"
@@ -79,11 +79,16 @@ redis = "^5.0.7"
 opentelemetry-instrumentation-redis = "^0.46b0"
 trio = "^0.26.0"
 
+
+[tool.poetry.group.fastapi.dependencies]
+
+
 [tool.poetry.extras]
 fastapi = [
     "fastapi",
     "opentelemetry-instrumentation-fastapi",
     "prometheus-fastapi-instrumentator",
+    "fastapi-offline-docs",
 ]
 litestar = ["litestar", "prometheus-client", "litestar-offline-docs"]
 

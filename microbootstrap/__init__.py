@@ -4,7 +4,7 @@ from microbootstrap.instruments.opentelemetry_instrument import OpentelemetryCon
 from microbootstrap.instruments.prometheus_instrument import PrometheusConfig
 from microbootstrap.instruments.sentry_instrument import SentryConfig
 from microbootstrap.instruments.swagger_instrument import SwaggerConfig
-from microbootstrap.settings import LitestarSettings
+from microbootstrap.settings import FastApiSettings, LitestarSettings
 
 
 __all__ = (
@@ -14,6 +14,7 @@ __all__ = (
     "LoggingConfig",
     "LitestarBootstrapper",
     "LitestarSettings",
+    "FastApiSettings",
     "CorsConfig",
     "SwaggerConfig",
 )

@@ -43,3 +43,7 @@ class BaseBootstrapSettings(
 
 class LitestarSettings(BaseBootstrapSettings):
     """Settings for a litestar botstrap."""
+
+
+class FastApiSettings(BaseBootstrapSettings):
+    """Settings for a fastapi botstrap."""
