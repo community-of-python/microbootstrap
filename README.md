@@ -33,7 +33,6 @@ from your_application.settings import settings
 application: litestar.Litestar = LitestarBootstrapper(settings).bootstrap()
 ```
 
-Currently, only `litestar` is supported.  
 With <b>microbootstrap</b>, you receive an application with lightweight built-in support for:
 
 - `sentry`
@@ -42,6 +41,11 @@ With <b>microbootstrap</b>, you receive an application with lightweight built-in
 - `logging`
 - `cors`
 - `swagger` - with additional offline version support
+
+Those instruments can be bootstrapped for:
+
+- `fastapi`
+- `litestar`
 
 Interested? Let's dive right in ⚡
 
@@ -71,12 +75,16 @@ For poetry:
 
 ```bash
 $ poetry add microbootstrap -E litestar
+---
+$ poetry add microbootstrap -E fastapi
 ```
 
 For pip:
 
 ```bash
 $ pip install microbootstrap[litestar]
+---
+$ pip install microbootstrap[fastapi]
 ```
 
 ## Quickstart
