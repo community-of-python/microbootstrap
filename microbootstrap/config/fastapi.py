@@ -31,7 +31,7 @@ class FastAPIConfig:
     openapi_tags: list[dict[str, typing.Any]] | None = None
     servers: list[dict[str, str | typing.Any]] | None = None
     dependencies: typing.Sequence[Depends] | None = None
-    default_response_class: type[Response] = dataclasses.field(default=Default(JSONResponse))
+    default_response_class: type[Response] = dataclasses.field(default_factory=lambda: Default(JSONResponse))
     redirect_slashes: bool = True
     docs_url: str | None = "/docs"
     redoc_url: str | None = "/redoc"
@@ -61,6 +61,6 @@ class FastAPIConfig:
     include_in_schema: bool = True
     swagger_ui_parameters: dict[str, typing.Any] | None = None
     generate_unique_id_function: typing.Callable[[routing.APIRoute], str] = dataclasses.field(
-        default=Default(generate_unique_id),
+        default_factory=lambda: Default(generate_unique_id),
     )
     separate_input_output_schemas: bool = True
