@@ -69,6 +69,7 @@ class ApplicationBootstrapper(abc.ABC, typing.Generic[SettingsT, ApplicationT, D
 
     def bootstrap(self: typing_extensions.Self) -> ApplicationT:
         resulting_application_config = dataclass_to_dict_no_defaults(self.application_config)
+        print("+++++++++++ BOOTSTRAP START +++++++++++")  # noqa: T201
         for instrument in self.__instrument_box.instruments:
             if instrument.is_ready():
                 instrument.bootstrap()
@@ -77,18 +78,19 @@ class ApplicationBootstrapper(abc.ABC, typing.Generic[SettingsT, ApplicationT, D
                     resulting_application_config,
                     instrument.bootstrap_before(),
                 )
+                print("---------------------------")  # noqa: T201
+                print(  # noqa: T201
+                    instrument.bootstrap_before(),
+                )
+                print(instrument.get_config_type())  # noqa: T201
+                print("---------------------------")  # noqa: T201
             instrument.write_status(self.console_writer)
         try:
             application = self.application_type(
                 **merge_dict_configs(resulting_application_config, self.bootstrap_before()),
             )
         except TypeError:
-            print("------- RESULTING CONFIG --------")  # noqa: T201
-            print(resulting_application_config)  # noqa: T201
-            print("------- BOOSTRAPPER BOOTSTRAP BEFORE --------")  # noqa: T201
-            print(self.bootstrap_before())  # noqa: T201
-            print("------- INSTRUMENT --------")  # noqa: T201
-            print(instrument)  # noqa: T201
+            print("ERROR HERE")  # noqa: T201
             raise
 
         for instrument in self.__instrument_box.instruments:
