@@ -80,9 +80,6 @@ opentelemetry-instrumentation-redis = "^0.46b0"
 trio = "^0.26.0"
 
 
-[tool.poetry.group.fastapi.dependencies]
-
-
 [tool.poetry.extras]
 fastapi = [
     "fastapi",
