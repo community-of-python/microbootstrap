@@ -7,9 +7,9 @@ from microbootstrap.instruments.base import Instrument
 from microbootstrap.instruments.instrument_box import InstrumentBox
 from microbootstrap.instruments.logging_instrument import LoggingInstrument
 from microbootstrap.instruments.opentelemetry_instrument import OpentelemetryInstrument
-from microbootstrap.instruments.prometheus_instrument import PrometheusConfig, PrometheusInstrument
+from microbootstrap.instruments.prometheus_instrument import BasePrometheusConfig, PrometheusInstrument
 from microbootstrap.instruments.sentry_instrument import SentryConfig, SentryInstrument
-from microbootstrap.settings import BaseBootstrapSettings
+from microbootstrap.settings import BaseServiceSettings
 
 
 @pytest.mark.parametrize(
@@ -23,7 +23,7 @@ from microbootstrap.settings import BaseBootstrapSettings
 )
 def test_instrument_box_initialize(
     instruments_in_box: list[type[Instrument[typing.Any]]],
-    base_settings: BaseBootstrapSettings,
+    base_settings: BaseServiceSettings,
 ) -> None:
     instrument_box: typing.Final = InstrumentBox()
     instrument_box.__instruments__ = instruments_in_box
@@ -35,7 +35,7 @@ def test_instrument_box_initialize(
 
 
 def test_instrument_box_configure_instrument(
-    base_settings: BaseBootstrapSettings,
+    base_settings: BaseServiceSettings,
 ) -> None:
     instrument_box: typing.Final = InstrumentBox()
     instrument_box.__instruments__ = [SentryInstrument]
@@ -49,14 +49,14 @@ def test_instrument_box_configure_instrument(
 
 
 def test_instrument_box_configure_instrument_error(
-    base_settings: BaseBootstrapSettings,
+    base_settings: BaseServiceSettings,
 ) -> None:
     instrument_box: typing.Final = InstrumentBox()
     instrument_box.__instruments__ = [SentryInstrument]
     instrument_box.initialize(base_settings)
 
     with pytest.raises(MissingInstrumentError):
-        instrument_box.configure_instrument(PrometheusConfig())
+        instrument_box.configure_instrument(BasePrometheusConfig())
 
 
 def test_instrument_box_extend_instruments() -> None:

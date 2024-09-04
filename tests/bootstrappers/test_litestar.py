@@ -7,7 +7,7 @@ from litestar.middleware.base import MiddlewareProtocol
 from litestar.testing import AsyncTestClient
 from litestar.types import ASGIApp, Receive, Scope, Send
 
-from microbootstrap import LitestarSettings, PrometheusConfig
+from microbootstrap import LitestarSettings, LitestarPrometheusConfig
 from microbootstrap.bootstrappers.litestar import LitestarBootstrapper
 from microbootstrap.config.litestar import LitestarConfig
 from microbootstrap.bootstrappers.fastapi import FastApiBootstrapper  # noqa: F401
@@ -19,7 +19,7 @@ async def test_litestar_configure_instrument() -> None:
     application: typing.Final = (
         LitestarBootstrapper(LitestarSettings())
         .configure_instrument(
-            PrometheusConfig(prometheus_metrics_path=test_metrics_path),
+            LitestarPrometheusConfig(prometheus_metrics_path=test_metrics_path),
         )
         .bootstrap()
     )
@@ -34,7 +34,7 @@ async def test_litestar_configure_instruments() -> None:
     application: typing.Final = (
         LitestarBootstrapper(LitestarSettings())
         .configure_instruments(
-            PrometheusConfig(prometheus_metrics_path=test_metrics_path),
+            LitestarPrometheusConfig(prometheus_metrics_path=test_metrics_path),
         )
         .bootstrap()
     )
@@ -45,7 +45,7 @@ async def test_litestar_configure_instruments() -> None:
 
 
 async def test_litestar_configure_application_add_handler() -> None:
-    test_handler_path: typing.Final = "/test-handler"
+    test_handler_path: typing.Final = "/test-handler1"
     test_response: typing.Final = {"hello": "world"}
 
     @litestar.get(test_handler_path)

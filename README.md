@@ -130,16 +130,16 @@ This approach will provide you with an application that has all the essential in
 
 The settings object is the core of microbootstrap.
 
-All framework-related settings inherit from the `BaseBootstrapSettings` object. `BaseBootstrapSettings` defines parameters for the service and various instruments.
+All framework-related settings inherit from the `BaseServiceSettings` object. `BaseServiceSettings` defines parameters for the service and various instruments.
 
-However, the number of parameters is <b>not confined</b> to those defined in `BaseBootstrapSettings`. You can add as many as you need.
+However, the number of parameters is <b>not confined</b> to those defined in `BaseServiceSettings`. You can add as many as you need.
 
 These parameters can be sourced from your environment. By default, no prefix is added to these parameters.
 
 Example:
 
 ```python
-class YourSettings(BaseBootstrapSettings):
+class YourSettings(BaseServiceSettings):
     service_debug: bool = True
     service_name: str = "micro-service"
 
@@ -167,10 +167,10 @@ Each settings object for every framework includes service parameters that can be
 You can configure them manually, or set the corresponding environment variables and let <b>microbootstrap</b> to source them automatically.
 
 ```python
-from microbootstrap.settings import BaseBootstrapSettings
+from microbootstrap.settings import BaseServiceSettings
 
 
-class ServiceSettings(BaseBootstrapSettings):
+class ServiceSettings(BaseServiceSettings):
     service_debug: bool = True
     service_environment: str | None = None
     service_name: str = "micro-service"
@@ -200,10 +200,10 @@ To bootstrap Sentry, you must provide at least the `sentry_dsn`.
 Additional parameters can also be supplied through the settings object.
 
 ```python
-from microbootstrap.settings import BaseBootstrapSettings
+from microbootstrap.settings import BaseServiceSettings
 
 
-class YourSettings(BaseBootstrapSettings):
+class YourSettings(BaseServiceSettings):
     service_environment: str | None = None
 
     sentry_dsn: str | None = None
@@ -225,10 +225,10 @@ To bootstrap Prometheus, you must provide at least the `prometheus_metrics_path`
 Additional parameters can also be supplied through the settings object.
 
 ```python
-from microbootstrap.settings import BaseBootstrapSettings
+from microbootstrap.settings import BaseServiceSettings
 
 
-class YourSettings(BaseBootstrapSettings):
+class YourSettings(BaseServiceSettings):
     service_name: str
 
     prometheus_metrics_path: str = "/metrics"
@@ -255,11 +255,11 @@ To bootstrap Opentelemetry, you must provide several parameters:
 However, additional parameters can also be supplied if needed.
 
 ```python
-from microbootstrap.settings import BaseBootstrapSettings
+from microbootstrap.settings import BaseServiceSettings
 from microbootstrap.instruments.opentelemetry_instrument import OpenTelemetryInstrumentor
 
 
-class YourSettings(BaseBootstrapSettings):
+class YourSettings(BaseServiceSettings):
     service_name: str
     service_version: str
 
@@ -285,10 +285,10 @@ To utilize this feature, your application must be in non-debug mode, meaning `se
 ```python
 import logging
 
-from microbootstrap.settings import BaseBootstrapSettings
+from microbootstrap.settings import BaseServiceSettings
 
 
-class YourSettings(BaseBootstrapSettings):
+class YourSettings(BaseServiceSettings):
     service_debug: bool = False
 
     logging_log_level: int = logging.INFO
@@ -311,10 +311,10 @@ Parameter descriptions:
 ### CORS
 
 ```python
-from microbootstrap.settings import BaseBootstrapSettings
+from microbootstrap.settings import BaseServiceSettings
 
 
-class YourSettings(BaseBootstrapSettings):
+class YourSettings(BaseServiceSettings):
     cors_allowed_origins: list[str] = pydantic.Field(default_factory=list)
     cors_allowed_methods: list[str] = pydantic.Field(default_factory=list)
     cors_allowed_headers: list[str] = pydantic.Field(default_factory=list)
@@ -337,10 +337,10 @@ Parameter descriptions:
 ### Swagger
 
 ```python
-from microbootstrap.settings import BaseBootstrapSettings
+from microbootstrap.settings import BaseServiceSettings
 
 
-class YourSettings(BaseBootstrapSettings):
+class YourSettings(BaseServiceSettings):
     service_name: str = "micro-service"
     service_description: str = "Micro service description"
     service_version: str = "1.0.0"

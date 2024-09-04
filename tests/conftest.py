@@ -4,11 +4,18 @@ from unittest.mock import AsyncMock, MagicMock
 import litestar
 import pytest
 
-from microbootstrap import LoggingConfig, OpentelemetryConfig, PrometheusConfig, SentryConfig
+from microbootstrap import (
+    FastApiPrometheusConfig,
+    LitestarPrometheusConfig,
+    LoggingConfig,
+    OpentelemetryConfig,
+    SentryConfig,
+)
 from microbootstrap.console_writer import ConsoleWriter
 from microbootstrap.instruments.cors_instrument import CorsConfig
+from microbootstrap.instruments.prometheus_instrument import BasePrometheusConfig
 from microbootstrap.instruments.swagger_instrument import SwaggerConfig
-from microbootstrap.settings import BaseBootstrapSettings
+from microbootstrap.settings import BaseServiceSettings
 
 
 pytestmark = [pytest.mark.anyio]
@@ -35,8 +42,18 @@ def minimal_logging_config() -> LoggingConfig:
 
 
 @pytest.fixture()
-def minimal_prometheus_config() -> PrometheusConfig:
-    return PrometheusConfig()
+def minimal_base_prometheus_config() -> BasePrometheusConfig:
+    return BasePrometheusConfig()
+
+
+@pytest.fixture()
+def minimal_fastapi_prometheus_config() -> FastApiPrometheusConfig:
+    return FastApiPrometheusConfig()
+
+
+@pytest.fixture()
+def minimal_litestar_prometheus_config() -> LitestarPrometheusConfig:
+    return LitestarPrometheusConfig()
 
 
 @pytest.fixture()
@@ -61,8 +78,8 @@ def minimal_opentelemetry_config() -> OpentelemetryConfig:
 
 
 @pytest.fixture()
-def base_settings() -> BaseBootstrapSettings:
-    return BaseBootstrapSettings()
+def base_settings() -> BaseServiceSettings:
+    return BaseServiceSettings()
 
 
 @pytest.fixture()

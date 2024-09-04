@@ -1,12 +1,15 @@
 import contextlib
 import typing
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
+import fastapi
 import litestar
+from httpx import AsyncClient
 from litestar.middleware.base import DefineMiddleware
 from litestar.testing import AsyncTestClient
 
 from microbootstrap import OpentelemetryConfig
+from microbootstrap.bootstrappers.fastapi import FastApiOpentelemetryInstrument
 from microbootstrap.bootstrappers.litestar import LitetstarOpentelemetryInstrument
 from microbootstrap.instruments.opentelemetry_instrument import OpentelemetryInstrument
 
@@ -92,3 +95,20 @@ async def test_litestar_opentelemetry_bootstrap_working(
         with contextlib.suppress(AssertionError):
             await async_client.get("/test-handler")
         assert async_mock.called
+
+
+async def test_fastapi_opentelemetry_bootstrap_working(
+    minimal_opentelemetry_config: OpentelemetryConfig,
+) -> None:
+    opentelemetry_instrument: typing.Final = FastApiOpentelemetryInstrument(minimal_opentelemetry_config)
+    opentelemetry_instrument.bootstrap()
+    fastapi_application: typing.Final = opentelemetry_instrument.bootstrap_after(fastapi.FastAPI())
+
+    @fastapi_application.get("/test-handler")
+    async def test_handler() -> None:
+        return None
+
+    with patch("opentelemetry.trace.use_span") as mock_capture_event:
+        async with AsyncClient(app=fastapi_application, base_url="http://testserver") as async_client:
+            await async_client.get("/test-handler")
+            assert mock_capture_event.called

@@ -20,7 +20,7 @@ AppType = typing.TypeVar("AppType", bound="FastAPI")
 
 
 @dataclasses.dataclass
-class FastAPIConfig:
+class FastApiConfig:
     debug: bool = False
     routes: list[BaseRoute] | None = None
     title: str = "FastAPI"

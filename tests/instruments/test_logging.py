@@ -2,13 +2,16 @@ import logging
 import typing
 from io import StringIO
 
+import fastapi
 import litestar
+from httpx import AsyncClient
 from litestar.testing import AsyncTestClient
 from opentelemetry import trace
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import ConsoleSpanExporter, SimpleSpanProcessor
 
 from microbootstrap import LoggingConfig
+from microbootstrap.bootstrappers.fastapi import FastApiLoggingInstrument
 from microbootstrap.bootstrappers.litestar import LitestarLoggingInstrument
 from microbootstrap.instruments.logging_instrument import LoggingInstrument, MemoryLoggerFactory
 
@@ -74,12 +77,12 @@ async def test_litestar_logging_bootstrap_tracer_injection(minimal_logging_confi
     logging_instrument: typing.Final = LitestarLoggingInstrument(minimal_logging_config)
 
     @litestar.get("/test-handler")
-    async def error_handler() -> str:
+    async def test_handler() -> str:
         return "Ok"
 
     logging_instrument.bootstrap()
     litestar_application: typing.Final = litestar.Litestar(
-        route_handlers=[error_handler],
+        route_handlers=[test_handler],
         **logging_instrument.bootstrap_before(),
     )
     with tracer.start_as_current_span("my_fake_span") as span:
@@ -128,3 +131,20 @@ def test_memory_logger_factory_error() -> None:
     error_message: typing.Final = "error message"
     test_logger.error(error_message)
     assert error_message in test_stream.getvalue()
+
+
+async def test_fastapi_logging_bootstrap_working(minimal_logging_config: LoggingConfig) -> None:
+    logging_instrument: typing.Final = FastApiLoggingInstrument(minimal_logging_config)
+
+    fastapi_application: typing.Final = fastapi.FastAPI()
+
+    @fastapi_application.get("/test-handler")
+    async def test_handler() -> str:
+        return "Ok"
+
+    logging_instrument.bootstrap()
+    logging_instrument.bootstrap_after(fastapi_application)
+
+    async with AsyncClient(app=fastapi_application, base_url="http://testserver") as async_client:
+        await async_client.get("/test-handler?test-query=1")
+        await async_client.get("/test-handler")
