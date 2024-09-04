@@ -24,15 +24,15 @@ class ApplicationBootstrapper(abc.ABC, typing.Generic[SettingsT, ApplicationT, D
     application_type: type[ApplicationT]
     application_config: DataclassT
     console_writer: ConsoleWriter
-    __instrument_box: InstrumentBox
+    instrument_box: InstrumentBox
 
     def __init__(self, settings: SettingsT) -> None:
         self.settings = settings
         self.console_writer = ConsoleWriter(writer_enabled=settings.service_debug)
 
-        if not hasattr(self, "__instrument_box"):
-            self.__instrument_box = InstrumentBox()
-        self.__instrument_box.initialize(self.settings)
+        if not hasattr(self, "instrument_box"):
+            self.instrument_box = InstrumentBox()
+        self.instrument_box.initialize(self.settings)
 
     def configure_application(
         self: typing_extensions.Self,
@@ -45,7 +45,7 @@ class ApplicationBootstrapper(abc.ABC, typing.Generic[SettingsT, ApplicationT, D
         self: typing_extensions.Self,
         instrument_config: InstrumentConfigT,
     ) -> typing_extensions.Self:
-        self.__instrument_box.configure_instrument(instrument_config)
+        self.instrument_box.configure_instrument(instrument_config)
         return self
 
     def configure_instruments(
@@ -63,27 +63,30 @@ class ApplicationBootstrapper(abc.ABC, typing.Generic[SettingsT, ApplicationT, D
         [type[Instrument[InstrumentConfigT]]],
         type[Instrument[InstrumentConfigT]],
     ]:
-        if not hasattr(cls, "__instrument_box"):
-            cls.__instrument_box = InstrumentBox()
-        return cls.__instrument_box.extend_instruments
+        if not hasattr(cls, "instrument_box"):
+            cls.instrument_box = InstrumentBox()
+        return cls.instrument_box.extend_instruments
 
     def bootstrap(self: typing_extensions.Self) -> ApplicationT:
-        resulting_application_config = dataclass_to_dict_no_defaults(self.application_config)
-        for instrument in self.__instrument_box.instruments:
+        resulting_application_config: dict[str, typing.Any] = {}
+        for instrument in self.instrument_box.instruments:
             if instrument.is_ready():
                 instrument.bootstrap()
-
                 resulting_application_config = merge_dict_configs(
                     resulting_application_config,
                     instrument.bootstrap_before(),
                 )
             instrument.write_status(self.console_writer)
 
+        resulting_application_config = merge_dict_configs(
+            resulting_application_config,
+            dataclass_to_dict_no_defaults(self.application_config),
+        )
         application = self.application_type(
             **merge_dict_configs(resulting_application_config, self.bootstrap_before()),
         )
 
-        for instrument in self.__instrument_box.instruments:
+        for instrument in self.instrument_box.instruments:
             if instrument.is_ready():
                 application = instrument.bootstrap_after(application)
 
@@ -98,5 +101,5 @@ class ApplicationBootstrapper(abc.ABC, typing.Generic[SettingsT, ApplicationT, D
         return application
 
     def teardown(self: typing_extensions.Self) -> None:
-        for instrument in self.__instrument_box.instruments:
+        for instrument in self.instrument_box.instruments:
             instrument.teardown()

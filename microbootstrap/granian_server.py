@@ -8,7 +8,7 @@ from granian.log import LogLevels
 
 
 if typing.TYPE_CHECKING:
-    from microbootstrap.settings import BaseBootstrapSettings
+    from microbootstrap.settings import BaseServiceSettings
 
 
 GRANIAN_LOG_LEVELS_MAP = {
@@ -24,7 +24,7 @@ GRANIAN_LOG_LEVELS_MAP = {
 # TODO: create bootstrappers for application servers. granian/uvicorn  # noqa: TD002
 def create_granian_server(
     target: str,
-    settings: BaseBootstrapSettings,
+    settings: BaseServiceSettings,
     **granian_options: typing.Any,  # noqa: ANN401
 ) -> granian.Granian:
     return granian.Granian(
@@ -34,7 +34,7 @@ def create_granian_server(
         interface=Interfaces.ASGI,
         loop=Loops.uvloop,
         workers=settings.server_workers_count,
-        log_level=GRANIAN_LOG_LEVELS_MAP[settings.logging_log_level],
+        log_level=GRANIAN_LOG_LEVELS_MAP[getattr(settings, "logging_log_level", logging.INFO)],
         reload=settings.server_reload,
         **granian_options,
     )

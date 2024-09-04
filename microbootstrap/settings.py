@@ -4,22 +4,24 @@ import typing
 
 import pydantic_settings
 
-from microbootstrap import CorsConfig, LoggingConfig, OpentelemetryConfig, PrometheusConfig, SentryConfig, SwaggerConfig
+from microbootstrap import (
+    CorsConfig,
+    FastApiPrometheusConfig,
+    LitestarPrometheusConfig,
+    LoggingConfig,
+    OpentelemetryConfig,
+    SentryConfig,
+    SwaggerConfig,
+)
 
 
-SettingsT = typing.TypeVar("SettingsT", bound="BaseBootstrapSettings")
+SettingsT = typing.TypeVar("SettingsT", bound="BaseServiceSettings")
 ENVIRONMENT_PREFIX: typing.Final = "ENVIRONMENT_PREFIX"
 
 
 # TODO: add offline docs and cors support  # noqa: TD002
-class BaseBootstrapSettings(
+class BaseServiceSettings(
     pydantic_settings.BaseSettings,
-    LoggingConfig,
-    OpentelemetryConfig,
-    SentryConfig,
-    PrometheusConfig,
-    SwaggerConfig,
-    CorsConfig,
 ):
     service_debug: bool = True
     service_environment: str | None = None
@@ -41,5 +43,25 @@ class BaseBootstrapSettings(
     )
 
 
-class LitestarSettings(BaseBootstrapSettings):
+class LitestarSettings(
+    BaseServiceSettings,
+    LoggingConfig,
+    OpentelemetryConfig,
+    SentryConfig,
+    LitestarPrometheusConfig,
+    SwaggerConfig,
+    CorsConfig,
+):
     """Settings for a litestar botstrap."""
+
+
+class FastApiSettings(
+    BaseServiceSettings,
+    LoggingConfig,
+    OpentelemetryConfig,
+    SentryConfig,
+    FastApiPrometheusConfig,
+    SwaggerConfig,
+    CorsConfig,
+):
+    """Settings for a fastapi botstrap."""

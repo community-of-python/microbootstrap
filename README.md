@@ -33,7 +33,6 @@ from your_application.settings import settings
 application: litestar.Litestar = LitestarBootstrapper(settings).bootstrap()
 ```
 
-Currently, only `litestar` is supported.  
 With <b>microbootstrap</b>, you receive an application with lightweight built-in support for:
 
 - `sentry`
@@ -42,6 +41,11 @@ With <b>microbootstrap</b>, you receive an application with lightweight built-in
 - `logging`
 - `cors`
 - `swagger` - with additional offline version support
+
+Those instruments can be bootstrapped for:
+
+- `fastapi`
+- `litestar`
 
 Interested? Let's dive right in ⚡
 
@@ -65,18 +69,22 @@ Interested? Let's dive right in ⚡
 
 ## Installation
 
-You can install the package using either `pip` or `poetry`.
+You can install the package using either `pip` or `poetry`.  
+Also, you can specify extras during installation for concrete framework:
+
+- `fastapi`
+- `litestar`
 
 For poetry:
 
 ```bash
-$ poetry add microbootstrap -E litestar
+$ poetry add microbootstrap -E fastapi
 ```
 
 For pip:
 
 ```bash
-$ pip install microbootstrap[litestar]
+$ pip install microbootstrap[fastapi]
 ```
 
 ## Quickstart
@@ -122,16 +130,16 @@ This approach will provide you with an application that has all the essential in
 
 The settings object is the core of microbootstrap.
 
-All framework-related settings inherit from the `BaseBootstrapSettings` object. `BaseBootstrapSettings` defines parameters for the service and various instruments.
+All framework-related settings inherit from the `BaseServiceSettings` object. `BaseServiceSettings` defines parameters for the service and various instruments.
 
-However, the number of parameters is <b>not confined</b> to those defined in `BaseBootstrapSettings`. You can add as many as you need.
+However, the number of parameters is <b>not confined</b> to those defined in `BaseServiceSettings`. You can add as many as you need.
 
 These parameters can be sourced from your environment. By default, no prefix is added to these parameters.
 
 Example:
 
 ```python
-class YourSettings(BaseBootstrapSettings):
+class YourSettings(BaseServiceSettings):
     service_debug: bool = True
     service_name: str = "micro-service"
 
@@ -159,10 +167,10 @@ Each settings object for every framework includes service parameters that can be
 You can configure them manually, or set the corresponding environment variables and let <b>microbootstrap</b> to source them automatically.
 
 ```python
-from microbootstrap.bootstrappers.litestar import BaseBootstrapSettings
+from microbootstrap.settings import BaseServiceSettings
 
 
-class ServiceSettings(BaseBootstrapSettings):
+class ServiceSettings(BaseServiceSettings):
     service_debug: bool = True
     service_environment: str | None = None
     service_name: str = "micro-service"
@@ -192,10 +200,10 @@ To bootstrap Sentry, you must provide at least the `sentry_dsn`.
 Additional parameters can also be supplied through the settings object.
 
 ```python
-from microbootstrap.bootstrappers.litestar import BaseBootstrapSettings
+from microbootstrap.settings import BaseServiceSettings
 
 
-class YourSettings(BaseBootstrapSettings):
+class YourSettings(BaseServiceSettings):
     service_environment: str | None = None
 
     sentry_dsn: str | None = None
@@ -213,14 +221,46 @@ These settings are subsequently passed to the [sentry-sdk](https://pypi.org/proj
 
 ### Prometheus
 
-To bootstrap Prometheus, you must provide at least the `prometheus_metrics_path`.  
-Additional parameters can also be supplied through the settings object.
+Prometheus is not an easy case, because two underlying libraries for `fastapi` and `litestar` are so different, that could not be cast to a single interface. For that reason prometheus settings for `fastapi` and `litestar` are a little bit different
+
+#### Fastapi
+
+To bootstrap prometheus you have to provide `prometheus_metrics_path`
 
 ```python
-from microbootstrap.bootstrappers.litestar import BaseBootstrapSettings
+from microbootstrap.settings import FastApiSettings
 
 
-class YourSettings(BaseBootstrapSettings):
+class YourFastApiSettings(FastApiSettings):
+    service_name: str
+
+    prometheus_metrics_path: str = "/metrics"
+    prometheus_instrumentator_params: dict[str, typing.Any] = {}
+    prometheus_instrument_params: dict[str, typing.Any] = {}
+    prometheus_expose_params: dict[str, typing.Any] = {}
+
+    ... # Other settings here
+```
+
+Parameters description:
+
+- `service_name` - will be attached to metric's names, but has to be named in [snake_case](https://en.wikipedia.org/wiki/Snake_case).
+- `prometheus_metrics_path` - path to metrics handler.
+- `prometheus_instrumentator_params` - will be passed to `Instrumentor` during initialization.
+- `prometheus_instrument_params` - will be passed to `Instrumentor.instrument(...)`.
+- `prometheus_expose_params` - will be passed to `Instrumentor.expose(...)`.
+
+FastApi prometheus bootstrapper uses [prometheus-fastapi-instrumentator](https://github.com/trallnag/prometheus-fastapi-instrumentator) that's why there are three different dict for parameters.
+
+#### Fastapi
+
+To bootstrap prometheus you have to provide `prometheus_metrics_path`
+
+```python
+from microbootstrap.settings import LitestarSettings
+
+
+class YourFastApiSettings(LitestarSettings):
     service_name: str
 
     prometheus_metrics_path: str = "/metrics"
@@ -229,10 +269,11 @@ class YourSettings(BaseBootstrapSettings):
     ... # Other settings here
 ```
 
-These settings are subsequently passed to the [prometheus-client](https://pypi.org/project/prometheus-client/) package.
-The underlying top-level Prometheus library may vary from framework to framework, but in general, a metrics handler will be available at the provided path.
+Parameters description:
 
-By default, metrics are accessible at the `/metrics` path.
+- `service_name` - will be attached to metric's names, there are no name restrictions.
+- `prometheus_metrics_path` - path to metrics handler.
+- `prometheus_additional_params` - will be passed to `litestar.contrib.prometheus.PrometheusConfig`.
 
 ### Opentelemetry
 
@@ -242,16 +283,16 @@ To bootstrap Opentelemetry, you must provide several parameters:
 - `service_version`
 - `opentelemetry_endpoint`
 - `opentelemetry_namespace`
-- `opentelemetry_container_name`.
+- `opentelemetry_container_name`
 
 However, additional parameters can also be supplied if needed.
 
 ```python
-from microbootstrap.bootstrappers.litestar import BaseBootstrapSettings
+from microbootstrap.settings import BaseServiceSettings
 from microbootstrap.instruments.opentelemetry_instrument import OpenTelemetryInstrumentor
 
 
-class YourSettings(BaseBootstrapSettings):
+class YourSettings(BaseServiceSettings):
     service_name: str
     service_version: str
 
@@ -259,11 +300,22 @@ class YourSettings(BaseBootstrapSettings):
     opentelemetry_endpoint: str | None = None
     opentelemetry_namespace: str | None = None
     opentelemetry_insecure: bool = True
-    opentelemetry_insrtumentors: list[OpenTelemetryInstrumentor] = []
+    opentelemetry_instrumentors: list[OpenTelemetryInstrumentor] = []
     opentelemetry_exclude_urls: list[str] = []
 
     ... # Other settings here
 ```
+
+Parameters description:
+
+- `service_name` - will be passed to the `Resource`.
+- `service_version` - will be passed to the `Resource`.
+- `opentelemetry_endpoint` - will be passed to `OTLPSpanExporter` as endpoint.
+- `opentelemetry_namespace` - will be passed to the `Resource`.
+- `opentelemetry_insecure` - is opentelemetry connection secure.
+- `opentelemetry_container_name` - will be passed to the `Resource`.
+- `opentelemetry_instrumentors` - a list of extra instrumentors.
+- `opentelemetry_exclude_urls` - list of ignored urls.
 
 These settings are subsequently passed to [opentelemetry](https://opentelemetry.io/), finalizing your Opentelemetry integration.
 
@@ -277,10 +329,10 @@ To utilize this feature, your application must be in non-debug mode, meaning `se
 ```python
 import logging
 
-from microbootstrap.bootstrappers.litestar import BaseBootstrapSettings
+from microbootstrap.settings import BaseServiceSettings
 
 
-class YourSettings(BaseBootstrapSettings):
+class YourSettings(BaseServiceSettings):
     service_debug: bool = False
 
     logging_log_level: int = logging.INFO
@@ -291,7 +343,7 @@ class YourSettings(BaseBootstrapSettings):
     logging_exclude_endpoints: list[str] = []
 ```
 
-Parameter descriptions:
+Parameters description:
 
 - `logging_log_level` - The default log level.
 - `logging_flush_level` - All messages will be flushed from the buffer when a log with this level appears.
@@ -303,10 +355,10 @@ Parameter descriptions:
 ### CORS
 
 ```python
-from microbootstrap.bootstrappers.litestar import BaseBootstrapSettings
+from microbootstrap.settings import BaseServiceSettings
 
 
-class YourSettings(BaseBootstrapSettings):
+class YourSettings(BaseServiceSettings):
     cors_allowed_origins: list[str] = pydantic.Field(default_factory=list)
     cors_allowed_methods: list[str] = pydantic.Field(default_factory=list)
     cors_allowed_headers: list[str] = pydantic.Field(default_factory=list)
@@ -329,10 +381,10 @@ Parameter descriptions:
 ### Swagger
 
 ```python
-from microbootstrap.bootstrappers.litestar import BaseBootstrapSettings
+from microbootstrap.settings import BaseServiceSettings
 
 
-class YourSettings(BaseBootstrapSettings):
+class YourSettings(BaseServiceSettings):
     service_name: str = "micro-service"
     service_description: str = "Micro service description"
     service_version: str = "1.0.0"
