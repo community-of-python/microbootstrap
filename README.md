@@ -221,7 +221,7 @@ These settings are subsequently passed to the [sentry-sdk](https://pypi.org/proj
 
 ### Prometheus
 
-Prometheus is not an easy case, because two underlying libraries for `fastapi` and `litestar` are so different, that could not be cast to a single interface. For that reason prometheus settings for `fastapi` and `litestar` are a little bit different
+Prometheus integration presents a challenge because the underlying libraries for `FastAPI` and `Litestar` differ significantly, making it impossible to unify them under a single interface. As a result, the Prometheus settings for `FastAPI` and `Litestar` must be configured separately.
 
 #### Fastapi
 
