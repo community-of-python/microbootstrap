@@ -69,21 +69,21 @@ Interested? Let's dive right in ⚡
 
 ## Installation
 
-You can install the package using either `pip` or `poetry`.
+You can install the package using either `pip` or `poetry`.  
+Also, you can specify extras during installation for concrete framework:
+
+- `fastapi`
+- `litestar`
 
 For poetry:
 
 ```bash
-$ poetry add microbootstrap -E litestar
----
 $ poetry add microbootstrap -E fastapi
 ```
 
 For pip:
 
 ```bash
-$ pip install microbootstrap[litestar]
----
 $ pip install microbootstrap[fastapi]
 ```
 
@@ -221,14 +221,46 @@ These settings are subsequently passed to the [sentry-sdk](https://pypi.org/proj
 
 ### Prometheus
 
-To bootstrap Prometheus, you must provide at least the `prometheus_metrics_path`.  
-Additional parameters can also be supplied through the settings object.
+Prometheus is not an easy case, because two underlying libraries for `fastapi` and `litestar` are so different, that could not be cast to a single interface. For that reason prometheus settings for `fastapi` and `litestar` are a little bit different
+
+#### Fastapi
+
+To bootstrap prometheus you have to provide `prometheus_metrics_path`
 
 ```python
-from microbootstrap.settings import BaseServiceSettings
+from microbootstrap.settings import FastApiSettings
 
 
-class YourSettings(BaseServiceSettings):
+class YourFastApiSettings(FastApiSettings):
+    service_name: str
+
+    prometheus_metrics_path: str = "/metrics"
+    prometheus_instrumentator_params: dict[str, typing.Any] = {}
+    prometheus_instrument_params: dict[str, typing.Any] = {}
+    prometheus_expose_params: dict[str, typing.Any] = {}
+
+    ... # Other settings here
+```
+
+Parameters description:
+
+- `service_name` - will be attached to metric's names, but has to be named in [snake_case](https://en.wikipedia.org/wiki/Snake_case).
+- `prometheus_metrics_path` - path to metrics handler.
+- `prometheus_instrumentator_params` - will be passed to `Instrumentor` during initialization.
+- `prometheus_instrument_params` - will be passed to `Instrumentor.instrument(...)`.
+- `prometheus_expose_params` - will be passed to `Instrumentor.expose(...)`.
+
+FastApi prometheus bootstrapper uses [prometheus-fastapi-instrumentator](https://github.com/trallnag/prometheus-fastapi-instrumentator) that's why there are three different dict for parameters.
+
+#### Fastapi
+
+To bootstrap prometheus you have to provide `prometheus_metrics_path`
+
+```python
+from microbootstrap.settings import LitestarSettings
+
+
+class YourFastApiSettings(LitestarSettings):
     service_name: str
 
     prometheus_metrics_path: str = "/metrics"
@@ -237,10 +269,11 @@ class YourSettings(BaseServiceSettings):
     ... # Other settings here
 ```
 
-These settings are subsequently passed to the [prometheus-client](https://pypi.org/project/prometheus-client/) package.
-The underlying top-level Prometheus library may vary from framework to framework, but in general, a metrics handler will be available at the provided path.
+Parameters description:
 
-By default, metrics are accessible at the `/metrics` path.
+- `service_name` - will be attached to metric's names, there are no name restrictions.
+- `prometheus_metrics_path` - path to metrics handler.
+- `prometheus_additional_params` - will be passed to `litestar.contrib.prometheus.PrometheusConfig`.
 
 ### Opentelemetry
 
@@ -250,7 +283,7 @@ To bootstrap Opentelemetry, you must provide several parameters:
 - `service_version`
 - `opentelemetry_endpoint`
 - `opentelemetry_namespace`
-- `opentelemetry_container_name`.
+- `opentelemetry_container_name`
 
 However, additional parameters can also be supplied if needed.
 
@@ -267,11 +300,22 @@ class YourSettings(BaseServiceSettings):
     opentelemetry_endpoint: str | None = None
     opentelemetry_namespace: str | None = None
     opentelemetry_insecure: bool = True
-    opentelemetry_insrtumentors: list[OpenTelemetryInstrumentor] = []
+    opentelemetry_instrumentors: list[OpenTelemetryInstrumentor] = []
     opentelemetry_exclude_urls: list[str] = []
 
     ... # Other settings here
 ```
+
+Parameters description:
+
+- `service_name` - will be passed to the `Resource`.
+- `service_version` - will be passed to the `Resource`.
+- `opentelemetry_endpoint` - will be passed to `OTLPSpanExporter` as endpoint.
+- `opentelemetry_namespace` - will be passed to the `Resource`.
+- `opentelemetry_insecure` - is opentelemetry connection secure.
+- `opentelemetry_container_name` - will be passed to the `Resource`.
+- `opentelemetry_instrumentors` - a list of extra instrumentors.
+- `opentelemetry_exclude_urls` - list of ignored urls.
 
 These settings are subsequently passed to [opentelemetry](https://opentelemetry.io/), finalizing your Opentelemetry integration.
 
@@ -299,7 +343,7 @@ class YourSettings(BaseServiceSettings):
     logging_exclude_endpoints: list[str] = []
 ```
 
-Parameter descriptions:
+Parameters description:
 
 - `logging_log_level` - The default log level.
 - `logging_flush_level` - All messages will be flushed from the buffer when a log with this level appears.
