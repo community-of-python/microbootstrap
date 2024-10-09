@@ -32,7 +32,6 @@ def create_granian_server(
         address=settings.server_host,
         port=settings.server_port,
         interface=Interfaces.ASGI,
-        loop=Loops.uvloop,
         workers=settings.server_workers_count,
         log_level=GRANIAN_LOG_LEVELS_MAP[getattr(settings, "logging_log_level", logging.INFO)],
         reload=settings.server_reload,
