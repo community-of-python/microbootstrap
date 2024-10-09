@@ -3,7 +3,7 @@ import logging
 import typing
 
 import granian
-from granian.constants import Interfaces, Loops
+from granian.constants import Interfaces
 from granian.log import LogLevels
 
 
