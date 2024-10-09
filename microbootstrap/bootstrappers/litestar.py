@@ -3,22 +3,20 @@ import typing
 
 import litestar
 import litestar.types
-import sentry_sdk
 import typing_extensions
-from litestar import openapi, status_codes
-from litestar.config.app import AppConfig as LitestarConfig
+from litestar import openapi
 from litestar.config.cors import CORSConfig as LitestarCorsConfig
 from litestar.contrib.opentelemetry.config import OpenTelemetryConfig as LitestarOpentelemetryConfig
-from litestar.contrib.prometheus import PrometheusConfig as LitestarPrometheusConfig
-from litestar.contrib.prometheus import PrometheusController
-from litestar.exceptions.http_exceptions import HTTPException
+from litestar.contrib.prometheus import PrometheusConfig, PrometheusController
 from litestar_offline_docs import generate_static_files_config
+from sentry_sdk.integrations.litestar import LitestarIntegration
 
 from microbootstrap.bootstrappers.base import ApplicationBootstrapper
+from microbootstrap.config.litestar import LitestarConfig
 from microbootstrap.instruments.cors_instrument import CorsInstrument
 from microbootstrap.instruments.logging_instrument import LoggingInstrument
 from microbootstrap.instruments.opentelemetry_instrument import OpentelemetryInstrument
-from microbootstrap.instruments.prometheus_instrument import PrometheusInstrument
+from microbootstrap.instruments.prometheus_instrument import LitestarPrometheusConfig, PrometheusInstrument
 from microbootstrap.instruments.sentry_instrument import SentryInstrument
 from microbootstrap.instruments.swagger_instrument import SwaggerInstrument
 from microbootstrap.middlewares.litestar import build_litestar_logging_middleware
@@ -41,19 +39,13 @@ class LitestarBootstrapper(
 
 @LitestarBootstrapper.use_instrument()
 class LitestarSentryInstrument(SentryInstrument):
-    @staticmethod
-    async def sentry_exception_catcher_hook(
-        exception: Exception,
-        _request_scope: litestar.types.Scope,
-    ) -> None:
-        if (
-            not isinstance(exception, HTTPException)
-            or exception.status_code >= status_codes.HTTP_500_INTERNAL_SERVER_ERROR
-        ):
-            sentry_sdk.capture_exception(exception)
-
-    def bootstrap_before(self) -> dict[str, typing.Any]:
-        return {"after_exception": [self.sentry_exception_catcher_hook]}
+    def bootstrap(self) -> None:
+        for sentry_integration in self.instrument_config.sentry_integrations:
+            if isinstance(sentry_integration, LitestarIntegration):
+                break
+        else:
+            self.instrument_config.sentry_integrations.append(LitestarIntegration())
+        super().bootstrap()
 
 
 @LitestarBootstrapper.use_instrument()
@@ -123,15 +115,19 @@ class LitestarLoggingInstrument(LoggingInstrument):
 
 
 @LitestarBootstrapper.use_instrument()
-class LitestarPrometheusInstrument(PrometheusInstrument):
+class LitestarPrometheusInstrument(PrometheusInstrument[LitestarPrometheusConfig]):
     def bootstrap_before(self) -> dict[str, typing.Any]:
         class LitestarPrometheusController(PrometheusController):
             path = self.instrument_config.prometheus_metrics_path
             openmetrics_format = True
 
-        litestar_prometheus_config: typing.Final = LitestarPrometheusConfig(
+        litestar_prometheus_config: typing.Final = PrometheusConfig(
             app_name=self.instrument_config.service_name,
             **self.instrument_config.prometheus_additional_params,
         )
 
         return {"route_handlers": [LitestarPrometheusController], "middleware": [litestar_prometheus_config.middleware]}
+
+    @classmethod
+    def get_config_type(cls) -> type[LitestarPrometheusConfig]:
+        return LitestarPrometheusConfig

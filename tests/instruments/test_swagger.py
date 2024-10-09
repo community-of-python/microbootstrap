@@ -1,10 +1,13 @@
 import typing
 
+import fastapi
 import litestar
+from httpx import AsyncClient
 from litestar import openapi, status_codes
 from litestar.static_files import StaticFilesConfig
 from litestar.testing import AsyncTestClient
 
+from microbootstrap.bootstrappers.fastapi import FastApiSwaggerInstrument
 from microbootstrap.bootstrappers.litestar import LitestarSwaggerInstrument
 from microbootstrap.instruments.swagger_instrument import SwaggerConfig, SwaggerInstrument
 
@@ -94,6 +97,49 @@ async def test_litestar_swagger_bootstrap_working_offline_docs(
     )
 
     async with AsyncTestClient(app=litestar_application) as async_client:
+        response = await async_client.get(minimal_swagger_config.swagger_path)
+        assert response.status_code == status_codes.HTTP_200_OK
+        response = await async_client.get(f"{minimal_swagger_config.service_static_path}/swagger-ui.css")
+        assert response.status_code == status_codes.HTTP_200_OK
+
+
+def test_fastapi_swagger_bootstrap_online_docs(minimal_swagger_config: SwaggerConfig) -> None:
+    swagger_instrument: typing.Final = FastApiSwaggerInstrument(minimal_swagger_config)
+    bootstrap_result: typing.Final = swagger_instrument.bootstrap_before()
+    assert bootstrap_result["title"] == minimal_swagger_config.service_name
+    assert bootstrap_result["description"] == minimal_swagger_config.service_description
+    assert bootstrap_result["docs_url"] == minimal_swagger_config.swagger_path
+    assert bootstrap_result["version"] == minimal_swagger_config.service_version
+
+
+async def test_fastapi_swagger_bootstrap_working_online_docs(
+    minimal_swagger_config: SwaggerConfig,
+) -> None:
+    minimal_swagger_config.swagger_path = "/my-docs-path"
+    swagger_instrument: typing.Final = FastApiSwaggerInstrument(minimal_swagger_config)
+
+    swagger_instrument.bootstrap()
+    fastapi_application: typing.Final = fastapi.FastAPI(
+        **swagger_instrument.bootstrap_before(),
+    )
+
+    async with AsyncClient(app=fastapi_application, base_url="http://testserver") as async_client:
+        response: typing.Final = await async_client.get(minimal_swagger_config.swagger_path)
+        assert response.status_code == status_codes.HTTP_200_OK
+
+
+async def test_fastapi_swagger_bootstrap_working_offline_docs(
+    minimal_swagger_config: SwaggerConfig,
+) -> None:
+    minimal_swagger_config.service_static_path = "/my-static-path"
+    minimal_swagger_config.swagger_offline_docs = True
+    swagger_instrument: typing.Final = FastApiSwaggerInstrument(minimal_swagger_config)
+    fastapi_application = fastapi.FastAPI(
+        **swagger_instrument.bootstrap_before(),
+    )
+    swagger_instrument.bootstrap_after(fastapi_application)
+
+    async with AsyncClient(app=fastapi_application, base_url="http://testserver") as async_client:
         response = await async_client.get(minimal_swagger_config.swagger_path)
         assert response.status_code == status_codes.HTTP_200_OK
         response = await async_client.get(f"{minimal_swagger_config.service_static_path}/swagger-ui.css")

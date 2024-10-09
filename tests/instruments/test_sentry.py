@@ -1,10 +1,14 @@
+import contextlib
 import typing
-from unittest.mock import MagicMock
+from unittest.mock import patch
 
+import fastapi
 import litestar
+from httpx import AsyncClient
 from litestar.testing import AsyncTestClient
 
 from microbootstrap import SentryConfig
+from microbootstrap.bootstrappers.fastapi import FastApiSentryInstrument
 from microbootstrap.bootstrappers.litestar import LitestarSentryInstrument
 from microbootstrap.instruments.sentry_instrument import SentryInstrument
 
@@ -37,30 +41,8 @@ def test_sentry_teardown(
 
 def test_litestar_sentry_bootstrap(minimal_sentry_config: SentryConfig) -> None:
     sentry_instrument: typing.Final = LitestarSentryInstrument(minimal_sentry_config)
-
     sentry_instrument.bootstrap()
-    assert sentry_instrument.bootstrap_before() == {
-        "after_exception": [sentry_instrument.sentry_exception_catcher_hook],
-    }
-
-
-async def test_litestar_sentry_bootstrap_working(minimal_sentry_config: SentryConfig, magic_mock: MagicMock) -> None:
-    sentry_instrument: typing.Final = LitestarSentryInstrument(minimal_sentry_config)
-    sentry_instrument.sentry_exception_catcher_hook = magic_mock  # type: ignore[method-assign]
-
-    @litestar.get("/test-error-handler")
-    async def error_handler() -> None:
-        raise ValueError("I'm test error")
-
-    sentry_instrument.bootstrap()
-    litestar_application: typing.Final = litestar.Litestar(
-        route_handlers=[error_handler],
-        **sentry_instrument.bootstrap_before(),
-    )
-
-    async with AsyncTestClient(app=litestar_application) as async_client:
-        await async_client.get("/test-error-handler")
-        assert magic_mock.called
+    assert sentry_instrument.bootstrap_before() == {}
 
 
 async def test_litestar_sentry_bootstrap_catch_exception(
@@ -73,10 +55,33 @@ async def test_litestar_sentry_bootstrap_catch_exception(
         raise ValueError("I'm test error")
 
     sentry_instrument.bootstrap()
-    litestar_application: typing.Final = litestar.Litestar(
-        route_handlers=[error_handler],
-        **sentry_instrument.bootstrap_before(),
-    )
+    litestar_application: typing.Final = litestar.Litestar(route_handlers=[error_handler])
+    with patch("sentry_sdk.Scope.capture_event") as mock_capture_event:
+        async with AsyncTestClient(app=litestar_application) as async_client:
+            await async_client.get("/test-error-handler")
 
-    async with AsyncTestClient(app=litestar_application) as async_client:
-        await async_client.get("/test-error-handler")
+        assert mock_capture_event.called
+
+
+def test_fastapi_sentry_bootstrap(minimal_sentry_config: SentryConfig) -> None:
+    sentry_instrument: typing.Final = FastApiSentryInstrument(minimal_sentry_config)
+    sentry_instrument.bootstrap()
+    assert sentry_instrument.bootstrap_before() == {}
+
+
+async def test_fastapi_sentry_bootstrap_catch_exception(
+    minimal_sentry_config: SentryConfig,
+) -> None:
+    sentry_instrument: typing.Final = FastApiSentryInstrument(minimal_sentry_config)
+    app = fastapi.FastAPI()
+
+    @app.get("/test-error-handler")
+    async def error_handler() -> None:
+        raise ValueError("I'm test error")
+
+    sentry_instrument.bootstrap()
+    with patch("sentry_sdk.Scope.capture_event") as mock_capture_event:
+        with contextlib.suppress(ValueError):
+            async with AsyncClient(app=app) as async_client:
+                await async_client.get("/test-error-handler")
+        assert mock_capture_event.called

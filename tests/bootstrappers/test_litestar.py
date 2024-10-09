@@ -1,23 +1,25 @@
-import typing
+import typing  # noqa: I001
 from unittest.mock import MagicMock
 
 import litestar
 from litestar import status_codes
-from litestar.config.app import AppConfig
 from litestar.middleware.base import MiddlewareProtocol
 from litestar.testing import AsyncTestClient
 from litestar.types import ASGIApp, Receive, Scope, Send
 
-from microbootstrap import LitestarSettings, PrometheusConfig
+from microbootstrap import LitestarSettings, LitestarPrometheusConfig
 from microbootstrap.bootstrappers.litestar import LitestarBootstrapper
+from microbootstrap.config.litestar import LitestarConfig
+from microbootstrap.bootstrappers.fastapi import FastApiBootstrapper  # noqa: F401
 
 
 async def test_litestar_configure_instrument() -> None:
     test_metrics_path: typing.Final = "/test-metrics-path"
+
     application: typing.Final = (
         LitestarBootstrapper(LitestarSettings())
         .configure_instrument(
-            PrometheusConfig(prometheus_metrics_path=test_metrics_path),
+            LitestarPrometheusConfig(prometheus_metrics_path=test_metrics_path),
         )
         .bootstrap()
     )
@@ -32,7 +34,7 @@ async def test_litestar_configure_instruments() -> None:
     application: typing.Final = (
         LitestarBootstrapper(LitestarSettings())
         .configure_instruments(
-            PrometheusConfig(prometheus_metrics_path=test_metrics_path),
+            LitestarPrometheusConfig(prometheus_metrics_path=test_metrics_path),
         )
         .bootstrap()
     )
@@ -43,7 +45,7 @@ async def test_litestar_configure_instruments() -> None:
 
 
 async def test_litestar_configure_application_add_handler() -> None:
-    test_handler_path: typing.Final = "/test-handler"
+    test_handler_path: typing.Final = "/test-handler1"
     test_response: typing.Final = {"hello": "world"}
 
     @litestar.get(test_handler_path)
@@ -52,7 +54,7 @@ async def test_litestar_configure_application_add_handler() -> None:
 
     application: typing.Final = (
         LitestarBootstrapper(LitestarSettings())
-        .configure_application(AppConfig(route_handlers=[test_handler]))
+        .configure_application(LitestarConfig(route_handlers=[test_handler]))
         .bootstrap()
     )
 
@@ -79,7 +81,7 @@ async def test_litestar_configure_application_add_middleware(magic_mock: MagicMo
 
     application: typing.Final = (
         LitestarBootstrapper(LitestarSettings())
-        .configure_application(AppConfig(route_handlers=[test_handler], middleware=[TestMiddleware]))
+        .configure_application(LitestarConfig(route_handlers=[test_handler], middleware=[TestMiddleware]))
         .bootstrap()
     )
 

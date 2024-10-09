@@ -7,14 +7,26 @@ from microbootstrap.helpers import is_valid_path
 from microbootstrap.instruments.base import BaseInstrumentConfig, Instrument
 
 
-class PrometheusConfig(BaseInstrumentConfig):
+PrometheusConfigT = typing.TypeVar("PrometheusConfigT", bound="BasePrometheusConfig")
+
+
+class BasePrometheusConfig(BaseInstrumentConfig):
     service_name: str = "micro-service"
 
     prometheus_metrics_path: str = "/metrics"
+
+
+class LitestarPrometheusConfig(BasePrometheusConfig):
     prometheus_additional_params: dict[str, typing.Any] = pydantic.Field(default_factory=dict)
 
 
-class PrometheusInstrument(Instrument[PrometheusConfig]):
+class FastApiPrometheusConfig(BasePrometheusConfig):
+    prometheus_instrumentator_params: dict[str, typing.Any] = pydantic.Field(default_factory=dict)
+    prometheus_instrument_params: dict[str, typing.Any] = pydantic.Field(default_factory=dict)
+    prometheus_expose_params: dict[str, typing.Any] = pydantic.Field(default_factory=dict)
+
+
+class PrometheusInstrument(Instrument[PrometheusConfigT]):
     instrument_name = "Prometheus"
     ready_condition = "Provide metrics_path for metrics exposure"
 
@@ -24,5 +36,5 @@ class PrometheusInstrument(Instrument[PrometheusConfig]):
         )
 
     @classmethod
-    def get_config_type(cls) -> type[PrometheusConfig]:
-        return PrometheusConfig
+    def get_config_type(cls) -> type[BasePrometheusConfig]:
+        return BasePrometheusConfig
