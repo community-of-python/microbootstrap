@@ -7,7 +7,7 @@ import microbootstrap.settings
 
 
 @pytest.fixture
-def reset_reloaded_settings_module() -> typing.Iterator[None]:
+def _reset_reloaded_settings_module() -> typing.Iterator[None]:
     yield
     importlib.reload(microbootstrap.settings)
 
