@@ -97,7 +97,6 @@ from microbootstrap import LitestarSettings
 
 class YourSettings(LitestarSettings):
     # General settings
-    service_debug: bool = False
     service_name: str = "my-awesome-service"
 
     # Sentry settings
@@ -140,7 +139,6 @@ Example:
 
 ```python
 class YourSettings(BaseServiceSettings):
-    service_debug: bool = True
     service_name: str = "micro-service"
 
     your_awesome_parameter: str = "really awesome"
@@ -171,7 +169,6 @@ from microbootstrap.settings import BaseServiceSettings
 
 
 class ServiceSettings(BaseServiceSettings):
-    service_debug: bool = True
     service_environment: str | None = None
     service_name: str = "micro-service"
     service_description: str = "Micro service description"
@@ -324,7 +321,7 @@ These settings are subsequently passed to [opentelemetry](https://opentelemetry.
 <b>microbootstrap</b> provides in-memory JSON logging through the use of [structlog](https://pypi.org/project/structlog/).  
 For more information on in-memory logging, refer to [MemoryHandler](https://docs.python.org/3/library/logging.handlers.html#memoryhandler).
 
-To utilize this feature, your application must be in non-debug mode, meaning `service_debug` should be set to `False`.
+To utilize this feature, your application must be in non-debug mode, meaning `service_debug` should be set to `False`, which is the default.
 
 ```python
 import logging
