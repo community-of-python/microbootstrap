@@ -210,6 +210,7 @@ class YourSettings(BaseServiceSettings):
     sentry_traces_sample_rate: float | None = None
     sentry_sample_rate: float = pydantic.Field(default=1.0, le=1.0, ge=0.0)
     sentry_max_breadcrumbs: int = 15
+    sentry_max_value_length: int = 16384
     sentry_attach_stacktrace: bool = True
     sentry_integrations: list[Integration] = []
     sentry_additional_params: dict[str, typing.Any] = {}
