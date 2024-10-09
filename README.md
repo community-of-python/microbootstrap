@@ -17,7 +17,7 @@ from microbootstrap import LitestarSettings
 
 
 class YourSettings(LitestarSettings):
-    # Your settings are stored here
+    ...  # Your settings are stored here
 
 
 settings = YourSettings()
