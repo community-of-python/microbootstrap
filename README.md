@@ -69,7 +69,7 @@ Interested? Let's dive right in ⚡
 
 ## Installation
 
-You can install the package using either `pip` or `poetry`.  
+You can install the package using either `pip` or `poetry`.
 Also, you can specify extras during installation for concrete framework:
 
 - `fastapi`
@@ -196,7 +196,7 @@ Let's clarify the process required to bootstrap these instruments.
 
 ### Sentry
 
-To bootstrap Sentry, you must provide at least the `sentry_dsn`.  
+To bootstrap Sentry, you must provide at least the `sentry_dsn`.
 Additional parameters can also be supplied through the settings object.
 
 ```python
@@ -321,7 +321,7 @@ These settings are subsequently passed to [opentelemetry](https://opentelemetry.
 
 ### Logging
 
-<b>microbootstrap</b> provides in-memory JSON logging through the use of [structlog](https://pypi.org/project/structlog/).  
+<b>microbootstrap</b> provides in-memory JSON logging through the use of [structlog](https://pypi.org/project/structlog/).
 For more information on in-memory logging, refer to [MemoryHandler](https://docs.python.org/3/library/logging.handlers.html#memoryhandler).
 
 To utilize this feature, your application must be in non-debug mode, meaning `service_debug` should be set to `False`.
@@ -531,8 +531,9 @@ application: litestar.Litestar = (
 
 ## Advanced
 
-If you need a specific instrument, you can create your own.
-Essentially, an `Instrument` is just a class with some abstract methods. Each instrument uses a certain configuration, which is the first thing you need to define.
+If you miss some instrument, you can add your own.
+Essentialy, `Instrument` is just a class with some abstractmethods.
+Every instrument uses some config, so that's first thing, you have to define.
 
 ```python
 from microbootstrap.instruments.base import BaseInstrumentConfig

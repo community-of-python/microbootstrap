@@ -96,7 +96,7 @@ class LitestarCorsInstrument(CorsInstrument):
 
 
 @LitestarBootstrapper.use_instrument()
-class LitetstarOpentelemetryInstrument(OpentelemetryInstrument):
+class LitestarOpentelemetryInstrument(OpentelemetryInstrument):
     def bootstrap_before(self) -> dict[str, typing.Any]:
         return {
             "middleware": [

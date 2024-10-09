@@ -26,7 +26,7 @@ class OpentelemetryConfig(BaseInstrumentConfig):
     opentelemetry_endpoint: str | None = None
     opentelemetry_namespace: str | None = None
     opentelemetry_insecure: bool = pydantic.Field(default=True)
-    opentelemetry_insrtumentors: list[OpenTelemetryInstrumentor] = pydantic.Field(default_factory=list)
+    opentelemetry_instrumentors: list[OpenTelemetryInstrumentor] = pydantic.Field(default_factory=list)
     opentelemetry_exclude_urls: list[str] = pydantic.Field(default=[])
 
 
@@ -46,7 +46,7 @@ class OpentelemetryInstrument(Instrument[OpentelemetryConfig]):
         )
 
     def teardown(self) -> None:
-        for instrumentor_with_params in self.instrument_config.opentelemetry_insrtumentors:
+        for instrumentor_with_params in self.instrument_config.opentelemetry_instrumentors:
             instrumentor_with_params.instrumentor.uninstrument(**instrumentor_with_params.additional_params)
 
     def bootstrap(self) -> None:
@@ -69,7 +69,7 @@ class OpentelemetryInstrument(Instrument[OpentelemetryConfig]):
                 ),
             ),
         )
-        for opentelemetry_instrumentor in self.instrument_config.opentelemetry_insrtumentors:
+        for opentelemetry_instrumentor in self.instrument_config.opentelemetry_instrumentors:
             opentelemetry_instrumentor.instrumentor.instrument(
                 tracer_provider=self.tracer_provider,
                 **opentelemetry_instrumentor.additional_params,
