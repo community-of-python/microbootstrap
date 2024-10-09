@@ -36,5 +36,5 @@ class PrometheusInstrument(Instrument[PrometheusConfigT]):
         )
 
     @classmethod
-    def get_config_type(cls) -> type[BasePrometheusConfig]:
-        return BasePrometheusConfig
+    def get_config_type(cls) -> type[PrometheusConfigT]:
+        return BasePrometheusConfig  # type: ignore[return-value]
