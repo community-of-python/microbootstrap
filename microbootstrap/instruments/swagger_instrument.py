@@ -14,7 +14,7 @@ class SwaggerConfig(BaseInstrumentConfig):
     service_static_path: str = "/static"
 
     swagger_path: str = "/docs"
-    swagger_offline_docs: bool = False
+    swagger_offline_docs: bool = True
     swagger_extra_params: dict[str, typing.Any] = pydantic.Field(default_factory=dict)
 
 
