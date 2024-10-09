@@ -1,9 +1,10 @@
 import contextlib
 import typing
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
 import fastapi
 import litestar
+import pytest
 from httpx import AsyncClient
 from litestar.middleware.base import DefineMiddleware
 from litestar.testing import AsyncTestClient
@@ -59,7 +60,7 @@ def test_litestar_opentelemetry_bootstrap(
     assert isinstance(opentelemetry_bootstrap_result["middleware"][0], DefineMiddleware)
 
 
-def test_litestar_opentelemetry_terdown(
+def test_litestar_opentelemetry_teardown(
     minimal_opentelemetry_config: OpentelemetryConfig,
     magic_mock: MagicMock,
 ) -> None:
@@ -98,8 +99,10 @@ async def test_litestar_opentelemetry_bootstrap_working(
 
 
 async def test_fastapi_opentelemetry_bootstrap_working(
-    minimal_opentelemetry_config: OpentelemetryConfig,
+    minimal_opentelemetry_config: OpentelemetryConfig, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    monkeypatch.setattr("opentelemetry.sdk.trace.TracerProvider.shutdown", Mock())
+
     opentelemetry_instrument: typing.Final = FastApiOpentelemetryInstrument(minimal_opentelemetry_config)
     opentelemetry_instrument.bootstrap()
     fastapi_application: typing.Final = opentelemetry_instrument.bootstrap_after(fastapi.FastAPI())
