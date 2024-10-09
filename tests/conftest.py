@@ -62,7 +62,7 @@ def minimal_swagger_config() -> SwaggerConfig:
 
 
 @pytest.fixture
-def minimal_cors_config() -> SwaggerConfig:
+def minimal_cors_config() -> CorsConfig:
     return CorsConfig(cors_allowed_origins=["*"])
 
 
