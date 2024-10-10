@@ -1,9 +1,12 @@
 from __future__ import annotations
+import importlib
+import typing
 from unittest.mock import AsyncMock, MagicMock
 
 import litestar
 import pytest
 
+import microbootstrap.settings
 from microbootstrap import (
     FastApiPrometheusConfig,
     LitestarPrometheusConfig,
@@ -95,3 +98,9 @@ def async_mock() -> AsyncMock:
 @pytest.fixture
 def console_writer() -> ConsoleWriter:
     return ConsoleWriter(writer_enabled=False)
+
+
+@pytest.fixture
+def reset_reloaded_settings_module() -> typing.Iterator[None]:
+    yield
+    importlib.reload(microbootstrap.settings)
