@@ -1,9 +1,12 @@
 from __future__ import annotations
+import importlib
+import typing
 from unittest.mock import AsyncMock, MagicMock
 
 import litestar
 import pytest
 
+import microbootstrap.settings
 from microbootstrap import (
     FastApiPrometheusConfig,
     LitestarPrometheusConfig,
@@ -26,47 +29,47 @@ def anyio_backend() -> str:
     return "asyncio"
 
 
-@pytest.fixture()
+@pytest.fixture
 def default_litestar_app() -> litestar.Litestar:
     return litestar.Litestar()
 
 
-@pytest.fixture()
+@pytest.fixture
 def minimal_sentry_config() -> SentryConfig:
     return SentryConfig(sentry_dsn="https://examplePublicKey@o0.ingest.sentry.io/0")
 
 
-@pytest.fixture()
+@pytest.fixture
 def minimal_logging_config() -> LoggingConfig:
     return LoggingConfig(service_debug=False)
 
 
-@pytest.fixture()
+@pytest.fixture
 def minimal_base_prometheus_config() -> BasePrometheusConfig:
     return BasePrometheusConfig()
 
 
-@pytest.fixture()
+@pytest.fixture
 def minimal_fastapi_prometheus_config() -> FastApiPrometheusConfig:
     return FastApiPrometheusConfig()
 
 
-@pytest.fixture()
+@pytest.fixture
 def minimal_litestar_prometheus_config() -> LitestarPrometheusConfig:
     return LitestarPrometheusConfig()
 
 
-@pytest.fixture()
+@pytest.fixture
 def minimal_swagger_config() -> SwaggerConfig:
     return SwaggerConfig()
 
 
-@pytest.fixture()
-def minimal_cors_config() -> SwaggerConfig:
+@pytest.fixture
+def minimal_cors_config() -> CorsConfig:
     return CorsConfig(cors_allowed_origins=["*"])
 
 
-@pytest.fixture()
+@pytest.fixture
 def minimal_opentelemetry_config() -> OpentelemetryConfig:
     return OpentelemetryConfig(
         service_name="test-micro-service",
@@ -77,21 +80,27 @@ def minimal_opentelemetry_config() -> OpentelemetryConfig:
     )
 
 
-@pytest.fixture()
+@pytest.fixture
 def base_settings() -> BaseServiceSettings:
     return BaseServiceSettings()
 
 
-@pytest.fixture()
+@pytest.fixture
 def magic_mock() -> MagicMock:
     return MagicMock()
 
 
-@pytest.fixture()
+@pytest.fixture
 def async_mock() -> AsyncMock:
     return AsyncMock()
 
 
-@pytest.fixture()
+@pytest.fixture
 def console_writer() -> ConsoleWriter:
     return ConsoleWriter(writer_enabled=False)
+
+
+@pytest.fixture
+def reset_reloaded_settings_module() -> typing.Iterator[None]:
+    yield
+    importlib.reload(microbootstrap.settings)
