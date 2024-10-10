@@ -1,15 +1,11 @@
 import importlib
-import typing
 
 import pytest
 
 import microbootstrap.settings
 
 
-@pytest.fixture
-def _reset_reloaded_settings_module() -> typing.Iterator[None]:
-    yield
-    importlib.reload(microbootstrap.settings)
+pytestmark = [pytest.mark.usefixtures("reset_reloaded_settings_module")]
 
 
 @pytest.mark.parametrize("alias", ["SERVICE_NAME", "MY_SERVICE_SERVICE_NAME"])
