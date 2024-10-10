@@ -39,6 +39,7 @@ def test_swagger_teardown(
 
 
 def test_litestar_swagger_bootstrap_online_docs(minimal_swagger_config: SwaggerConfig) -> None:
+    minimal_swagger_config.swagger_offline_docs = False
     swagger_instrument: typing.Final = LitestarSwaggerInstrument(minimal_swagger_config)
 
     swagger_instrument.bootstrap()
@@ -52,7 +53,6 @@ def test_litestar_swagger_bootstrap_online_docs(minimal_swagger_config: SwaggerC
 
 
 def test_litestar_swagger_bootstrap_offline_docs(minimal_swagger_config: SwaggerConfig) -> None:
-    minimal_swagger_config.swagger_offline_docs = True
     swagger_instrument: typing.Final = LitestarSwaggerInstrument(minimal_swagger_config)
 
     swagger_instrument.bootstrap()
@@ -72,6 +72,7 @@ async def test_litestar_swagger_bootstrap_working_online_docs(
     minimal_swagger_config: SwaggerConfig,
 ) -> None:
     minimal_swagger_config.swagger_path = "/my-docs-path"
+    minimal_swagger_config.swagger_offline_docs = False
     swagger_instrument: typing.Final = LitestarSwaggerInstrument(minimal_swagger_config)
 
     swagger_instrument.bootstrap()
@@ -88,7 +89,6 @@ async def test_litestar_swagger_bootstrap_working_offline_docs(
     minimal_swagger_config: SwaggerConfig,
 ) -> None:
     minimal_swagger_config.service_static_path = "/my-static-path"
-    minimal_swagger_config.swagger_offline_docs = True
     swagger_instrument: typing.Final = LitestarSwaggerInstrument(minimal_swagger_config)
 
     swagger_instrument.bootstrap()
@@ -116,6 +116,7 @@ async def test_fastapi_swagger_bootstrap_working_online_docs(
     minimal_swagger_config: SwaggerConfig,
 ) -> None:
     minimal_swagger_config.swagger_path = "/my-docs-path"
+    minimal_swagger_config.swagger_offline_docs = False
     swagger_instrument: typing.Final = FastApiSwaggerInstrument(minimal_swagger_config)
 
     swagger_instrument.bootstrap()
@@ -132,7 +133,6 @@ async def test_fastapi_swagger_bootstrap_working_offline_docs(
     minimal_swagger_config: SwaggerConfig,
 ) -> None:
     minimal_swagger_config.service_static_path = "/my-static-path"
-    minimal_swagger_config.swagger_offline_docs = True
     swagger_instrument: typing.Final = FastApiSwaggerInstrument(minimal_swagger_config)
     fastapi_application = fastapi.FastAPI(
         **swagger_instrument.bootstrap_before(),
