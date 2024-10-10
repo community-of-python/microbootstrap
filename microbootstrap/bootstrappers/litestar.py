@@ -52,16 +52,18 @@ class LitestarSentryInstrument(SentryInstrument):
 @LitestarBootstrapper.use_instrument()
 class LitestarSwaggerInstrument(SwaggerInstrument):
     def bootstrap_before(self) -> dict[str, typing.Any]:
-        swagger_render_plugin: typing.Final = (
-            SwaggerRenderPlugin(
-                js_url=f"{self.instrument_config.service_static_path}/swagger-ui-bundle.js",
-                css_url=f"{self.instrument_config.service_static_path}/swagger-ui.css",
-                standalone_preset_js_url=(
-                    f"{self.instrument_config.service_static_path}/swagger-ui-standalone-preset.js"
+        render_plugins: typing.Final = (
+            (
+                SwaggerRenderPlugin(
+                    js_url=f"{self.instrument_config.service_static_path}/swagger-ui-bundle.js",
+                    css_url=f"{self.instrument_config.service_static_path}/swagger-ui.css",
+                    standalone_preset_js_url=(
+                        f"{self.instrument_config.service_static_path}/swagger-ui-standalone-preset.js"
+                    ),
                 ),
             )
             if self.instrument_config.swagger_offline_docs
-            else SwaggerRenderPlugin()
+            else ()
         )
 
         openapi_config: typing.Final = openapi.OpenAPIConfig(
@@ -69,7 +71,7 @@ class LitestarSwaggerInstrument(SwaggerInstrument):
             title=self.instrument_config.service_name,
             version=self.instrument_config.service_version,
             description=self.instrument_config.service_description,
-            render_plugins=[swagger_render_plugin],
+            render_plugins=render_plugins,
             **self.instrument_config.swagger_extra_params,
         )
 
