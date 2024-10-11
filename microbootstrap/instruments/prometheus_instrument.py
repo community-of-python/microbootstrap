@@ -14,6 +14,7 @@ class BasePrometheusConfig(BaseInstrumentConfig):
     service_name: str = "micro-service"
 
     prometheus_metrics_path: str = "/metrics"
+    prometheus_metrics_include_in_schema: bool = False
 
 
 class LitestarPrometheusConfig(BasePrometheusConfig):
