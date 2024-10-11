@@ -63,27 +63,25 @@ class LitestarSwaggerInstrument(SwaggerInstrument):
                 ),
             )
             if self.instrument_config.swagger_offline_docs
-            else ()
+            else (SwaggerRenderPlugin(),)
         )
 
-        openapi_config: typing.Final = openapi.OpenAPIConfig(
-            path=self.instrument_config.swagger_path,
-            title=self.instrument_config.service_name,
-            version=self.instrument_config.service_version,
-            description=self.instrument_config.service_description,
-            render_plugins=render_plugins,
-            **self.instrument_config.swagger_extra_params,
-        )
+        all_swagger_params: typing.Final = {
+            "path": self.instrument_config.swagger_path,
+            "title": self.instrument_config.service_name,
+            "version": self.instrument_config.service_version,
+            "description": self.instrument_config.service_description,
+            "render_plugins": render_plugins,
+        } | self.instrument_config.swagger_extra_params
 
-        bootstrap_result: typing.Final = {}
+        bootstrap_result: typing.Final[dict[str, typing.Any]] = {
+            "openapi_config": openapi.OpenAPIConfig(**all_swagger_params)
+        }
         if self.instrument_config.swagger_offline_docs:
             bootstrap_result["static_files_config"] = [
                 generate_static_files_config(static_files_handler_path=self.instrument_config.service_static_path),
             ]
-        return {
-            **bootstrap_result,
-            "openapi_config": openapi_config,
-        }
+        return bootstrap_result
 
 
 @LitestarBootstrapper.use_instrument()
