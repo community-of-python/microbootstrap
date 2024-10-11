@@ -63,7 +63,7 @@ class LitestarSwaggerInstrument(SwaggerInstrument):
                 ),
             )
             if self.instrument_config.swagger_offline_docs
-            else SwaggerRenderPlugin()
+            else (SwaggerRenderPlugin(),)
         )
 
         all_swagger_params: typing.Final = {
