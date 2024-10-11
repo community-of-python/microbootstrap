@@ -126,7 +126,7 @@ class LitestarPrometheusInstrument(PrometheusInstrument[LitestarPrometheusConfig
     def bootstrap_before(self) -> dict[str, typing.Any]:
         class LitestarPrometheusController(PrometheusController):
             path = self.instrument_config.prometheus_metrics_path
-            include_in_schema = False
+            include_in_schema = self.instrument_config.prometheus_metrics_include_in_schema
             openmetrics_format = True
 
         litestar_prometheus_config: typing.Final = PrometheusConfig(
