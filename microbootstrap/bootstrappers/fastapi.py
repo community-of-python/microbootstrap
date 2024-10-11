@@ -106,6 +106,7 @@ class FastApiPrometheusInstrument(PrometheusInstrument[FastApiPrometheusConfig])
         ).expose(
             application,
             endpoint=self.instrument_config.prometheus_metrics_path,
+            include_in_schema=False,
             **self.instrument_config.prometheus_expose_params,
         )
         return application
