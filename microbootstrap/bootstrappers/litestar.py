@@ -77,12 +77,10 @@ class LitestarSwaggerInstrument(SwaggerInstrument):
         bootstrap_result: typing.Final[dict[str, typing.Any]] = {
             "openapi_config": openapi.OpenAPIConfig(**all_swagger_params)
         }
-
         if self.instrument_config.swagger_offline_docs:
             bootstrap_result["static_files_config"] = [
                 generate_static_files_config(static_files_handler_path=self.instrument_config.service_static_path),
             ]
-
         return bootstrap_result
 
 
