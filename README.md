@@ -233,6 +233,7 @@ class YourFastApiSettings(FastApiSettings):
     service_name: str
 
     prometheus_metrics_path: str = "/metrics"
+    prometheus_metrics_include_in_schema: bool = False
     prometheus_instrumentator_params: dict[str, typing.Any] = {}
     prometheus_instrument_params: dict[str, typing.Any] = {}
     prometheus_expose_params: dict[str, typing.Any] = {}
@@ -244,6 +245,7 @@ Parameters description:
 
 - `service_name` - will be attached to metric's names, but has to be named in [snake_case](https://en.wikipedia.org/wiki/Snake_case).
 - `prometheus_metrics_path` - path to metrics handler.
+- `prometheus_metrics_include_in_schema` - whether to include metrics route in OpenAPI schema.
 - `prometheus_instrumentator_params` - will be passed to `Instrumentor` during initialization.
 - `prometheus_instrument_params` - will be passed to `Instrumentor.instrument(...)`.
 - `prometheus_expose_params` - will be passed to `Instrumentor.expose(...)`.
