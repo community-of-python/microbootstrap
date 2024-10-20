@@ -1272,7 +1272,7 @@ files = [
 name = "msgspec"
 version = "0.18.6"
 description = "A fast serialization and validation library, with builtin support for JSON, MessagePack, YAML, and TOML."
-optional = false
+optional = true
 python-versions = ">=3.8"
 files = [
     {file = "msgspec-0.18.6-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:77f30b0234eceeff0f651119b9821ce80949b4d667ad38f3bfed0d0ebf9d6d8f"},
@@ -3012,4 +3012,4 @@ litestar = ["litestar", "litestar-offline-docs", "prometheus-client"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.9"
-content-hash = "08539566a5808f9a4ebc6c35c1057ad06f2da1f8316b6f395abb635eb1b74b37"
+content-hash = "49486bbab97ef7e3bc1d4bef8fc77c22d513668a848aee277aca86fd20536204"
