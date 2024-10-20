@@ -25,7 +25,6 @@ classifiers = [
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
-    "Programming Language :: Python :: 3.13",
 ]
 version = "0.4.4"
 description = "Package for bootstrapping new micro-services"
