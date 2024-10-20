@@ -28,11 +28,13 @@ class BaseServiceSettings(
     service_debug: bool = False
     service_environment: str | None = None
     service_name: str = pydantic.Field(
-        "micro-service", validation_alias=pydantic.AliasChoices("SERVICE_NAME", f"{ENV_PREFIX}SERVICE_NAME")
+        "micro-service",
+        validation_alias=pydantic.AliasChoices("SERVICE_NAME", f"{ENV_PREFIX}SERVICE_NAME"),
     )
     service_description: str = "Micro service description"
     service_version: str = pydantic.Field(
-        "1.0.0", validation_alias=pydantic.AliasChoices("CI_COMMIT_TAG", f"{ENV_PREFIX}SERVICE_VERSION")
+        "1.0.0",
+        validation_alias=pydantic.AliasChoices("CI_COMMIT_TAG", f"{ENV_PREFIX}SERVICE_VERSION"),
     )
     service_static_path: str = "/static"
 
@@ -50,24 +52,24 @@ class BaseServiceSettings(
 
 
 class LitestarSettings(
-    BaseServiceSettings,
     LoggingConfig,
     OpentelemetryConfig,
     SentryConfig,
     LitestarPrometheusConfig,
     SwaggerConfig,
     CorsConfig,
+    BaseServiceSettings,
 ):
     """Settings for a litestar botstrap."""
 
 
 class FastApiSettings(
-    BaseServiceSettings,
     LoggingConfig,
     OpentelemetryConfig,
     SentryConfig,
     FastApiPrometheusConfig,
     SwaggerConfig,
     CorsConfig,
+    BaseServiceSettings,
 ):
     """Settings for a fastapi botstrap."""

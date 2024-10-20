@@ -1,4 +1,5 @@
 from microbootstrap.instruments.cors_instrument import CorsConfig
+from microbootstrap.instruments.health_checks_instrument import HealthChecksConfig
 from microbootstrap.instruments.logging_instrument import LoggingConfig
 from microbootstrap.instruments.opentelemetry_instrument import OpentelemetryConfig
 from microbootstrap.instruments.prometheus_instrument import FastApiPrometheusConfig, LitestarPrometheusConfig
@@ -13,9 +14,9 @@ __all__ = (
     "FastApiPrometheusConfig",
     "LitestarPrometheusConfig",
     "LoggingConfig",
-    "LitestarBootstrapper",
     "LitestarSettings",
     "FastApiSettings",
     "CorsConfig",
     "SwaggerConfig",
+    "HealthChecksConfig",
 )

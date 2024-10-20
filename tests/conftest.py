@@ -16,6 +16,7 @@ from microbootstrap import (
 )
 from microbootstrap.console_writer import ConsoleWriter
 from microbootstrap.instruments.cors_instrument import CorsConfig
+from microbootstrap.instruments.health_checks_instrument import HealthChecksConfig
 from microbootstrap.instruments.prometheus_instrument import BasePrometheusConfig
 from microbootstrap.instruments.swagger_instrument import SwaggerConfig
 from microbootstrap.settings import BaseServiceSettings
@@ -67,6 +68,11 @@ def minimal_swagger_config() -> SwaggerConfig:
 @pytest.fixture
 def minimal_cors_config() -> CorsConfig:
     return CorsConfig(cors_allowed_origins=["*"])
+
+
+@pytest.fixture
+def minimal_health_checks_config() -> HealthChecksConfig:
+    return HealthChecksConfig()
 
 
 @pytest.fixture

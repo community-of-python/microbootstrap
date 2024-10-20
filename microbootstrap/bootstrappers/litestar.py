@@ -4,6 +4,7 @@ import typing
 import litestar
 import litestar.types
 import typing_extensions
+from health_checks.litestar_healthcheck import build_litestar_health_check_router
 from litestar import openapi
 from litestar.config.cors import CORSConfig as LitestarCorsConfig
 from litestar.contrib.opentelemetry.config import OpenTelemetryConfig as LitestarOpentelemetryConfig
@@ -15,6 +16,7 @@ from sentry_sdk.integrations.litestar import LitestarIntegration
 from microbootstrap.bootstrappers.base import ApplicationBootstrapper
 from microbootstrap.config.litestar import LitestarConfig
 from microbootstrap.instruments.cors_instrument import CorsInstrument
+from microbootstrap.instruments.health_checks_instrument import HealthChecksInstrument
 from microbootstrap.instruments.logging_instrument import LoggingInstrument
 from microbootstrap.instruments.opentelemetry_instrument import OpentelemetryInstrument
 from microbootstrap.instruments.prometheus_instrument import LitestarPrometheusConfig, PrometheusInstrument
@@ -75,7 +77,7 @@ class LitestarSwaggerInstrument(SwaggerInstrument):
         } | self.instrument_config.swagger_extra_params
 
         bootstrap_result: typing.Final[dict[str, typing.Any]] = {
-            "openapi_config": openapi.OpenAPIConfig(**all_swagger_params)
+            "openapi_config": openapi.OpenAPIConfig(**all_swagger_params),
         }
         if self.instrument_config.swagger_offline_docs:
             bootstrap_result["static_files_config"] = [
@@ -137,3 +139,16 @@ class LitestarPrometheusInstrument(PrometheusInstrument[LitestarPrometheusConfig
     @classmethod
     def get_config_type(cls) -> type[LitestarPrometheusConfig]:
         return LitestarPrometheusConfig
+
+
+@LitestarBootstrapper.use_instrument()
+class LitestarHealthChecksInstrument(HealthChecksInstrument):
+    def bootstrap_before(self) -> dict[str, typing.Any]:
+        return {
+            "route_handlers": [
+                build_litestar_health_check_router(
+                    self.health_check,
+                    self.instrument_config.health_checks_path,
+                ),
+            ],
+        }

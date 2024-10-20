@@ -4,6 +4,7 @@ import fastapi
 import typing_extensions
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi_offline_docs import enable_offline_docs
+from health_checks.fastapi_healthcheck import build_fastapi_health_check_router
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from prometheus_fastapi_instrumentator import Instrumentator
 from sentry_sdk.integrations.fastapi import FastApiIntegration
@@ -11,6 +12,7 @@ from sentry_sdk.integrations.fastapi import FastApiIntegration
 from microbootstrap.bootstrappers.base import ApplicationBootstrapper
 from microbootstrap.config.fastapi import FastApiConfig
 from microbootstrap.instruments.cors_instrument import CorsInstrument
+from microbootstrap.instruments.health_checks_instrument import HealthChecksInstrument
 from microbootstrap.instruments.logging_instrument import LoggingInstrument
 from microbootstrap.instruments.opentelemetry_instrument import OpentelemetryInstrument
 from microbootstrap.instruments.prometheus_instrument import FastApiPrometheusConfig, PrometheusInstrument
@@ -114,3 +116,12 @@ class FastApiPrometheusInstrument(PrometheusInstrument[FastApiPrometheusConfig])
     @classmethod
     def get_config_type(cls) -> type[FastApiPrometheusConfig]:
         return FastApiPrometheusConfig
+
+
+@FastApiBootstrapper.use_instrument()
+class FastApiHealthChecksInstrument(HealthChecksInstrument):
+    def bootstrap_after(self, application: fastapi.FastAPI) -> fastapi.FastAPI:
+        application.include_router(
+            build_fastapi_health_check_router(self.health_check, self.instrument_config.health_checks_path),
+        )
+        return application

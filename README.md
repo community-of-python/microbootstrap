@@ -41,6 +41,7 @@ With <b>microbootstrap</b>, you receive an application with lightweight built-in
 - `logging`
 - `cors`
 - `swagger` - with additional offline version support
+- `health checks` - with additional offline version support
 
 Those instruments can be bootstrapped for:
 
@@ -62,6 +63,7 @@ Interested? Let's dive right in ⚡
   - [Logging](#logging)
   - [CORS](#cors)
   - [Swagger](#swagger)
+  - [Health checks](#health-checks)
 - [Configuration](#configuration)
   - [Instruments configuration](#instruments-configuration)
   - [Application configuration](#application-configuration)
@@ -404,6 +406,27 @@ Parameter descriptions:
 - `swagger_path` - The path where the documentation can be found.
 - `swagger_offline_docs` - A boolean value that, when set to True, allows the Swagger JS bundles to be accessed offline. This is because the service starts to host via static.
 - `swagger_extra_params` - Additional parameters to pass into the OpenAPI configuration.
+
+### Health checks
+
+```python
+from microbootstrap.settings import BaseServiceSettings
+
+
+class YourSettings(BaseServiceSettings):
+    service_name: str = "micro-service"
+    service_version: str = "1.0.0"
+
+    health_checks_enabled: bool = True
+    health_checks_path: str = "/health/"
+```
+
+Parameter descriptions:
+
+- `service_name` - Will be displayed in health check response.
+- `service_version` - Will be displayed in health check response.
+- `health_checks_enabled` - Must be True to enable health checks.
+- `health_checks_path` - Path for health check handler.
 
 ## Configuration
 
