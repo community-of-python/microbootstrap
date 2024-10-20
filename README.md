@@ -41,7 +41,7 @@ With <b>microbootstrap</b>, you receive an application with lightweight built-in
 - `logging`
 - `cors`
 - `swagger` - with additional offline version support
-- `health checks` - with additional offline version support
+- `health-checks`
 
 Those instruments can be bootstrapped for:
 
