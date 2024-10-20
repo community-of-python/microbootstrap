@@ -8,6 +8,7 @@ import pydantic_settings
 from microbootstrap import (
     CorsConfig,
     FastApiPrometheusConfig,
+    HealthChecksConfig,
     LitestarPrometheusConfig,
     LoggingConfig,
     OpentelemetryConfig,
@@ -58,6 +59,7 @@ class LitestarSettings(
     LitestarPrometheusConfig,
     SwaggerConfig,
     CorsConfig,
+    HealthChecksConfig,
     BaseServiceSettings,
 ):
     """Settings for a litestar botstrap."""
@@ -70,6 +72,7 @@ class FastApiSettings(
     FastApiPrometheusConfig,
     SwaggerConfig,
     CorsConfig,
+    HealthChecksConfig,
     BaseServiceSettings,
 ):
     """Settings for a fastapi botstrap."""
