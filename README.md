@@ -326,7 +326,7 @@ These settings are subsequently passed to [opentelemetry](https://opentelemetry.
 <b>microbootstrap</b> provides in-memory JSON logging through the use of [structlog](https://pypi.org/project/structlog/).
 For more information on in-memory logging, refer to [MemoryHandler](https://docs.python.org/3/library/logging.handlers.html#memoryhandler).
 
-To utilize this feature, your application must be in non-debug mode, meaning `service_debug` should be set to `False`, which is the default.
+To utilize this feature, your application must be in non-debug mode, meaning `service_debug` should be set to `False`.
 
 ```python
 import logging
