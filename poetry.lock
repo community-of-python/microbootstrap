@@ -921,13 +921,13 @@ files = [
 
 [[package]]
 name = "health-checks"
-version = "1.0.0"
+version = "1.1.0"
 description = "Library for health checks"
 optional = false
 python-versions = "<4.0,>=3.9"
 files = [
-    {file = "health_checks-1.0.0-py3-none-any.whl", hash = "sha256:be2258f4d8f64a85ae47afbd28180f48a7555ebe93eb7854d86c5b7235ea3217"},
-    {file = "health_checks-1.0.0.tar.gz", hash = "sha256:bea8fbfc42af8a6ec39f68c9f9397049c4594d1f1879e91e1d627e219d31124e"},
+    {file = "health_checks-1.1.0-py3-none-any.whl", hash = "sha256:c5e9a91b3da3a75290cf57da2465ebd40b06d08654febc69d1d3f5341fecff2f"},
+    {file = "health_checks-1.1.0.tar.gz", hash = "sha256:c0f9457a7cdb2b43f7d67c85a935a3a5d2766b1b6b9b58807421b3caa11368eb"},
 ]
 
 [package.dependencies]
@@ -3042,4 +3042,4 @@ litestar = ["litestar", "litestar-offline-docs", "prometheus-client"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.9"
-content-hash = "9a68b146e222e62afda214abcb0b9bdca20de5a6bb1c2f2617718af9f7217a7a"
+content-hash = "86763ee469dbab64f82789c9a9911989d2392bff9f245f80de2c59b28489d8af"
