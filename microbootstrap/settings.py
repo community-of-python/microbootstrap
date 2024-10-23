@@ -53,6 +53,7 @@ class BaseServiceSettings(
 
 
 class LitestarSettings(
+    BaseServiceSettings,
     LoggingConfig,
     OpentelemetryConfig,
     SentryConfig,
@@ -60,12 +61,12 @@ class LitestarSettings(
     SwaggerConfig,
     CorsConfig,
     HealthChecksConfig,
-    BaseServiceSettings,
 ):
     """Settings for a litestar botstrap."""
 
 
 class FastApiSettings(
+    BaseServiceSettings,
     LoggingConfig,
     OpentelemetryConfig,
     SentryConfig,
@@ -73,6 +74,5 @@ class FastApiSettings(
     SwaggerConfig,
     CorsConfig,
     HealthChecksConfig,
-    BaseServiceSettings,
 ):
     """Settings for a fastapi botstrap."""
