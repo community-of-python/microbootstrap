@@ -99,6 +99,7 @@ from microbootstrap import LitestarSettings
 
 class YourSettings(LitestarSettings):
     # General settings
+    service_debug: bool = False
     service_name: str = "my-awesome-service"
 
     # Sentry settings
@@ -141,6 +142,7 @@ Example:
 
 ```python
 class YourSettings(BaseServiceSettings):
+    service_debug: bool = True
     service_name: str = "micro-service"
 
     your_awesome_parameter: str = "really awesome"
@@ -171,6 +173,7 @@ from microbootstrap.settings import BaseServiceSettings
 
 
 class ServiceSettings(BaseServiceSettings):
+    service_debug: bool = True
     service_environment: str | None = None
     service_name: str = "micro-service"
     service_description: str = "Micro service description"
