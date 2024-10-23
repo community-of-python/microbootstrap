@@ -422,6 +422,7 @@ class YourSettings(BaseServiceSettings):
 
     health_checks_enabled: bool = True
     health_checks_path: str = "/health/"
+    health_checks_include_in_schema: bool = False
 ```
 
 Parameter descriptions:
@@ -430,6 +431,7 @@ Parameter descriptions:
 - `service_version` - Will be displayed in health check response.
 - `health_checks_enabled` - Must be True to enable health checks.
 - `health_checks_path` - Path for health check handler.
+- `health_checks_include_in_schema` - Must be True to include `health_checks_path` (`/health/`) in OpenAPI schema.
 
 ## Configuration
 
@@ -558,7 +560,7 @@ application: litestar.Litestar = (
 ## Advanced
 
 If you miss some instrument, you can add your own.
-Essentialy, `Instrument` is just a class with some abstractmethods.
+Essentially, `Instrument` is just a class with some abstractmethods.
 Every instrument uses some config, so that's first thing, you have to define.
 
 ```python

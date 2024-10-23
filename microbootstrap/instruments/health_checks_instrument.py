@@ -11,6 +11,7 @@ class HealthChecksConfig(BaseInstrumentConfig):
 
     health_checks_enabled: bool = True
     health_checks_path: str = "/health/"
+    health_checks_include_in_schema: bool = False
 
 
 class HealthChecksInstrument(Instrument[HealthChecksConfig]):
