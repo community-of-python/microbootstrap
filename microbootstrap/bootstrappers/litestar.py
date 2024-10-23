@@ -147,8 +147,9 @@ class LitestarHealthChecksInstrument(HealthChecksInstrument):
         return {
             "route_handlers": [
                 build_litestar_health_check_router(
-                    self.health_check,
-                    self.instrument_config.health_checks_path,
+                    health_check=self.health_check,
+                    health_check_endpoint=self.instrument_config.health_checks_path,
+                    include_in_schema=self.instrument_config.health_checks_include_in_schema,
                 ),
             ],
         }

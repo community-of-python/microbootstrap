@@ -122,6 +122,10 @@ class FastApiPrometheusInstrument(PrometheusInstrument[FastApiPrometheusConfig])
 class FastApiHealthChecksInstrument(HealthChecksInstrument):
     def bootstrap_after(self, application: fastapi.FastAPI) -> fastapi.FastAPI:
         application.include_router(
-            build_fastapi_health_check_router(self.health_check, self.instrument_config.health_checks_path),
+            build_fastapi_health_check_router(
+                health_check=self.health_check,
+                health_check_endpoint=self.instrument_config.health_checks_path,
+                include_in_schema=self.instrument_config.health_checks_include_in_schema,
+            ),
         )
         return application
