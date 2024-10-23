@@ -116,7 +116,7 @@ class MemoryLoggerFactory(structlog.stdlib.LoggerFactory):
 
 
 class LoggingConfig(BaseInstrumentConfig):
-    service_debug: bool = True
+    service_debug: bool = False
 
     logging_log_level: int = logging.INFO
     logging_flush_level: int = logging.ERROR
