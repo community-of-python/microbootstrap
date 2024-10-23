@@ -26,7 +26,7 @@ ENV_PREFIX: typing.Final = os.getenv(ENV_PREFIX_VAR_NAME, "")
 class BaseServiceSettings(
     pydantic_settings.BaseSettings,
 ):
-    service_debug: bool = False
+    service_debug: bool = True
     service_environment: str | None = None
     service_name: str = pydantic.Field(
         "micro-service",
@@ -41,7 +41,7 @@ class BaseServiceSettings(
 
     server_host: str = "0.0.0.0"  # noqa: S104
     server_port: int = 8000
-    server_reload: bool = False
+    server_reload: bool = True
     server_workers_count: int = 1
 
     model_config = pydantic_settings.SettingsConfigDict(
