@@ -36,11 +36,13 @@ def merge_pydantic_configs(
     config_to_merge: PydanticConfigT,
     config_with_changes: PydanticConfigT,
 ) -> PydanticConfigT:
+    initial_fields: typing.Final = dict(config_to_merge)
     changed_fields: typing.Final = {
         one_field_name: getattr(config_with_changes, one_field_name)
         for one_field_name in config_with_changes.model_fields_set
     }
-    return config_to_merge.model_copy(update=changed_fields)
+    merged_fields: typing.Final = merge_dict_configs(initial_fields, changed_fields)
+    return config_to_merge.model_copy(update=merged_fields)
 
 
 def merge_dataclasses_configs(
