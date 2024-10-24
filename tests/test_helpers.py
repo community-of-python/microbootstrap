@@ -50,7 +50,7 @@ class PydanticConfig(pydantic.BaseModel):
 
 
 @dataclasses.dataclass
-class SomeInnerDataclass:
+class InnerDataclass:
     string_field: str
 
 
@@ -85,13 +85,13 @@ class SomeInnerDataclass:
             PydanticConfig(string_field="value1", array_field=[1, 2], dict_field={"value1": 1, "value3": 3}),
             PydanticConfig(
                 string_field="value2",
-                array_field=[SomeInnerDataclass(string_field="hi")],
-                dict_field={"value1": 1, "value2": 2, "value3": SomeInnerDataclass(string_field="there")},
+                array_field=[InnerDataclass(string_field="hi")],
+                dict_field={"value1": 1, "value2": 2, "value3": InnerDataclass(string_field="there")},
             ),
             PydanticConfig(
                 string_field="value2",
-                array_field=[1, 2, SomeInnerDataclass(string_field="hi")],
-                dict_field={"value1": 1, "value2": 2, "value3": SomeInnerDataclass(string_field="there")},
+                array_field=[1, 2, InnerDataclass(string_field="hi")],
+                dict_field={"value1": 1, "value2": 2, "value3": InnerDataclass(string_field="there")},
             ),
         ),
     ],
