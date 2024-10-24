@@ -4,6 +4,7 @@ import fastapi
 import litestar
 from httpx import AsyncClient
 from litestar import openapi, status_codes
+from litestar.openapi import spec as litestar_openapi
 from litestar.openapi.plugins import ScalarRenderPlugin
 from litestar.static_files import StaticFilesConfig
 from litestar.testing import AsyncTestClient
@@ -52,7 +53,7 @@ def test_litestar_swagger_bootstrap_online_docs(minimal_swagger_config: SwaggerC
     assert "static_files_config" not in bootstrap_result
 
 
-def test_litestar_swagger_bootstrap_with_overriden_render_plugins(minimal_swagger_config: SwaggerConfig) -> None:
+def test_litestar_swagger_bootstrap_with_overridden_render_plugins(minimal_swagger_config: SwaggerConfig) -> None:
     new_render_plugins: typing.Final = [ScalarRenderPlugin()]
     minimal_swagger_config.swagger_extra_params["render_plugins"] = new_render_plugins
 
@@ -62,6 +63,21 @@ def test_litestar_swagger_bootstrap_with_overriden_render_plugins(minimal_swagge
     assert "openapi_config" in bootstrap_result
     assert isinstance(bootstrap_result["openapi_config"], openapi.OpenAPIConfig)
     assert bootstrap_result["openapi_config"].render_plugins is new_render_plugins
+
+
+def test_litestar_swagger_bootstrap_extra_params_have_correct_types(minimal_swagger_config: SwaggerConfig) -> None:
+    swagger_instrument: typing.Final = LitestarSwaggerInstrument(minimal_swagger_config)
+    new_components: typing.Final = litestar_openapi.Components(
+        security_schemes={"Bearer": litestar_openapi.SecurityScheme(type="http", scheme="Bearer")}
+    )
+    swagger_instrument.configure_instrument(
+        minimal_swagger_config.model_copy(update={"swagger_extra_params": {"components": new_components}})
+    )
+    bootstrap_result: typing.Final = swagger_instrument.bootstrap_before()
+
+    assert "openapi_config" in bootstrap_result
+    assert isinstance(bootstrap_result["openapi_config"], openapi.OpenAPIConfig)
+    assert type(bootstrap_result["openapi_config"].components) is litestar_openapi.Components
 
 
 def test_litestar_swagger_bootstrap_offline_docs(minimal_swagger_config: SwaggerConfig) -> None:

@@ -49,6 +49,11 @@ class PydanticConfig(pydantic.BaseModel):
     dict_field: dict[str, typing.Any] = pydantic.Field(default_factory=dict)
 
 
+@dataclasses.dataclass
+class InnerDataclass:
+    string_field: str
+
+
 @pytest.mark.parametrize(
     ("first_model", "second_model", "result"),
     [
@@ -74,6 +79,19 @@ class PydanticConfig(pydantic.BaseModel):
                 string_field="value2",
                 array_field=[1, 2, 1, 3],
                 dict_field={"value1": 1, "value2": 2, "value3": 4},
+            ),
+        ),
+        (
+            PydanticConfig(string_field="value1", array_field=[1, 2], dict_field={"value1": 1, "value3": 3}),
+            PydanticConfig(
+                string_field="value2",
+                array_field=[InnerDataclass(string_field="hi")],
+                dict_field={"value1": 1, "value2": 2, "value3": InnerDataclass(string_field="there")},
+            ),
+            PydanticConfig(
+                string_field="value2",
+                array_field=[1, 2, InnerDataclass(string_field="hi")],
+                dict_field={"value1": 1, "value2": 2, "value3": InnerDataclass(string_field="there")},
             ),
         ),
     ],
