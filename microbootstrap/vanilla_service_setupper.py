@@ -1,23 +1,25 @@
 from __future__ import annotations
-import abc
 import typing
 
 import typing_extensions
 
 from microbootstrap.console_writer import ConsoleWriter
 from microbootstrap.instruments.instrument_box import InstrumentBox
-from microbootstrap.settings import SettingsT
+from microbootstrap.instruments.logging_instrument import LoggingInstrument
+from microbootstrap.instruments.opentelemetry_instrument import OpentelemetryInstrument
+from microbootstrap.instruments.sentry_instrument import SentryInstrument
 
 
 if typing.TYPE_CHECKING:
     from microbootstrap.instruments.base import Instrument, InstrumentConfigT
+    from microbootstrap.settings import VanillaServiceSettings
 
 
-class VanillaServiceSetupper(abc.ABC, typing.Generic[SettingsT]):
+class VanillaServiceSetupper:
     console_writer: ConsoleWriter
     instrument_box: InstrumentBox
 
-    def __init__(self, settings: SettingsT) -> None:
+    def __init__(self, settings: VanillaServiceSettings) -> None:
         self.settings = settings
         self.console_writer = ConsoleWriter(writer_enabled=settings.service_debug)
 
@@ -66,3 +68,8 @@ class VanillaServiceSetupper(abc.ABC, typing.Generic[SettingsT]):
 
     def __exit__(self, *args: object) -> None:
         self.teardown()
+
+
+VanillaServiceSetupper.use_instrument()(LoggingInstrument)
+VanillaServiceSetupper.use_instrument()(SentryInstrument)
+VanillaServiceSetupper.use_instrument()(OpentelemetryInstrument)

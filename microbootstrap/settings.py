@@ -79,3 +79,12 @@ class FastApiSettings(
     HealthChecksConfig,
 ):
     """Settings for a fastapi botstrap."""
+
+
+class VanillaServiceSettings(
+    BaseServiceSettings,
+    LoggingConfig,
+    OpentelemetryConfig,
+    SentryConfig,
+):
+    """Settings for a vanilla service."""
