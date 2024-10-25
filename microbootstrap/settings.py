@@ -37,12 +37,6 @@ class BaseServiceSettings(
         "1.0.0",
         validation_alias=pydantic.AliasChoices("CI_COMMIT_TAG", f"{ENV_PREFIX}SERVICE_VERSION"),
     )
-    service_static_path: str = "/static"
-
-    server_host: str = "0.0.0.0"  # noqa: S104
-    server_port: int = 8000
-    server_reload: bool = True
-    server_workers_count: int = 1
 
     model_config = pydantic_settings.SettingsConfigDict(
         env_file=".env",
@@ -52,8 +46,16 @@ class BaseServiceSettings(
     )
 
 
+class BaseServerSettings(pydantic.BaseModel):
+    server_host: str = "0.0.0.0"  # noqa: S104
+    server_port: int = 8000
+    server_reload: bool = True
+    server_workers_count: int = 1
+
+
 class LitestarSettings(
     BaseServiceSettings,
+    BaseServerSettings,
     LoggingConfig,
     OpentelemetryConfig,
     SentryConfig,
@@ -67,6 +69,7 @@ class LitestarSettings(
 
 class FastApiSettings(
     BaseServiceSettings,
+    BaseServerSettings,
     LoggingConfig,
     OpentelemetryConfig,
     SentryConfig,
