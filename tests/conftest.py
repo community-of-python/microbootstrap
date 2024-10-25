@@ -92,7 +92,7 @@ def base_settings() -> BaseServiceSettings:
 
 
 @pytest.fixture
-def base_server_settings() -> ServerConfig:
+def minimal_server_config() -> ServerConfig:
     return ServerConfig()
 
 
