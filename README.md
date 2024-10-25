@@ -557,6 +557,41 @@ application: litestar.Litestar = (
 >
 > In this case, Prometheus will receive `{"first_value": 1, "second_value": 2}` inside `prometheus_additional_params`. This is also true for `list`, `tuple`, and `set`.
 
+### Using microbootstrap without a framework
+
+You can use microbootstrap to set up Sentry, OpenTelemetry and Logging with `InstrumentsSetupper`:
+
+```python
+from microbootstrap.instruments_setupper import InstrumentsSetupper
+from microbootstrap import InstrumentsSetupperSettings
+
+
+class YourSettings(InstrumentsSetupperSettings):
+    ...
+
+
+setupper = InstrumentsSetupper(YourSettings())
+```
+
+`InstrumentsSetupper` sets up the instruments once you enter its context:
+
+```python
+with setupper:
+    ...
+```
+
+Alternatively, you can use `setup()` and `teardown()` methods:
+
+```python
+setupper.setup()
+try:
+    ...
+finally:
+    setupper.teardown()
+```
+
+Like bootstrappers, you can reconfigure instruments with `configure_instrument()` and `configure_instruments()`.
+
 ## Advanced
 
 If you miss some instrument, you can add your own.

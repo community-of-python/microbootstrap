@@ -27,15 +27,12 @@ class InstrumentsSetupper:
             self.instrument_box = InstrumentBox()
         self.instrument_box.initialize(self.settings)
 
-    def configure_instrument(
-        self: typing_extensions.Self,
-        instrument_config: InstrumentConfigT,
-    ) -> typing_extensions.Self:
+    def configure_instrument(self, instrument_config: InstrumentConfigT) -> typing_extensions.Self:
         self.instrument_box.configure_instrument(instrument_config)
         return self
 
     def configure_instruments(
-        self: typing_extensions.Self,
+        self,
         *instrument_configs: InstrumentConfigT,
     ) -> typing_extensions.Self:
         for instrument_config in instrument_configs:
@@ -53,13 +50,13 @@ class InstrumentsSetupper:
             cls.instrument_box = InstrumentBox()
         return cls.instrument_box.extend_instruments
 
-    def setup(self: typing_extensions.Self) -> None:
+    def setup(self) -> None:
         for instrument in self.instrument_box.instruments:
             if instrument.is_ready():
                 instrument.bootstrap()
             instrument.write_status(self.console_writer)
 
-    def teardown(self: typing_extensions.Self) -> None:
+    def teardown(self) -> None:
         for instrument in self.instrument_box.instruments:
             instrument.teardown()
 
