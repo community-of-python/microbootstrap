@@ -22,9 +22,6 @@ class InstrumentsSetupper:
     def __init__(self, settings: InstrumentsSetupperSettings) -> None:
         self.settings = settings
         self.console_writer = ConsoleWriter(writer_enabled=settings.service_debug)
-
-        if not hasattr(self, "instrument_box"):
-            self.instrument_box = InstrumentBox()
         self.instrument_box.initialize(self.settings)
 
     def configure_instrument(self, instrument_config: InstrumentConfigT) -> typing_extensions.Self:
