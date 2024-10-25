@@ -87,13 +87,13 @@ def minimal_opentelemetry_config() -> OpentelemetryConfig:
 
 
 @pytest.fixture
-def base_settings() -> BaseServiceSettings:
-    return BaseServiceSettings()
+def minimal_server_config() -> ServerConfig:
+    return ServerConfig()
 
 
 @pytest.fixture
-def minimal_server_config() -> ServerConfig:
-    return ServerConfig()
+def base_settings() -> BaseServiceSettings:
+    return BaseServiceSettings()
 
 
 @pytest.fixture
