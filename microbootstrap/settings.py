@@ -46,7 +46,7 @@ class BaseServiceSettings(
     )
 
 
-class BaseServerSettings(pydantic.BaseModel):
+class ServerConfig(pydantic.BaseModel):
     server_host: str = "0.0.0.0"  # noqa: S104
     server_port: int = 8000
     server_reload: bool = True
@@ -55,7 +55,7 @@ class BaseServerSettings(pydantic.BaseModel):
 
 class LitestarSettings(
     BaseServiceSettings,
-    BaseServerSettings,
+    ServerConfig,
     LoggingConfig,
     OpentelemetryConfig,
     SentryConfig,
@@ -69,7 +69,7 @@ class LitestarSettings(
 
 class FastApiSettings(
     BaseServiceSettings,
-    BaseServerSettings,
+    ServerConfig,
     LoggingConfig,
     OpentelemetryConfig,
     SentryConfig,
