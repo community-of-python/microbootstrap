@@ -81,7 +81,7 @@ class FastApiSettings(
     """Settings for a fastapi botstrap."""
 
 
-class VanillaServiceSettings(
+class InstrumentsSetupperSettings(
     BaseServiceSettings,
     LoggingConfig,
     OpentelemetryConfig,

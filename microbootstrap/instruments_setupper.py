@@ -12,14 +12,14 @@ from microbootstrap.instruments.sentry_instrument import SentryInstrument
 
 if typing.TYPE_CHECKING:
     from microbootstrap.instruments.base import Instrument, InstrumentConfigT
-    from microbootstrap.settings import VanillaServiceSettings
+    from microbootstrap.settings import InstrumentsSetupperSettings
 
 
-class VanillaServiceSetupper:
+class InstrumentsSetupper:
     console_writer: ConsoleWriter
     instrument_box: InstrumentBox
 
-    def __init__(self, settings: VanillaServiceSettings) -> None:
+    def __init__(self, settings: InstrumentsSetupperSettings) -> None:
         self.settings = settings
         self.console_writer = ConsoleWriter(writer_enabled=settings.service_debug)
 
@@ -70,6 +70,6 @@ class VanillaServiceSetupper:
         self.teardown()
 
 
-VanillaServiceSetupper.use_instrument()(LoggingInstrument)
-VanillaServiceSetupper.use_instrument()(SentryInstrument)
-VanillaServiceSetupper.use_instrument()(OpentelemetryInstrument)
+InstrumentsSetupper.use_instrument()(LoggingInstrument)
+InstrumentsSetupper.use_instrument()(SentryInstrument)
+InstrumentsSetupper.use_instrument()(OpentelemetryInstrument)
