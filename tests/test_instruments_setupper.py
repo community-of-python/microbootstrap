@@ -1,3 +1,4 @@
+import typing
 from unittest import mock
 
 import faker
@@ -9,18 +10,18 @@ from microbootstrap.settings import InstrumentsSetupperSettings
 
 
 def test_instruments_setupper_initializes_instruments() -> None:
-    settings = InstrumentsSetupperSettings()
+    settings: typing.Final = InstrumentsSetupperSettings()
     assert InstrumentsSetupper(settings).instrument_box.instruments
 
 
 def test_instruments_setupper_applies_new_config(monkeypatch: pytest.MonkeyPatch, faker: faker.Faker) -> None:
     monkeypatch.setattr("sentry_sdk.init", sentry_sdk_init_mock := mock.Mock())
-    sentry_dsn = faker.pystr()
-    setupper = InstrumentsSetupper(InstrumentsSetupperSettings()).configure_instruments(
+    sentry_dsn: typing.Final = faker.pystr()
+    current_setupper: typing.Final = InstrumentsSetupper(InstrumentsSetupperSettings()).configure_instruments(
         SentryConfig(sentry_dsn=sentry_dsn)
     )
 
-    with setupper:
+    with current_setupper:
         pass
 
     assert len(sentry_sdk_init_mock.mock_calls) == 1
@@ -28,18 +29,18 @@ def test_instruments_setupper_applies_new_config(monkeypatch: pytest.MonkeyPatch
 
 
 def test_instruments_setupper_causes_instruments_lifespan() -> None:
-    setupper = InstrumentsSetupper(InstrumentsSetupperSettings())
-    instruments_count = len(setupper.instrument_box.instruments)
-    setupper.instrument_box.__initialized_instruments__ = [mock.Mock() for _ in range(instruments_count)]
+    current_setupper: typing.Final = InstrumentsSetupper(InstrumentsSetupperSettings())
+    instruments_count: typing.Final = len(current_setupper.instrument_box.instruments)
+    current_setupper.instrument_box.__initialized_instruments__ = [mock.Mock() for _ in range(instruments_count)]
 
-    with setupper:
+    with current_setupper:
         pass
 
-    all_mock_calls = [one_mocked_instrument.mock_calls for one_mocked_instrument in setupper.instrument_box.instruments]
-    expected_successful_instrument_calls = [
+    all_mock_calls: typing.Final = [one_mocked_instrument.mock_calls for one_mocked_instrument in current_setupper.instrument_box.instruments]
+    expected_successful_instrument_calls: typing.Final = [
         mock.call.is_ready(),
         mock.call.bootstrap(),
-        mock.call.write_status(setupper.console_writer),
+        mock.call.write_status(current_setupper.console_writer),
         mock.call.teardown(),
     ]
     assert all_mock_calls == [expected_successful_instrument_calls] * instruments_count

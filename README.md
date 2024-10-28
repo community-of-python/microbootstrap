@@ -570,24 +570,24 @@ class YourSettings(InstrumentsSetupperSettings):
     ...
 
 
-setupper = InstrumentsSetupper(YourSettings())
+current_setupper = InstrumentsSetupper(YourSettings())
 ```
 
 `InstrumentsSetupper` sets up the instruments once you enter its context:
 
 ```python
-with setupper:
+with current_setupper:
     ...
 ```
 
 Alternatively, you can use `setup()` and `teardown()` methods:
 
 ```python
-setupper.setup()
+current_setupper.setup()
 try:
     ...
 finally:
-    setupper.teardown()
+    current_setupper.teardown()
 ```
 
 Like bootstrappers, you can reconfigure instruments with `configure_instrument()` and `configure_instruments()`.
