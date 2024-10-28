@@ -36,7 +36,9 @@ def test_instruments_setupper_causes_instruments_lifespan() -> None:
     with current_setupper:
         pass
 
-    all_mock_calls: typing.Final = [one_mocked_instrument.mock_calls for one_mocked_instrument in current_setupper.instrument_box.instruments]
+    all_mock_calls: typing.Final = [
+        one_mocked_instrument.mock_calls for one_mocked_instrument in current_setupper.instrument_box.instruments
+    ]
     expected_successful_instrument_calls: typing.Final = [
         mock.call.is_ready(),
         mock.call.bootstrap(),
