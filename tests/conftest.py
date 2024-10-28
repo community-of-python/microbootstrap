@@ -19,7 +19,7 @@ from microbootstrap.instruments.cors_instrument import CorsConfig
 from microbootstrap.instruments.health_checks_instrument import HealthChecksConfig
 from microbootstrap.instruments.prometheus_instrument import BasePrometheusConfig
 from microbootstrap.instruments.swagger_instrument import SwaggerConfig
-from microbootstrap.settings import BaseServiceSettings
+from microbootstrap.settings import BaseServiceSettings, ServerConfig
 
 
 pytestmark = [pytest.mark.anyio]
@@ -84,6 +84,11 @@ def minimal_opentelemetry_config() -> OpentelemetryConfig:
         opentelemetry_namespace="namespace",
         opentelemetry_container_name="container-name",
     )
+
+
+@pytest.fixture
+def minimal_server_config() -> ServerConfig:
+    return ServerConfig()
 
 
 @pytest.fixture

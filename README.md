@@ -557,6 +557,42 @@ application: litestar.Litestar = (
 >
 > In this case, Prometheus will receive `{"first_value": 1, "second_value": 2}` inside `prometheus_additional_params`. This is also true for `list`, `tuple`, and `set`.
 
+### Using microbootstrap without a framework
+
+When working on projects that don't use Litestar or FastAPI, you can still take advantage of monitoring and logging capabilities using `InstrumentsSetupper`. This class sets up Sentry, OpenTelemetry, and Logging instruments in a way that's easy to integrate with your project.
+
+You can use `InstrumentsSetupper` as a context manager, like this:
+
+```python
+from microbootstrap.instruments_setupper import InstrumentsSetupper
+from microbootstrap import InstrumentsSetupperSettings
+
+
+class YourSettings(InstrumentsSetupperSettings):
+    ...
+
+
+with InstrumentsSetupper(YourSettings()):
+    while True:
+        print("doing something useful")
+        time.sleep(1)
+```
+
+Alternatively, you can use the `setup()` and `teardown()` methods instead of a context manager:
+
+```python
+current_setupper = InstrumentsSetupper(YourSettings())
+current_setupper.setup()
+try:
+    while True:
+        print("doing something useful")
+        time.sleep(1)
+finally:
+    current_setupper.teardown()
+```
+
+Like bootstrappers, you can reconfigure instruments using the `configure_instrument()` and `configure_instruments()` methods.
+
 ## Advanced
 
 If you miss some instrument, you can add your own.

@@ -11,8 +11,8 @@ class SwaggerConfig(BaseInstrumentConfig):
     service_name: str = "micro-service"
     service_description: str = "Micro service description"
     service_version: str = "1.0.0"
-    service_static_path: str = "/static"
 
+    service_static_path: str = "/static"
     swagger_path: str = "/docs"
     swagger_offline_docs: bool = False
     swagger_extra_params: dict[str, typing.Any] = pydantic.Field(default_factory=dict)
