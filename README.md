@@ -559,7 +559,7 @@ application: litestar.Litestar = (
 
 ### Using microbootstrap without a framework
 
-You can use microbootstrap to set up Sentry, OpenTelemetry and Logging with `InstrumentsSetupper`:
+Let's say you have a project that doesn't use Litestar/FastAPI. For example, it just does something every once in a while. For this case we have `InstrumentsSetupper` that sets up Sentry, OpenTelemetry and Logging:
 
 ```python
 from microbootstrap.instruments_setupper import InstrumentsSetupper
@@ -570,22 +570,21 @@ class YourSettings(InstrumentsSetupperSettings):
     ...
 
 
+with InstrumentsSetupper(YourSettings()):
+    while True:
+        print("doing something useful")
+        time.sleep(1)
+```
+
+You can use `setup()` and `teardown()` methods instead of the context manager:
+
+```python
 current_setupper = InstrumentsSetupper(YourSettings())
-```
-
-`InstrumentsSetupper` sets up the instruments once you enter its context:
-
-```python
-with current_setupper:
-    ...
-```
-
-Alternatively, you can use `setup()` and `teardown()` methods:
-
-```python
 current_setupper.setup()
 try:
-    ...
+    while True:
+        print("doing something useful")
+        time.sleep(1)
 finally:
     current_setupper.teardown()
 ```
