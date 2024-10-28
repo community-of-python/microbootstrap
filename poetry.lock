@@ -4,7 +4,7 @@
 name = "aiofiles"
 version = "0.6.0"
 description = "File support for asyncio."
-optional = false
+optional = true
 python-versions = "*"
 files = [
     {file = "aiofiles-0.6.0-py3-none-any.whl", hash = "sha256:bd3019af67f83b739f8e4053c6c0512a7f545b9a8d91aaeab55e6e0f9d123c27"},
@@ -48,7 +48,7 @@ trio = ["trio (>=0.26.1)"]
 name = "asgiref"
 version = "3.8.1"
 description = "ASGI specs, helper code, and adapters"
-optional = false
+optional = true
 python-versions = ">=3.8"
 files = [
     {file = "asgiref-3.8.1-py3-none-any.whl", hash = "sha256:3e1e3ecc849832fe52ccf2cb6686b7a55f82bb1d6aee72a58826471390335e47"},
@@ -923,7 +923,7 @@ files = [
 name = "health-checks"
 version = "1.1.0"
 description = "Library for health checks"
-optional = false
+optional = true
 python-versions = "<4.0,>=3.9"
 files = [
     {file = "health_checks-1.1.0-py3-none-any.whl", hash = "sha256:c5e9a91b3da3a75290cf57da2465ebd40b06d08654febc69d1d3f5341fecff2f"},
@@ -1650,7 +1650,7 @@ wrapt = ">=1.0.0,<2.0.0"
 name = "opentelemetry-instrumentation-asgi"
 version = "0.46b0"
 description = "ASGI instrumentation for OpenTelemetry"
-optional = false
+optional = true
 python-versions = ">=3.8"
 files = [
     {file = "opentelemetry_instrumentation_asgi-0.46b0-py3-none-any.whl", hash = "sha256:f13c55c852689573057837a9500aeeffc010c4ba59933c322e8f866573374759"},
@@ -1775,7 +1775,7 @@ opentelemetry-api = "1.25.0"
 name = "opentelemetry-util-http"
 version = "0.46b0"
 description = "Web util for OpenTelemetry"
-optional = false
+optional = true
 python-versions = ">=3.8"
 files = [
     {file = "opentelemetry_util_http-0.46b0-py3-none-any.whl", hash = "sha256:8dc1949ce63caef08db84ae977fdc1848fe6dc38e6bbaad0ae3e6ecd0d451629"},
@@ -3036,10 +3036,10 @@ test = ["big-O", "importlib-resources", "jaraco.functools", "jaraco.itertools", 
 type = ["pytest-mypy"]
 
 [extras]
-fastapi = ["fastapi", "fastapi-offline-docs", "opentelemetry-instrumentation-fastapi", "prometheus-fastapi-instrumentator"]
-litestar = ["litestar", "litestar-offline-docs", "prometheus-client"]
+fastapi = ["fastapi", "fastapi-offline-docs", "health-checks", "opentelemetry-instrumentation-asgi", "opentelemetry-instrumentation-fastapi", "prometheus-fastapi-instrumentator"]
+litestar = ["health-checks", "litestar", "litestar-offline-docs", "opentelemetry-instrumentation-asgi", "prometheus-client"]
 
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.9"
-content-hash = "86763ee469dbab64f82789c9a9911989d2392bff9f245f80de2c59b28489d8af"
+content-hash = "cf51e84a740c3c3dae6efa58d047bc8536ca5b76729f4ade7f8f9d655c6f9478"
