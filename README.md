@@ -226,7 +226,7 @@ These settings are subsequently passed to the [sentry-sdk](https://pypi.org/proj
 
 Prometheus integration presents a challenge because the underlying libraries for `FastAPI` and `Litestar` differ significantly, making it impossible to unify them under a single interface. As a result, the Prometheus settings for `FastAPI` and `Litestar` must be configured separately.
 
-#### Fastapi
+#### FastAPI
 
 To bootstrap prometheus you have to provide `prometheus_metrics_path`
 
@@ -257,7 +257,7 @@ Parameters description:
 
 FastApi prometheus bootstrapper uses [prometheus-fastapi-instrumentator](https://github.com/trallnag/prometheus-fastapi-instrumentator) that's why there are three different dict for parameters.
 
-#### Fastapi
+#### Litestar
 
 To bootstrap prometheus you have to provide `prometheus_metrics_path`
 
