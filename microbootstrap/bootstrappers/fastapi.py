@@ -21,6 +21,9 @@ from microbootstrap.middlewares.fastapi import build_fastapi_logging_middleware
 from microbootstrap.settings import FastApiSettings
 
 
+ApplicationT = typing.TypeVar("ApplicationT", bound=fastapi.FastAPI)
+
+
 class FastApiBootstrapper(
     ApplicationBootstrapper[FastApiSettings, fastapi.FastAPI, FastApiConfig],
 ):
@@ -64,7 +67,7 @@ class FastApiSwaggerInstrument(SwaggerInstrument):
 
 @FastApiBootstrapper.use_instrument()
 class FastApiCorsInstrument(CorsInstrument):
-    def bootstrap_after(self, application: fastapi.FastAPI) -> fastapi.FastAPI:  # type: ignore[override]
+    def bootstrap_after(self, application: ApplicationT) -> ApplicationT:
         application.add_middleware(
             CORSMiddleware,
             allow_origins=self.instrument_config.cors_allowed_origins,
@@ -80,7 +83,7 @@ class FastApiCorsInstrument(CorsInstrument):
 
 @FastApiBootstrapper.use_instrument()
 class FastApiOpentelemetryInstrument(OpentelemetryInstrument):
-    def bootstrap_after(self, application: fastapi.FastAPI) -> fastapi.FastAPI:  # type: ignore[override]
+    def bootstrap_after(self, application: ApplicationT) -> ApplicationT:
         FastAPIInstrumentor.instrument_app(
             application,
             tracer_provider=self.tracer_provider,
@@ -91,7 +94,7 @@ class FastApiOpentelemetryInstrument(OpentelemetryInstrument):
 
 @FastApiBootstrapper.use_instrument()
 class FastApiLoggingInstrument(LoggingInstrument):
-    def bootstrap_after(self, application: fastapi.FastAPI) -> fastapi.FastAPI:  # type: ignore[override]
+    def bootstrap_after(self, application: ApplicationT) -> ApplicationT:
         application.add_middleware(  # type: ignore[call-arg]
             build_fastapi_logging_middleware(self.instrument_config.logging_exclude_endpoints),  # type: ignore[arg-type]
         )
@@ -100,7 +103,7 @@ class FastApiLoggingInstrument(LoggingInstrument):
 
 @FastApiBootstrapper.use_instrument()
 class FastApiPrometheusInstrument(PrometheusInstrument[FastApiPrometheusConfig]):
-    def bootstrap_after(self, application: fastapi.FastAPI) -> fastapi.FastAPI:  # type: ignore[override]
+    def bootstrap_after(self, application: ApplicationT) -> ApplicationT:
         Instrumentator(**self.instrument_config.prometheus_instrumentator_params).instrument(
             application,
             **self.instrument_config.prometheus_instrument_params,
@@ -119,7 +122,7 @@ class FastApiPrometheusInstrument(PrometheusInstrument[FastApiPrometheusConfig])
 
 @FastApiBootstrapper.use_instrument()
 class FastApiHealthChecksInstrument(HealthChecksInstrument):
-    def bootstrap_after(self, application: fastapi.FastAPI) -> fastapi.FastAPI:  # type: ignore[override]
+    def bootstrap_after(self, application: ApplicationT) -> ApplicationT:
         application.include_router(
             build_fastapi_health_check_router(
                 health_check=self.health_check,

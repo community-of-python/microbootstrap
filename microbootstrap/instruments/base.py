@@ -13,7 +13,7 @@ if typing.TYPE_CHECKING:
 
 
 InstrumentConfigT = typing.TypeVar("InstrumentConfigT", bound="BaseInstrumentConfig")
-ApplicationT = typing.TypeVar("ApplicationT")
+ApplicationT = typing.TypeVar("ApplicationT", bound=typing.Any)
 
 
 class BaseInstrumentConfig(pydantic.BaseModel):

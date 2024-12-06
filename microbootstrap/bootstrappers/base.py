@@ -18,7 +18,7 @@ class DataclassInstance(typing.Protocol):
     __dataclass_fields__: typing.ClassVar[dict[str, typing.Any]]
 
 
-ApplicationT = typing.TypeVar("ApplicationT")
+ApplicationT = typing.TypeVar("ApplicationT", bound=typing.Any)
 DataclassT = typing.TypeVar("DataclassT", bound=DataclassInstance)
 
 
@@ -94,14 +94,14 @@ class ApplicationBootstrapper(abc.ABC, typing.Generic[SettingsT, ApplicationT, D
 
         return self.bootstrap_after(application)
 
-    def bootstrap_before(self: typing_extensions.Self) -> dict[str, typing.Any]:
+    def bootstrap_before(self) -> dict[str, typing.Any]:
         """Add some framework-related parameters to final bootstrap result before application creation."""
         return {}
 
-    def bootstrap_after(self: typing_extensions.Self, application: ApplicationT) -> ApplicationT:
+    def bootstrap_after(self, application: ApplicationT) -> ApplicationT:
         """Add some framework-related parameters to final bootstrap result after application creation."""
         return application
 
-    def teardown(self: typing_extensions.Self) -> None:
+    def teardown(self) -> None:
         for instrument in self.instrument_box.instruments:
             instrument.teardown()
