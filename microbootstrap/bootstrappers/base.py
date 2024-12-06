@@ -14,12 +14,12 @@ if typing.TYPE_CHECKING:
     from microbootstrap.instruments.base import Instrument, InstrumentConfigT
 
 
-class Dataclass(typing.Protocol):
+class DataclassInstance(typing.Protocol):
     __dataclass_fields__: typing.ClassVar[dict[str, typing.Any]]
 
 
 ApplicationT = typing.TypeVar("ApplicationT")
-DataclassT = typing.TypeVar("DataclassT", bound=Dataclass)
+DataclassT = typing.TypeVar("DataclassT", bound=DataclassInstance)
 
 
 class ApplicationBootstrapper(abc.ABC, typing.Generic[SettingsT, ApplicationT, DataclassT]):
