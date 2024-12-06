@@ -83,7 +83,6 @@ trio = "*"
 mypy = "*"
 ruff = "*"
 
-
 [tool.poetry.extras]
 fastapi = [
     "fastapi",
@@ -111,6 +110,7 @@ files = ["microbootstrap", "tests"]
 python_version = "3.9"
 strict = true
 pretty = true
+show_error_codes = true
 
 [tool.ruff]
 target-version = "py39"
