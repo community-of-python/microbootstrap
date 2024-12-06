@@ -78,7 +78,7 @@ def test_fastapi_cors_bootstrap() -> None:
     assert len(fastapi_application.user_middleware) == 1
     assert isinstance(fastapi_application.user_middleware[0], Middleware)
     cors_middleware: typing.Final = fastapi_application.user_middleware[0]
-    assert issubclass(cors_middleware.cls, CORSMiddleware)
+    assert cors_middleware.cls is CORSMiddleware  # type: ignore[comparison-overlap]
     assert cors_middleware.kwargs["allow_origins"] == cors_config.cors_allowed_origins
     assert cors_middleware.kwargs["allow_headers"] == cors_config.cors_allowed_headers
     assert cors_middleware.kwargs["allow_credentials"] == cors_config.cors_allowed_credentials
