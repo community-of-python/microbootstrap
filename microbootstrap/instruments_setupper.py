@@ -1,8 +1,6 @@
 from __future__ import annotations
 import typing
 
-import typing_extensions
-
 from microbootstrap.console_writer import ConsoleWriter
 from microbootstrap.instruments.instrument_box import InstrumentBox
 from microbootstrap.instruments.logging_instrument import LoggingInstrument
@@ -11,6 +9,8 @@ from microbootstrap.instruments.sentry_instrument import SentryInstrument
 
 
 if typing.TYPE_CHECKING:
+    import typing_extensions
+
     from microbootstrap.instruments.base import Instrument, InstrumentConfigT
     from microbootstrap.settings import InstrumentsSetupperSettings
 

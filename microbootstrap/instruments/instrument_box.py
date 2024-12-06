@@ -1,8 +1,6 @@
 import dataclasses
 import typing
 
-import typing_extensions
-
 from microbootstrap import exceptions
 from microbootstrap.instruments.base import Instrument, InstrumentConfigT
 from microbootstrap.settings import SettingsT
@@ -21,7 +19,7 @@ class InstrumentBox:
         ]
 
     def configure_instrument(
-        self: typing_extensions.Self,
+        self,
         instrument_config: InstrumentConfigT,
     ) -> None:
         for instrument in self.__initialized_instruments__:

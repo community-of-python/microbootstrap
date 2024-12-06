@@ -8,15 +8,13 @@ from starlette.responses import JSONResponse
 
 
 if typing.TYPE_CHECKING:
-    from fastapi import FastAPI, Request, routing
+    from fastapi import Request, routing
+    from fastapi.applications import AppType
     from fastapi.middleware import Middleware
     from fastapi.params import Depends
     from starlette.responses import Response
     from starlette.routing import BaseRoute
     from starlette.types import Lifespan
-
-
-AppType = typing.TypeVar("AppType", bound="FastAPI")
 
 
 @dataclasses.dataclass
@@ -47,7 +45,7 @@ class FastApiConfig:
     ) = None
     on_startup: typing.Sequence[typing.Callable[[], typing.Any]] | None = None
     on_shutdown: typing.Sequence[typing.Callable[[], typing.Any]] | None = None
-    lifespan: Lifespan[AppType] | None = None
+    lifespan: Lifespan[AppType] | None = None  # type: ignore[valid-type]
     terms_of_service: str | None = None
     contact: dict[str, str | typing.Any] | None = None
     license_info: dict[str, str | typing.Any] | None = None

@@ -3,7 +3,7 @@ import typing
 
 import pydantic
 import sentry_sdk
-from sentry_sdk.integrations import Integration  # noqa: TCH002
+from sentry_sdk.integrations import Integration  # noqa: TC002
 
 from microbootstrap.instruments.base import BaseInstrumentConfig, Instrument
 

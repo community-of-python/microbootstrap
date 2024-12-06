@@ -2,7 +2,7 @@ import typing
 
 import fastapi
 import litestar
-from httpx import AsyncClient
+from fastapi.testclient import TestClient
 from litestar import status_codes
 from litestar.testing import AsyncTestClient
 
@@ -55,7 +55,7 @@ async def test_litestar_health_checks_bootstrap() -> None:
         assert response.status_code == status_codes.HTTP_200_OK
 
 
-async def test_fastapi_health_checks_bootstrap() -> None:
+def test_fastapi_health_checks_bootstrap() -> None:
     test_health_checks_path: typing.Final = "/test-path/"
     heatlh_checks_config: typing.Final = HealthChecksConfig(health_checks_path=test_health_checks_path)
     health_checks_instrument: typing.Final = FastApiHealthChecksInstrument(heatlh_checks_config)
@@ -66,6 +66,5 @@ async def test_fastapi_health_checks_bootstrap() -> None:
     )
     fastapi_application = health_checks_instrument.bootstrap_after(fastapi_application)
 
-    async with AsyncClient(app=fastapi_application, base_url="http://testserver") as async_client:
-        response = await async_client.get(heatlh_checks_config.health_checks_path)
-        assert response.status_code == status_codes.HTTP_200_OK
+    response = TestClient(app=fastapi_application).get(heatlh_checks_config.health_checks_path)
+    assert response.status_code == status_codes.HTTP_200_OK

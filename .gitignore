@@ -1,66 +1,21 @@
-.idea/
-.vscode/
-# Byte-compiled / optimized / DLL files
-pycache/
-__pycache__
-*.py[cod]
-*$py.class
-__test*
-
-# C extensions
-*.so
-
-# Distribution / packaging
-.Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-share/python-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-MANIFEST
-
-# Unit test / coverage reports
-htmlcov/
-.tox/
-.nox/
-.coverage
-.coverage.*
-.cache
-nosetests.xml
-coverage.xml
-*.cover
-*.py,cover
-.hypothesis/
-.pytest_cache/
-cover/
-
-# Environments
+*.pyc
+*~
+__pycache__/*
+*.swp
+*.sqlite3
+*.map
+.vscode
+.idea
+.DS_Store
 .env
-.gen.env
+.mypy_cache
+.pytest_cache
+.ruff_cache
+.coverage
+htmlcov/
+coverage.xml
+pytest.xml
+dist/
+.python-version
 .venv
-env/
-venv/
-ENV/
-env.bak/
-venv.bak/
-
-# mypy
-.mypy_cache/
-.dmypy.json
-dmypy.json
-
-# Cython debug symbols
-cython_debug/
-node_modules
-.temp
+poetry.lock

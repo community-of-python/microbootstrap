@@ -32,7 +32,7 @@ def make_path_with_query_string(scope: ScopeType) -> str:
 
 def fill_log_message(
     log_level: str,
-    request: litestar.Request | fastapi.Request,
+    request: litestar.Request | fastapi.Request,  # type: ignore[type-arg]
     status_code: int,
     start_time: int,
 ) -> None:

@@ -2,7 +2,7 @@ import typing
 
 import fastapi
 import litestar
-from httpx import AsyncClient
+from fastapi.testclient import TestClient
 from litestar import status_codes
 from litestar.middleware.base import DefineMiddleware
 from litestar.testing import AsyncTestClient
@@ -73,14 +73,15 @@ async def test_litestar_prometheus_bootstrap_working(
         assert response.text
 
 
-async def test_fastapi_prometheus_bootstrap_working(minimal_fastapi_prometheus_config: FastApiPrometheusConfig) -> None:
+def test_fastapi_prometheus_bootstrap_working(minimal_fastapi_prometheus_config: FastApiPrometheusConfig) -> None:
     minimal_fastapi_prometheus_config.prometheus_metrics_path = "/custom-metrics-path"
     prometheus_instrument: typing.Final = FastApiPrometheusInstrument(minimal_fastapi_prometheus_config)
 
     fastapi_application = fastapi.FastAPI()
     fastapi_application = prometheus_instrument.bootstrap_after(fastapi_application)
 
-    async with AsyncClient(app=fastapi_application, base_url="http://testserver") as async_client:
-        response: typing.Final = await async_client.get(minimal_fastapi_prometheus_config.prometheus_metrics_path)
-        assert response.status_code == status_codes.HTTP_200_OK
-        assert response.text
+    response: typing.Final = TestClient(app=fastapi_application).get(
+        minimal_fastapi_prometheus_config.prometheus_metrics_path
+    )
+    assert response.status_code == status_codes.HTTP_200_OK
+    assert response.text

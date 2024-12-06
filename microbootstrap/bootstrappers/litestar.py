@@ -92,7 +92,7 @@ class LitestarCorsInstrument(CorsInstrument):
         return {
             "cors_config": LitestarCorsConfig(
                 allow_origins=self.instrument_config.cors_allowed_origins,
-                allow_methods=self.instrument_config.cors_allowed_methods,
+                allow_methods=self.instrument_config.cors_allowed_methods,  # type: ignore[arg-type]
                 allow_headers=self.instrument_config.cors_allowed_headers,
                 allow_credentials=self.instrument_config.cors_allowed_credentials,
                 allow_origin_regex=self.instrument_config.cors_allowed_origin_regex,

@@ -4,7 +4,7 @@ from unittest.mock import patch
 
 import fastapi
 import litestar
-from httpx import AsyncClient
+from fastapi.testclient import TestClient
 from litestar.testing import AsyncTestClient
 
 from microbootstrap import SentryConfig
@@ -69,7 +69,7 @@ def test_fastapi_sentry_bootstrap(minimal_sentry_config: SentryConfig) -> None:
     assert sentry_instrument.bootstrap_before() == {}
 
 
-async def test_fastapi_sentry_bootstrap_catch_exception(
+def test_fastapi_sentry_bootstrap_catch_exception(
     minimal_sentry_config: SentryConfig,
 ) -> None:
     sentry_instrument: typing.Final = FastApiSentryInstrument(minimal_sentry_config)
@@ -82,6 +82,5 @@ async def test_fastapi_sentry_bootstrap_catch_exception(
     sentry_instrument.bootstrap()
     with patch("sentry_sdk.Scope.capture_event") as mock_capture_event:
         with contextlib.suppress(ValueError):
-            async with AsyncClient(app=app) as async_client:
-                await async_client.get("/test-error-handler")
+            TestClient(app=app).get("/test-error-handler")
         assert mock_capture_event.called

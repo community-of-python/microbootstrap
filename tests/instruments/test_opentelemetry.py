@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, MagicMock, Mock, patch
 import fastapi
 import litestar
 import pytest
-from httpx import AsyncClient
+from fastapi.testclient import TestClient
 from litestar.middleware.base import DefineMiddleware
 from litestar.testing import AsyncTestClient
 
@@ -81,7 +81,7 @@ async def test_litestar_opentelemetry_bootstrap_working(
     opentelemetry_middleware = opentelemetry_bootstrap_result["middleware"][0]
     assert isinstance(opentelemetry_middleware, DefineMiddleware)
     async_mock.__name__ = "test-name"
-    opentelemetry_middleware.middleware.__call__ = async_mock
+    opentelemetry_middleware.middleware.__call__ = async_mock  # type: ignore[operator]
 
     @litestar.get("/test-handler")
     async def test_handler() -> None:
@@ -98,7 +98,7 @@ async def test_litestar_opentelemetry_bootstrap_working(
         assert async_mock.called
 
 
-async def test_fastapi_opentelemetry_bootstrap_working(
+def test_fastapi_opentelemetry_bootstrap_working(
     minimal_opentelemetry_config: OpentelemetryConfig, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setattr("opentelemetry.sdk.trace.TracerProvider.shutdown", Mock())
@@ -112,6 +112,5 @@ async def test_fastapi_opentelemetry_bootstrap_working(
         return None
 
     with patch("opentelemetry.trace.use_span") as mock_capture_event:
-        async with AsyncClient(app=fastapi_application, base_url="http://testserver") as async_client:
-            await async_client.get("/test-handler")
-            assert mock_capture_event.called
+        TestClient(app=fastapi_application).get("/test-handler")
+        assert mock_capture_event.called
