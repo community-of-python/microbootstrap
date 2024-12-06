@@ -59,7 +59,7 @@ class FastApiSwaggerInstrument(SwaggerInstrument):
             "version": self.instrument_config.service_version,
         }
 
-    def bootstrap_after(self, application: fastapi.FastAPI) -> fastapi.FastAPI:  # type: ignore[override]
+    def bootstrap_after(self, application: ApplicationT) -> ApplicationT:
         if self.instrument_config.swagger_offline_docs:
             enable_offline_docs(application, static_files_handler=self.instrument_config.service_static_path)
         return application
