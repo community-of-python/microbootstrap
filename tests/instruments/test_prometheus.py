@@ -2,10 +2,10 @@ import typing
 
 import fastapi
 import litestar
-from fastapi.testclient import TestClient
+from fastapi.testclient import TestClient as FastAPITestClient
 from litestar import status_codes
 from litestar.middleware.base import DefineMiddleware
-from litestar.testing import AsyncTestClient
+from litestar.testing import TestClient as LitestarTestClient
 
 from microbootstrap import FastApiPrometheusConfig, LitestarPrometheusConfig
 from microbootstrap.bootstrappers.fastapi import FastApiPrometheusInstrument
@@ -56,7 +56,7 @@ def test_litestar_prometheus_bootstrap(minimal_litestar_prometheus_config: Lites
     assert isinstance(prometheus_bootstrap_result["middleware"][0], DefineMiddleware)
 
 
-async def test_litestar_prometheus_bootstrap_working(
+def test_litestar_prometheus_bootstrap_working(
     minimal_litestar_prometheus_config: LitestarPrometheusConfig,
 ) -> None:
     minimal_litestar_prometheus_config.prometheus_metrics_path = "/custom-metrics-path"
@@ -67,8 +67,8 @@ async def test_litestar_prometheus_bootstrap_working(
         **prometheus_instrument.bootstrap_before(),
     )
 
-    async with AsyncTestClient(app=litestar_application) as async_client:
-        response: typing.Final = await async_client.get(minimal_litestar_prometheus_config.prometheus_metrics_path)
+    with LitestarTestClient(app=litestar_application) as test_client:
+        response: typing.Final = test_client.get(minimal_litestar_prometheus_config.prometheus_metrics_path)
         assert response.status_code == status_codes.HTTP_200_OK
         assert response.text
 
@@ -80,7 +80,7 @@ def test_fastapi_prometheus_bootstrap_working(minimal_fastapi_prometheus_config:
     fastapi_application = fastapi.FastAPI()
     fastapi_application = prometheus_instrument.bootstrap_after(fastapi_application)
 
-    response: typing.Final = TestClient(app=fastapi_application).get(
+    response: typing.Final = FastAPITestClient(app=fastapi_application).get(
         minimal_fastapi_prometheus_config.prometheus_metrics_path
     )
     assert response.status_code == status_codes.HTTP_200_OK

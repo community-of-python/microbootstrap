@@ -5,9 +5,9 @@ from unittest.mock import AsyncMock, MagicMock, Mock, patch
 import fastapi
 import litestar
 import pytest
-from fastapi.testclient import TestClient
+from fastapi.testclient import TestClient as FastAPITestClient
 from litestar.middleware.base import DefineMiddleware
-from litestar.testing import AsyncTestClient
+from litestar.testing import TestClient as LitestarTestClient
 
 from microbootstrap import OpentelemetryConfig
 from microbootstrap.bootstrappers.fastapi import FastApiOpentelemetryInstrument
@@ -70,7 +70,7 @@ def test_litestar_opentelemetry_teardown(
     opentelemetry_instrument.teardown()
 
 
-async def test_litestar_opentelemetry_bootstrap_working(
+def test_litestar_opentelemetry_bootstrap_working(
     minimal_opentelemetry_config: OpentelemetryConfig,
     async_mock: AsyncMock,
 ) -> None:
@@ -91,10 +91,10 @@ async def test_litestar_opentelemetry_bootstrap_working(
         route_handlers=[test_handler],
         **opentelemetry_bootstrap_result,
     )
-    async with AsyncTestClient(app=litestar_application) as async_client:
-        # Silencing error, cause we are mocking middleware call, so ASGI scope remains unchanged.
+    with LitestarTestClient(app=litestar_application) as test_client:
+        # Silencing error, because we are mocking middleware call, so ASGI scope remains unchanged.
         with contextlib.suppress(AssertionError):
-            await async_client.get("/test-handler")
+            test_client.get("/test-handler")
         assert async_mock.called
 
 
@@ -112,5 +112,5 @@ def test_fastapi_opentelemetry_bootstrap_working(
         return None
 
     with patch("opentelemetry.trace.use_span") as mock_capture_event:
-        TestClient(app=fastapi_application).get("/test-handler")
+        FastAPITestClient(app=fastapi_application).get("/test-handler")
         assert mock_capture_event.called

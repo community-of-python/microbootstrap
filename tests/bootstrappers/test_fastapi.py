@@ -1,8 +1,8 @@
 import typing
 from unittest.mock import MagicMock
 
+from fastapi import status
 from fastapi.testclient import TestClient
-from litestar import status_codes
 
 from microbootstrap.bootstrappers.fastapi import FastApiBootstrapper
 from microbootstrap.config.fastapi import FastApiConfig
@@ -22,7 +22,7 @@ def test_fastapi_configure_instrument() -> None:
     )
 
     response: typing.Final = TestClient(app=application).get(test_metrics_path)
-    assert response.status_code == status_codes.HTTP_200_OK
+    assert response.status_code == status.HTTP_200_OK
 
 
 def test_fastapi_configure_instruments() -> None:
@@ -36,7 +36,7 @@ def test_fastapi_configure_instruments() -> None:
     )
 
     response: typing.Final = TestClient(app=application).get(test_metrics_path)
-    assert response.status_code == status_codes.HTTP_200_OK
+    assert response.status_code == status.HTTP_200_OK
 
 
 def test_fastapi_configure_application() -> None:

@@ -2,9 +2,9 @@ import typing
 
 import fastapi
 import litestar
-from fastapi.testclient import TestClient
+from fastapi.testclient import TestClient as FastAPITestClient
 from litestar import status_codes
-from litestar.testing import AsyncTestClient
+from litestar.testing import TestClient as LitestarTestClient
 
 from microbootstrap.bootstrappers.fastapi import FastApiHealthChecksInstrument
 from microbootstrap.bootstrappers.litestar import LitestarHealthChecksInstrument
@@ -40,7 +40,7 @@ def test_health_checks_teardown(
     assert health_checks_instrument.teardown() is None  # type: ignore[func-returns-value]
 
 
-async def test_litestar_health_checks_bootstrap() -> None:
+def test_litestar_health_checks_bootstrap() -> None:
     test_health_checks_path: typing.Final = "/test-path/"
     heatlh_checks_config: typing.Final = HealthChecksConfig(health_checks_path=test_health_checks_path)
     health_checks_instrument: typing.Final = LitestarHealthChecksInstrument(heatlh_checks_config)
@@ -50,8 +50,8 @@ async def test_litestar_health_checks_bootstrap() -> None:
         **health_checks_instrument.bootstrap_before(),
     )
 
-    async with AsyncTestClient(app=litestar_application) as async_client:
-        response = await async_client.get(heatlh_checks_config.health_checks_path)
+    with LitestarTestClient(app=litestar_application) as async_client:
+        response = async_client.get(heatlh_checks_config.health_checks_path)
         assert response.status_code == status_codes.HTTP_200_OK
 
 
@@ -66,5 +66,5 @@ def test_fastapi_health_checks_bootstrap() -> None:
     )
     fastapi_application = health_checks_instrument.bootstrap_after(fastapi_application)
 
-    response = TestClient(app=fastapi_application).get(heatlh_checks_config.health_checks_path)
+    response = FastAPITestClient(app=fastapi_application).get(heatlh_checks_config.health_checks_path)
     assert response.status_code == status_codes.HTTP_200_OK

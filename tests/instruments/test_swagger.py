@@ -2,12 +2,12 @@ import typing
 
 import fastapi
 import litestar
-from fastapi.testclient import TestClient
+from fastapi.testclient import TestClient as FastAPITestClient
 from litestar import openapi, status_codes
 from litestar.openapi import spec as litestar_openapi
 from litestar.openapi.plugins import ScalarRenderPlugin
 from litestar.static_files import StaticFilesConfig
-from litestar.testing import AsyncTestClient
+from litestar.testing import TestClient as LitestarTestClient
 
 from microbootstrap.bootstrappers.fastapi import FastApiSwaggerInstrument
 from microbootstrap.bootstrappers.litestar import LitestarSwaggerInstrument
@@ -97,7 +97,7 @@ def test_litestar_swagger_bootstrap_offline_docs(minimal_swagger_config: Swagger
     assert isinstance(bootstrap_result["static_files_config"][0], StaticFilesConfig)
 
 
-async def test_litestar_swagger_bootstrap_working_online_docs(
+def test_litestar_swagger_bootstrap_working_online_docs(
     minimal_swagger_config: SwaggerConfig,
 ) -> None:
     minimal_swagger_config.swagger_path = "/my-docs-path"
@@ -108,12 +108,12 @@ async def test_litestar_swagger_bootstrap_working_online_docs(
         **swagger_instrument.bootstrap_before(),
     )
 
-    async with AsyncTestClient(app=litestar_application) as async_client:
-        response: typing.Final = await async_client.get(minimal_swagger_config.swagger_path)
+    with LitestarTestClient(app=litestar_application) as test_client:
+        response: typing.Final = test_client.get(minimal_swagger_config.swagger_path)
         assert response.status_code == status_codes.HTTP_200_OK
 
 
-async def test_litestar_swagger_bootstrap_working_offline_docs(
+def test_litestar_swagger_bootstrap_working_offline_docs(
     minimal_swagger_config: SwaggerConfig,
 ) -> None:
     minimal_swagger_config.service_static_path = "/my-static-path"
@@ -125,10 +125,10 @@ async def test_litestar_swagger_bootstrap_working_offline_docs(
         **swagger_instrument.bootstrap_before(),
     )
 
-    async with AsyncTestClient(app=litestar_application) as async_client:
-        response = await async_client.get(minimal_swagger_config.swagger_path)
+    with LitestarTestClient(app=litestar_application) as test_client:
+        response = test_client.get(minimal_swagger_config.swagger_path)
         assert response.status_code == status_codes.HTTP_200_OK
-        response = await async_client.get(f"{minimal_swagger_config.service_static_path}/swagger-ui.css")
+        response = test_client.get(f"{minimal_swagger_config.service_static_path}/swagger-ui.css")
         assert response.status_code == status_codes.HTTP_200_OK
 
 
@@ -152,7 +152,7 @@ def test_fastapi_swagger_bootstrap_working_online_docs(
         **swagger_instrument.bootstrap_before(),
     )
 
-    response: typing.Final = TestClient(app=fastapi_application).get(minimal_swagger_config.swagger_path)
+    response: typing.Final = FastAPITestClient(app=fastapi_application).get(minimal_swagger_config.swagger_path)
     assert response.status_code == status_codes.HTTP_200_OK
 
 
@@ -167,7 +167,7 @@ def test_fastapi_swagger_bootstrap_working_offline_docs(
     )
     swagger_instrument.bootstrap_after(fastapi_application)
 
-    with TestClient(app=fastapi_application) as test_client:
+    with FastAPITestClient(app=fastapi_application) as test_client:
         response = test_client.get(minimal_swagger_config.swagger_path)
         assert response.status_code == status_codes.HTTP_200_OK
         response = test_client.get(f"{minimal_swagger_config.service_static_path}/swagger-ui.css")
