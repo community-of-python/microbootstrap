@@ -10,3 +10,8 @@ lint:
   poetry run ruff format
   poetry run ruff check --fix
   poetry run mypy .
+
+lint-ci:
+  poetry run ruff format --check
+  poetry run ruff check --no-fix
+  poetry run mypy .
