@@ -2,8 +2,6 @@ from __future__ import annotations
 import abc
 import typing
 
-import typing_extensions
-
 from microbootstrap.console_writer import ConsoleWriter
 from microbootstrap.helpers import dataclass_to_dict_no_defaults, merge_dataclasses_configs, merge_dict_configs
 from microbootstrap.instruments.instrument_box import InstrumentBox
@@ -11,13 +9,17 @@ from microbootstrap.settings import SettingsT
 
 
 if typing.TYPE_CHECKING:
-    from _typeshed import DataclassInstance
+    import typing_extensions
 
     from microbootstrap.instruments.base import Instrument, InstrumentConfigT
 
 
-ApplicationT = typing.TypeVar("ApplicationT")
-DataclassT = typing.TypeVar("DataclassT", bound="DataclassInstance")
+class DataclassInstance(typing.Protocol):
+    __dataclass_fields__: typing.ClassVar[dict[str, typing.Any]]
+
+
+ApplicationT = typing.TypeVar("ApplicationT", bound=typing.Any)
+DataclassT = typing.TypeVar("DataclassT", bound=DataclassInstance)
 
 
 class ApplicationBootstrapper(abc.ABC, typing.Generic[SettingsT, ApplicationT, DataclassT]):
@@ -35,21 +37,21 @@ class ApplicationBootstrapper(abc.ABC, typing.Generic[SettingsT, ApplicationT, D
         self.instrument_box.initialize(self.settings)
 
     def configure_application(
-        self: typing_extensions.Self,
+        self,
         application_config: DataclassT,
     ) -> typing_extensions.Self:
         self.application_config = merge_dataclasses_configs(self.application_config, application_config)
         return self
 
     def configure_instrument(
-        self: typing_extensions.Self,
+        self,
         instrument_config: InstrumentConfigT,
     ) -> typing_extensions.Self:
         self.instrument_box.configure_instrument(instrument_config)
         return self
 
     def configure_instruments(
-        self: typing_extensions.Self,
+        self,
         *instrument_configs: InstrumentConfigT,
     ) -> typing_extensions.Self:
         for instrument_config in instrument_configs:
@@ -67,7 +69,7 @@ class ApplicationBootstrapper(abc.ABC, typing.Generic[SettingsT, ApplicationT, D
             cls.instrument_box = InstrumentBox()
         return cls.instrument_box.extend_instruments
 
-    def bootstrap(self: typing_extensions.Self) -> ApplicationT:
+    def bootstrap(self) -> ApplicationT:
         resulting_application_config: dict[str, typing.Any] = {}
         for instrument in self.instrument_box.instruments:
             if instrument.is_ready():
@@ -92,14 +94,14 @@ class ApplicationBootstrapper(abc.ABC, typing.Generic[SettingsT, ApplicationT, D
 
         return self.bootstrap_after(application)
 
-    def bootstrap_before(self: typing_extensions.Self) -> dict[str, typing.Any]:
+    def bootstrap_before(self) -> dict[str, typing.Any]:
         """Add some framework-related parameters to final bootstrap result before application creation."""
         return {}
 
-    def bootstrap_after(self: typing_extensions.Self, application: ApplicationT) -> ApplicationT:
+    def bootstrap_after(self, application: ApplicationT) -> ApplicationT:
         """Add some framework-related parameters to final bootstrap result after application creation."""
         return application
 
-    def teardown(self: typing_extensions.Self) -> None:
+    def teardown(self) -> None:
         for instrument in self.instrument_box.instruments:
             instrument.teardown()

@@ -4,7 +4,7 @@ import typing
 
 import pydantic
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
-from opentelemetry.instrumentation.instrumentor import BaseInstrumentor  # noqa: TCH002
+from opentelemetry.instrumentation.instrumentor import BaseInstrumentor  # type: ignore[attr-defined] # noqa: TC002
 from opentelemetry.sdk import resources
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
@@ -54,9 +54,9 @@ class OpentelemetryInstrument(Instrument[OpentelemetryConfig]):
             attributes={
                 resources.SERVICE_NAME: self.instrument_config.service_name,
                 resources.TELEMETRY_SDK_LANGUAGE: "python",
-                resources.SERVICE_NAMESPACE: self.instrument_config.opentelemetry_namespace,
+                resources.SERVICE_NAMESPACE: self.instrument_config.opentelemetry_namespace,  # type: ignore[dict-item]
                 resources.SERVICE_VERSION: self.instrument_config.service_version,
-                resources.CONTAINER_NAME: self.instrument_config.opentelemetry_container_name,
+                resources.CONTAINER_NAME: self.instrument_config.opentelemetry_container_name,  # type: ignore[dict-item]
             },
         )
 

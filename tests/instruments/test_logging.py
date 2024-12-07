@@ -4,8 +4,8 @@ from io import StringIO
 
 import fastapi
 import litestar
-from httpx import AsyncClient
-from litestar.testing import AsyncTestClient
+from fastapi.testclient import TestClient as FastAPITestClient
+from litestar.testing import TestClient as LitestarTestClient
 from opentelemetry import trace
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import ConsoleSpanExporter, SimpleSpanProcessor
@@ -51,7 +51,7 @@ def test_litestar_logging_bootstrap(minimal_logging_config: LoggingConfig) -> No
     assert len(bootsrap_result["middleware"]) == 1
 
 
-async def test_litestar_logging_bootstrap_working(minimal_logging_config: LoggingConfig) -> None:
+def test_litestar_logging_bootstrap_working(minimal_logging_config: LoggingConfig) -> None:
     logging_instrument: typing.Final = LitestarLoggingInstrument(minimal_logging_config)
 
     @litestar.get("/test-handler")
@@ -64,16 +64,16 @@ async def test_litestar_logging_bootstrap_working(minimal_logging_config: Loggin
         **logging_instrument.bootstrap_before(),
     )
 
-    async with AsyncTestClient(app=litestar_application) as async_client:
-        await async_client.get("/test-handler?test-query=1")
-        await async_client.get("/test-handler")
+    with LitestarTestClient(app=litestar_application) as test_client:
+        test_client.get("/test-handler?test-query=1")
+        test_client.get("/test-handler")
 
 
-async def test_litestar_logging_bootstrap_tracer_injection(minimal_logging_config: LoggingConfig) -> None:
+def test_litestar_logging_bootstrap_tracer_injection(minimal_logging_config: LoggingConfig) -> None:
     trace.set_tracer_provider(TracerProvider())
     tracer = trace.get_tracer(__name__)
     span_processor = SimpleSpanProcessor(ConsoleSpanExporter())
-    trace.get_tracer_provider().add_span_processor(span_processor)
+    trace.get_tracer_provider().add_span_processor(span_processor)  # type: ignore[attr-defined]
     logging_instrument: typing.Final = LitestarLoggingInstrument(minimal_logging_config)
 
     @litestar.get("/test-handler")
@@ -89,8 +89,8 @@ async def test_litestar_logging_bootstrap_tracer_injection(minimal_logging_confi
         # Do some fake work inside the span
         span.set_attribute("example_attribute", "value")
         span.add_event("example_event", {"event_attr": 1})
-        async with AsyncTestClient(app=litestar_application) as async_client:
-            await async_client.get("/test-handler")
+        with LitestarTestClient(app=litestar_application) as test_client:
+            test_client.get("/test-handler")
 
 
 def test_memory_logger_factory_info() -> None:
@@ -133,7 +133,7 @@ def test_memory_logger_factory_error() -> None:
     assert error_message in test_stream.getvalue()
 
 
-async def test_fastapi_logging_bootstrap_working(minimal_logging_config: LoggingConfig) -> None:
+def test_fastapi_logging_bootstrap_working(minimal_logging_config: LoggingConfig) -> None:
     logging_instrument: typing.Final = FastApiLoggingInstrument(minimal_logging_config)
 
     fastapi_application: typing.Final = fastapi.FastAPI()
@@ -145,6 +145,6 @@ async def test_fastapi_logging_bootstrap_working(minimal_logging_config: Logging
     logging_instrument.bootstrap()
     logging_instrument.bootstrap_after(fastapi_application)
 
-    async with AsyncClient(app=fastapi_application, base_url="http://testserver") as async_client:
-        await async_client.get("/test-handler?test-query=1")
-        await async_client.get("/test-handler")
+    with FastAPITestClient(app=fastapi_application) as test_client:
+        test_client.get("/test-handler?test-query=1")
+        test_client.get("/test-handler")

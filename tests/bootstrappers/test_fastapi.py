@@ -1,8 +1,8 @@
 import typing
 from unittest.mock import MagicMock
 
-from litestar import status_codes
-from litestar.testing import AsyncTestClient
+from fastapi import status
+from fastapi.testclient import TestClient
 
 from microbootstrap.bootstrappers.fastapi import FastApiBootstrapper
 from microbootstrap.config.fastapi import FastApiConfig
@@ -10,7 +10,7 @@ from microbootstrap.instruments.prometheus_instrument import FastApiPrometheusCo
 from microbootstrap.settings import FastApiSettings
 
 
-async def test_fastapi_configure_instrument() -> None:
+def test_fastapi_configure_instrument() -> None:
     test_metrics_path: typing.Final = "/test-metrics-path"
 
     application: typing.Final = (
@@ -21,12 +21,11 @@ async def test_fastapi_configure_instrument() -> None:
         .bootstrap()
     )
 
-    async with AsyncTestClient(app=application) as async_client:
-        response: typing.Final = await async_client.get(test_metrics_path)
-        assert response.status_code == status_codes.HTTP_200_OK
+    response: typing.Final = TestClient(app=application).get(test_metrics_path)
+    assert response.status_code == status.HTTP_200_OK
 
 
-async def test_fastapi_configure_instruments() -> None:
+def test_fastapi_configure_instruments() -> None:
     test_metrics_path: typing.Final = "/test-metrics-path"
     application: typing.Final = (
         FastApiBootstrapper(FastApiSettings())
@@ -36,12 +35,11 @@ async def test_fastapi_configure_instruments() -> None:
         .bootstrap()
     )
 
-    async with AsyncTestClient(app=application) as async_client:
-        response: typing.Final = await async_client.get(test_metrics_path)
-        assert response.status_code == status_codes.HTTP_200_OK
+    response: typing.Final = TestClient(app=application).get(test_metrics_path)
+    assert response.status_code == status.HTTP_200_OK
 
 
-async def test_fastapi_configure_application() -> None:
+def test_fastapi_configure_application() -> None:
     test_title: typing.Final = "new-title"
 
     application: typing.Final = (
@@ -51,7 +49,7 @@ async def test_fastapi_configure_application() -> None:
     assert application.title == test_title
 
 
-async def test_fastapi_configure_application_add_startup_event(magic_mock: MagicMock) -> None:
+def test_fastapi_configure_application_add_startup_event(magic_mock: MagicMock) -> None:
     def test_startup() -> None:
         magic_mock()
 
@@ -61,5 +59,5 @@ async def test_fastapi_configure_application_add_startup_event(magic_mock: Magic
         .bootstrap()
     )
 
-    async with AsyncTestClient(app=application):
+    with TestClient(app=application):
         assert magic_mock.called

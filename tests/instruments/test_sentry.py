@@ -4,8 +4,8 @@ from unittest.mock import patch
 
 import fastapi
 import litestar
-from httpx import AsyncClient
-from litestar.testing import AsyncTestClient
+from fastapi.testclient import TestClient as FastAPITestClient
+from litestar.testing import TestClient as LitestarTestClient
 
 from microbootstrap import SentryConfig
 from microbootstrap.bootstrappers.fastapi import FastApiSentryInstrument
@@ -45,7 +45,7 @@ def test_litestar_sentry_bootstrap(minimal_sentry_config: SentryConfig) -> None:
     assert sentry_instrument.bootstrap_before() == {}
 
 
-async def test_litestar_sentry_bootstrap_catch_exception(
+def test_litestar_sentry_bootstrap_catch_exception(
     minimal_sentry_config: SentryConfig,
 ) -> None:
     sentry_instrument: typing.Final = LitestarSentryInstrument(minimal_sentry_config)
@@ -57,8 +57,8 @@ async def test_litestar_sentry_bootstrap_catch_exception(
     sentry_instrument.bootstrap()
     litestar_application: typing.Final = litestar.Litestar(route_handlers=[error_handler])
     with patch("sentry_sdk.Scope.capture_event") as mock_capture_event:
-        async with AsyncTestClient(app=litestar_application) as async_client:
-            await async_client.get("/test-error-handler")
+        with LitestarTestClient(app=litestar_application) as test_client:
+            test_client.get("/test-error-handler")
 
         assert mock_capture_event.called
 
@@ -69,7 +69,7 @@ def test_fastapi_sentry_bootstrap(minimal_sentry_config: SentryConfig) -> None:
     assert sentry_instrument.bootstrap_before() == {}
 
 
-async def test_fastapi_sentry_bootstrap_catch_exception(
+def test_fastapi_sentry_bootstrap_catch_exception(
     minimal_sentry_config: SentryConfig,
 ) -> None:
     sentry_instrument: typing.Final = FastApiSentryInstrument(minimal_sentry_config)
@@ -82,6 +82,5 @@ async def test_fastapi_sentry_bootstrap_catch_exception(
     sentry_instrument.bootstrap()
     with patch("sentry_sdk.Scope.capture_event") as mock_capture_event:
         with contextlib.suppress(ValueError):
-            async with AsyncClient(app=app) as async_client:
-                await async_client.get("/test-error-handler")
+            FastAPITestClient(app=app).get("/test-error-handler")
         assert mock_capture_event.called

@@ -53,7 +53,7 @@ class ServerConfig(pydantic.BaseModel):
     server_workers_count: int = 1
 
 
-class LitestarSettings(
+class LitestarSettings(  # type: ignore[misc]
     BaseServiceSettings,
     ServerConfig,
     LoggingConfig,
@@ -67,7 +67,7 @@ class LitestarSettings(
     """Settings for a litestar botstrap."""
 
 
-class FastApiSettings(
+class FastApiSettings(  # type: ignore[misc]
     BaseServiceSettings,
     ServerConfig,
     LoggingConfig,
@@ -81,7 +81,7 @@ class FastApiSettings(
     """Settings for a fastapi botstrap."""
 
 
-class InstrumentsSetupperSettings(
+class InstrumentsSetupperSettings(  # type: ignore[misc]
     BaseServiceSettings,
     LoggingConfig,
     OpentelemetryConfig,
