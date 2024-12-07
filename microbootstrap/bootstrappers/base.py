@@ -85,7 +85,7 @@ class ApplicationBootstrapper(abc.ABC, typing.Generic[SettingsT, ApplicationT, D
             dataclass_to_dict_no_defaults(self.application_config),
         )
         application = self.application_type(
-            **merge_dict_configs(resulting_application_config, self.bootstrap_before()),
+            **merge_dict_configs(self.bootstrap_before(), resulting_application_config),
         )
 
         for instrument in self.instrument_box.instruments:
