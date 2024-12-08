@@ -66,6 +66,8 @@ def test_litestar_sentry_bootstrap_catch_exception(
 def test_fastapi_sentry_bootstrap(minimal_sentry_config: SentryConfig) -> None:
     sentry_instrument: typing.Final = FastApiSentryInstrument(minimal_sentry_config)
     sentry_instrument.bootstrap()
+    app = fastapi.FastAPI()
+    assert sentry_instrument.bootstrap_after(app) is app
     assert sentry_instrument.bootstrap_before() == {}
 
 

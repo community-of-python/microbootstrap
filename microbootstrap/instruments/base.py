@@ -40,8 +40,7 @@ class Instrument(abc.ABC, typing.Generic[InstrumentConfigT]):
         )
 
     @abc.abstractmethod
-    def is_ready(self) -> bool:
-        raise NotImplementedError
+    def is_ready(self) -> bool: ...
 
     @classmethod
     @abc.abstractmethod
