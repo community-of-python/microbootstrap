@@ -1,15 +1,13 @@
 from __future__ import annotations
-import typing
 
 import pydantic
-from litestar.types import Method  # noqa: TC002
 
 from microbootstrap.instruments.base import BaseInstrumentConfig, Instrument
 
 
 class CorsConfig(BaseInstrumentConfig):
     cors_allowed_origins: list[str] = pydantic.Field(default_factory=list)
-    cors_allowed_methods: list[typing.Literal["*"] | Method] = pydantic.Field(default_factory=list)
+    cors_allowed_methods: list[str] = pydantic.Field(default_factory=list)
     cors_allowed_headers: list[str] = pydantic.Field(default_factory=list)
     cors_exposed_headers: list[str] = pydantic.Field(default_factory=list)
     cors_allowed_credentials: bool = False
