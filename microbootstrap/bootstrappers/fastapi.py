@@ -37,8 +37,7 @@ class FastApiBootstrapper(
         }
 
 
-@FastApiBootstrapper.use_instrument()
-class FastApiSentryInstrument(SentryInstrument): ...
+FastApiBootstrapper.use_instrument()(SentryInstrument)
 
 
 @FastApiBootstrapper.use_instrument()
