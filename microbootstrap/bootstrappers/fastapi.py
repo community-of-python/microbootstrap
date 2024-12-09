@@ -1,3 +1,4 @@
+import contextlib
 import typing
 
 import fastapi
@@ -29,11 +30,32 @@ class FastApiBootstrapper(
     application_config = FastApiConfig()
     application_type = fastapi.FastAPI
 
+    @contextlib.asynccontextmanager
+    async def _lifespan_manager(self, _: fastapi.FastAPI) -> typing.AsyncIterator[dict[str, typing.Any]]:
+        try:
+            self.console_writer.print_bootstrap_table()
+            yield {}
+        finally:
+            self.teardown()
+
+    @contextlib.asynccontextmanager
+    async def _wrapped_lifespan_manager(self, app: fastapi.FastAPI) -> typing.AsyncIterator[dict[str, typing.Any]]:
+        assert self.application_config.lifespan  # noqa: S101
+        async with self._lifespan_manager(app), self.application_config.lifespan(app):
+            yield {}
+
+    def _choose_lifespan_manager(
+        self,
+    ) -> typing.Callable[[fastapi.FastAPI], typing.AsyncIterator[dict[str, typing.Any]]]:
+        if self.application_config.lifespan:
+            return self._wrapped_lifespan_manager  # type: ignore[return-value]
+
+        return self._lifespan_manager  # type: ignore[return-value]
+
     def bootstrap_before(self) -> dict[str, typing.Any]:
         return {
             "debug": self.settings.service_debug,
-            "on_shutdown": [self.teardown],
-            "on_startup": [self.console_writer.print_bootstrap_table],
+            "lifespan": self._choose_lifespan_manager(),
         }
 
 

@@ -49,14 +49,9 @@ def test_fastapi_configure_application() -> None:
     assert application.title == test_title
 
 
-def test_fastapi_configure_application_add_startup_event(magic_mock: MagicMock) -> None:
-    def test_startup() -> None:
-        magic_mock()
-
+def test_fastapi_configure_application_lifespan(magic_mock: MagicMock) -> None:
     application: typing.Final = (
-        FastApiBootstrapper(FastApiSettings())
-        .configure_application(FastApiConfig(on_startup=[test_startup]))
-        .bootstrap()
+        FastApiBootstrapper(FastApiSettings()).configure_application(FastApiConfig(lifespan=magic_mock)).bootstrap()
     )
 
     with TestClient(app=application):
