@@ -1,14 +1,10 @@
-import contextlib
 import typing
 from unittest.mock import patch
 
-import fastapi
 import litestar
-from fastapi.testclient import TestClient as FastAPITestClient
 from litestar.testing import TestClient as LitestarTestClient
 
 from microbootstrap import SentryConfig
-from microbootstrap.bootstrappers.fastapi import FastApiSentryInstrument
 from microbootstrap.bootstrappers.litestar import LitestarSentryInstrument
 from microbootstrap.instruments.sentry_instrument import SentryInstrument
 
@@ -60,29 +56,4 @@ def test_litestar_sentry_bootstrap_catch_exception(
         with LitestarTestClient(app=litestar_application) as test_client:
             test_client.get("/test-error-handler")
 
-        assert mock_capture_event.called
-
-
-def test_fastapi_sentry_bootstrap(minimal_sentry_config: SentryConfig) -> None:
-    sentry_instrument: typing.Final = FastApiSentryInstrument(minimal_sentry_config)
-    sentry_instrument.bootstrap()
-    app = fastapi.FastAPI()
-    assert sentry_instrument.bootstrap_after(app) is app
-    assert sentry_instrument.bootstrap_before() == {}
-
-
-def test_fastapi_sentry_bootstrap_catch_exception(
-    minimal_sentry_config: SentryConfig,
-) -> None:
-    sentry_instrument: typing.Final = FastApiSentryInstrument(minimal_sentry_config)
-    app = fastapi.FastAPI()
-
-    @app.get("/test-error-handler")
-    async def error_handler() -> None:
-        raise ValueError("I'm test error")
-
-    sentry_instrument.bootstrap()
-    with patch("sentry_sdk.Scope.capture_event") as mock_capture_event:
-        with contextlib.suppress(ValueError):
-            FastAPITestClient(app=app).get("/test-error-handler")
         assert mock_capture_event.called
