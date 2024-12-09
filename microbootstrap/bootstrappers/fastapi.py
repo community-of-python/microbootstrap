@@ -46,11 +46,11 @@ class FastApiBootstrapper(
 
     def _choose_lifespan_manager(
         self,
-    ) -> typing.Callable[[fastapi.FastAPI], typing.AsyncIterator[dict[str, typing.Any]]]:
+    ) -> typing.Callable[[fastapi.FastAPI], typing.AsyncContextManager[dict[str, typing.Any]]]:
         if self.application_config.lifespan:
-            return self._wrapped_lifespan_manager  # type: ignore[return-value]
+            return self._wrapped_lifespan_manager
 
-        return self._lifespan_manager  # type: ignore[return-value]
+        return self._lifespan_manager
 
     def bootstrap_before(self) -> dict[str, typing.Any]:
         return {
