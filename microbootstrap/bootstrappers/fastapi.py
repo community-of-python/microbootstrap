@@ -6,7 +6,6 @@ from fastapi_offline_docs import enable_offline_docs
 from health_checks.fastapi_healthcheck import build_fastapi_health_check_router
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from prometheus_fastapi_instrumentator import Instrumentator
-from sentry_sdk.integrations.asgi import SentryAsgiMiddleware
 
 from microbootstrap.bootstrappers.base import ApplicationBootstrapper
 from microbootstrap.config.fastapi import FastApiConfig
@@ -39,10 +38,7 @@ class FastApiBootstrapper(
 
 
 @FastApiBootstrapper.use_instrument()
-class FastApiSentryInstrument(SentryInstrument):
-    def bootstrap_after(self, application: ApplicationT) -> ApplicationT:
-        application.add_middleware(SentryAsgiMiddleware)
-        return application
+class FastApiSentryInstrument(SentryInstrument): ...
 
 
 @FastApiBootstrapper.use_instrument()
