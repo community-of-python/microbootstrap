@@ -44,18 +44,10 @@ class FastApiBootstrapper(
         async with self._lifespan_manager(app), self.application_config.lifespan(app):
             yield {}
 
-    def _choose_lifespan_manager(
-        self,
-    ) -> typing.Callable[[fastapi.FastAPI], typing.AsyncContextManager[dict[str, typing.Any]]]:
-        if self.application_config.lifespan:
-            return self._wrapped_lifespan_manager
-
-        return self._lifespan_manager
-
     def bootstrap_before(self) -> dict[str, typing.Any]:
         return {
             "debug": self.settings.service_debug,
-            "lifespan": self._choose_lifespan_manager(),
+            "lifespan": self._wrapped_lifespan_manager if self.application_config.lifespan else self._lifespan_manager,
         }
 
 
