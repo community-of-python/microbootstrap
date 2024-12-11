@@ -301,6 +301,7 @@ class YourSettings(BaseServiceSettings):
     service_name: str
     service_version: str
 
+    opentelemetry_service_name: str | None = None
     opentelemetry_container_name: str | None = None
     opentelemetry_endpoint: str | None = None
     opentelemetry_namespace: str | None = None
@@ -315,6 +316,7 @@ Parameters description:
 
 - `service_name` - will be passed to the `Resource`.
 - `service_version` - will be passed to the `Resource`.
+- `opentelemetry_service_name` - if provided, will be passed to the `Resource` instead of `service_name`.
 - `opentelemetry_endpoint` - will be passed to `OTLPSpanExporter` as endpoint.
 - `opentelemetry_namespace` - will be passed to the `Resource`.
 - `opentelemetry_insecure` - is opentelemetry connection secure.
