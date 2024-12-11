@@ -22,6 +22,7 @@ class OpentelemetryConfig(BaseInstrumentConfig):
     service_name: str = "micro-service"
     service_version: str = "1.0.0"
 
+    opentelemetry_service_name: str | None = None
     opentelemetry_container_name: str | None = None
     opentelemetry_endpoint: str | None = None
     opentelemetry_namespace: str | None = None
@@ -52,7 +53,8 @@ class OpentelemetryInstrument(Instrument[OpentelemetryConfig]):
     def bootstrap(self) -> None:
         resource: typing.Final = resources.Resource.create(
             attributes={
-                resources.SERVICE_NAME: self.instrument_config.service_name,
+                resources.SERVICE_NAME: self.instrument_config.opentelemetry_service_name
+                or self.instrument_config.service_name,
                 resources.TELEMETRY_SDK_LANGUAGE: "python",
                 resources.SERVICE_NAMESPACE: self.instrument_config.opentelemetry_namespace,  # type: ignore[dict-item]
                 resources.SERVICE_VERSION: self.instrument_config.service_version,
