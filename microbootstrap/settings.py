@@ -43,6 +43,7 @@ class BaseServiceSettings(
         env_prefix=ENV_PREFIX,
         env_file_encoding="utf-8",
         populate_by_name=True,
+        extra="allow",
     )
 
 
