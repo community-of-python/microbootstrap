@@ -1,17 +1,29 @@
 default: install lint test
 
-test *args:
-  poetry run pytest {{ args }}
-
 install:
-  poetry install --sync --no-root --all-extras
+    uv lock --upgrade
+    uv sync --frozen
 
 lint:
-  poetry run ruff format
-  poetry run ruff check --fix
-  poetry run mypy .
+    uv run ruff format
+    uv run ruff check --fix
+    uv run mypy .
 
 lint-ci:
-  poetry run ruff format --check
-  poetry run ruff check --no-fix
-  poetry run mypy .
+    uv run ruff format --check
+    uv run ruff check --no-fix
+    uv run mypy .
+
+test *args:
+    uv run --no-sync pytest {{ args }}
+
+publish:
+    rm -rf dist
+    uv build
+    uv publish --token $PYPI_TOKEN
+
+hook:
+    uv run pre-commit install
+
+unhook:
+    uv run pre-commit uninstall

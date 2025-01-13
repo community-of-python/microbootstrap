@@ -1,0 +1,19 @@
+name: Publish Package
+
+on:
+  release:
+    types:
+      - published
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: extractions/setup-just@v2
+      - uses: astral-sh/setup-uv@v5
+        with:
+          cache-dependency-glob: "**/pyproject.toml"
+      - run: just publish
+        env:
+          PYPI_TOKEN: ${{ secrets.PYPI_TOKEN }}

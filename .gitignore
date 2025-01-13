@@ -18,4 +18,4 @@ pytest.xml
 dist/
 .python-version
 .venv
-poetry.lock
+uv.lock
