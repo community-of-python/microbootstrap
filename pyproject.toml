@@ -1,5 +1,8 @@
-[tool.poetry]
+[project]
 name = "microbootstrap"
+description = "Package for bootstrapping new micro-services"
+readme = "README.md"
+requires-python = ">=3.11"
 keywords = [
     "python",
     "microservice",
@@ -10,7 +13,6 @@ keywords = [
     "litestar",
     "fastapi",
 ]
-
 classifiers = [
     "Typing :: Typed",
     "Topic :: Software Development :: Build Tools",
@@ -26,83 +28,55 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
 ]
-version = "0"
-description = "Package for bootstrapping new micro-services"
-authors = ["community-of-python"]
-readme = "README.md"
-packages = [{ include = "microbootstrap" }]
-
-[tool.poetry.urls]
-homepage = "https://github.com/community-of-python/microbootstrap"
-repository = "https://github.com/community-of-python/microbootstrap"
-documentation = "https://pypi.org/project/microbootstrap/"
-
-
-[tool.poetry.dependencies]
-python = "^3.9"
-pydantic-settings = ">=2"
-granian = { version = ">=1", extras = ["reload"] }
-rich = ">=13"
-eval-type-backport = ">=0.2"
-# for logging boostrap
-structlog = ">=24"
-# for sentry bootstrap
-sentry-sdk = ">=2.7"
-# for opentelemetry bootstrap
-opentelemetry-api = ">=1.25.0"
-opentelemetry-sdk = ">=1.25.0"
-opentelemetry-exporter-otlp = ">=1.25.0"
-opentelemetry-exporter-prometheus-remote-write = ">=0.46b0"
-opentelemetry-instrumentation = ">=0.46b0"
-opentelemetry-instrumentation-system-metrics = ">=0.46b0"
-# optional extras for any web framework
-opentelemetry-instrumentation-asgi = { version = ">=0.46b0", optional = true }
-health-checks = { version = ">=1", optional = true }
-# optional extras for Litestar
-litestar = { version = ">=2.9", optional = true }
-prometheus-client = { version = ">=0.20", optional = true }
-litestar-offline-docs = { version = ">=1", optional = true }
-# optional extras for FastAPI
-fastapi = { version = ">=0.100", optional = true }
-prometheus-fastapi-instrumentator = { version = ">=6.1", optional = true }
-opentelemetry-instrumentation-fastapi = { version = ">=0.46b0", optional = true }
-fastapi-offline-docs = { version = ">=1", optional = true }
-
-[tool.poetry.group.dev.dependencies]
-pytest = "*"
-pytest-cov = "*"
-pytest-xdist = "*"
-pytest-mock = "*"
-typing-extensions = "*"
-httpx = "*"
-anyio = "*"
-pre-commit = "*"
-redis = "*"
-opentelemetry-instrumentation-redis = "*"
-trio = "*"
-mypy = "*"
-ruff = "*"
-
-[tool.poetry.extras]
-fastapi = [
-    "fastapi",
-    "fastapi-offline-docs",
-    "health-checks",
-    "opentelemetry-instrumentation-asgi",
-    "opentelemetry-instrumentation-fastapi",
-    "prometheus-fastapi-instrumentator",
+dependencies = [
+    "eval-type-backport>=0.2",
+    "fastapi>=0.100",
+    "fastapi-offline-docs>=1",
+    "granian>=1",
+    "health-checks>=1",
+    "litestar>=2.9",
+    "litestar-offline-docs>=1",
+    "opentelemetry-api>=1.25.0",
+    "opentelemetry-exporter-otlp>=1.25.0",
+    "opentelemetry-exporter-prometheus-remote-write>=0.46b0",
+    "opentelemetry-instrumentation>=0.46b0",
+    "opentelemetry-instrumentation-asgi>=0.46b0",
+    "opentelemetry-instrumentation-fastapi>=0.46b0",
+    "opentelemetry-instrumentation-system-metrics>=0.46b0",
+    "opentelemetry-sdk>=1.25.0",
+    "prometheus-client>=0.20",
+    "prometheus-fastapi-instrumentator>=6.1",
+    "pydantic-settings>=2",
+    "rich>=13",
+    "sentry-sdk>=2.7",
+    "structlog>=24",
 ]
-litestar = [
-    "litestar",
-    "litestar-offline-docs",
-    "health-checks",
-    "opentelemetry-instrumentation-asgi",
-    "prometheus-client",
+dynamic = ["version"]
+authors = [{ name = "community-of-python" }]
+
+[dependency-groups]
+dev = [
+    "anyio>=4.8.0",
+    "httpx>=0.28.1",
+    "mypy>=1.14.1",
+    "opentelemetry-instrumentation-redis>=0.48b0",
+    "pre-commit>=4.0.1",
+    "pytest>=8.3.4",
+    "pytest-cov>=6.0.0",
+    "pytest-mock>=3.14.0",
+    "pytest-xdist>=3.6.1",
+    "redis>=5.2.1",
+    "ruff>=0.9.1",
+    "trio>=0.28.0",
+    "typing-extensions>=4.12.2",
 ]
 
 [build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+requires = ["hatchling", "hatch-vcs"]
+build-backend = "hatchling.build"
+
+[tool.hatch.version]
+source = "vcs"
 
 [tool.mypy]
 plugins = ["pydantic.mypy"]
@@ -139,8 +113,6 @@ ignore = [
 
 [tool.ruff.lint.isort]
 no-lines-before = ["standard-library", "local-folder"]
-known-third-party = []
-known-local-folder = []
 lines-after-imports = 2
 
 [tool.ruff.lint.extend-per-file-ignores]

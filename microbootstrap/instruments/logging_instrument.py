@@ -26,7 +26,7 @@ access_logger: typing.Final = structlog.get_logger("api.access")
 def make_path_with_query_string(scope: ScopeType) -> str:
     path_with_query_string: typing.Final = urllib.parse.quote(scope["path"])
     if scope["query_string"]:
-        return f'{path_with_query_string}?{scope["query_string"].decode("ascii")}'
+        return f"{path_with_query_string}?{scope['query_string'].decode('ascii')}"
     return path_with_query_string
 
 
