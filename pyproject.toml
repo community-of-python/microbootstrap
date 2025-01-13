@@ -2,7 +2,7 @@
 name = "microbootstrap"
 description = "Package for bootstrapping new micro-services"
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.9,<4"
 keywords = [
     "python",
     "microservice",
