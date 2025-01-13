@@ -2,7 +2,7 @@ default: install lint test
 
 install:
     uv lock --upgrade
-    uv sync --only-dev --frozen
+    uv sync --frozen
 
 lint:
     uv run ruff format
