@@ -1,0 +1,19 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  release:
+    types:
+      - published
+
+jobs:
+  ci:
+    uses: community-of-python/community-workflow/.github/workflows/preset_uv.yml@main
+    with:
+      python-version: '["3.9","3.10","3.11","3.12","3.13"]'
+    secrets: inherit
