@@ -1,9 +1,12 @@
+from __future__ import annotations
 import dataclasses
 import typing
 
-import faststream.asyncapi.schema as asyncapi
-from faststream.broker.core.usecase import BrokerUsecase
-from faststream.types import AnyDict, AnyHttpUrl, Lifespan, LoggerProto
+
+if typing.TYPE_CHECKING:
+    import faststream.asyncapi.schema as asyncapi
+    from faststream.broker.core.usecase import BrokerUsecase
+    from faststream.types import AnyDict, AnyHttpUrl, Lifespan, LoggerProto
 
 
 @dataclasses.dataclass
