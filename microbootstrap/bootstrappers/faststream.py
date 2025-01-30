@@ -77,8 +77,10 @@ class FastStreamPrometheusInstrument(PrometheusInstrument[FastStreamPrometheusCo
         self.collector_registry = prometheus_client.CollectorRegistry()
         return {
             "asgi_routes": (
-                self.instrument_config.prometheus_metrics_path,
-                prometheus_client.make_asgi_app(self.collector_registry),
+                (
+                    self.instrument_config.prometheus_metrics_path,
+                    prometheus_client.make_asgi_app(self.collector_registry),
+                ),
             )
         }
 
@@ -106,4 +108,4 @@ class FastStreamHealthChecksInstrument(HealthChecksInstrument):
                 else AsgiResponse(b"Service is unhealthy", 500, headers={"content-type": "application/json"})
             )
 
-        return {"asgi_routes": (self.instrument_config.health_checks_path, check_health)}
+        return {"asgi_routes": ((self.instrument_config.health_checks_path, check_health),)}
