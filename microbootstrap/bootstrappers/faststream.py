@@ -12,6 +12,10 @@ from microbootstrap.instruments.sentry_instrument import SentryInstrument
 from microbootstrap.settings import FastStreamOpentelemetryConfig, FastStreamSettings
 
 
+if typing.TYPE_CHECKING:
+    from faststream.asgi import AsgiFastStream
+
+
 class FastStreamBootstrapper(
     ApplicationBootstrapper[FastStreamSettings, faststream.FastStream, FastStreamConfig],
 ):
@@ -27,6 +31,9 @@ class FastStreamBootstrapper(
             "on_startup": [self.console_writer.print_bootstrap_table],
         }
 
+    def bootstrap(self) -> AsgiFastStream:  # type: ignore[override]
+        return super().bootstrap().as_asgi(asyncapi_path=self.settings.asyncapi_path)
+
 
 @FastStreamBootstrapper.use_instrument()
 class FastStreamOpentelemetryInstrument(OpentelemetryInstrument):
@@ -35,10 +42,10 @@ class FastStreamOpentelemetryInstrument(OpentelemetryInstrument):
     def is_ready(self) -> bool:
         return bool(self.instrument_config.telemetry_middleware_cls and super().is_ready())
 
-    def bootstrap_after(self, application: faststream.FastStream) -> dict[str, typing.Any]:  # type: ignore[override]
+    def bootstrap_after(self, application: faststream.FastStream) -> faststream.FastStream:  # type: ignore[override]
         if (telemetry_middleware_cls := self.instrument_config.telemetry_middleware_cls) and application.broker:
             application.broker.add_middleware(telemetry_middleware_cls(tracer_provider=self.tracer_provider))
-        return {}
+        return application
 
     @classmethod
     def get_config_type(cls) -> type[FastStreamOpentelemetryConfig]:

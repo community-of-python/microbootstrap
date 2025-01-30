@@ -112,6 +112,8 @@ class FastStreamSettings(  # type: ignore[misc]
 ):
     """Settings for a faststream bootstrap."""
 
+    asyncapi_path: str | None = None
+
 
 class InstrumentsSetupperSettings(  # type: ignore[misc]
     BaseServiceSettings,
