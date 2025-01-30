@@ -2,6 +2,7 @@ from __future__ import annotations
 import json
 import typing
 
+import structlog
 import typing_extensions
 from faststream.asgi import AsgiFastStream, AsgiResponse
 from faststream.asgi import get as handle_get
@@ -15,9 +16,7 @@ from microbootstrap.instruments.sentry_instrument import SentryInstrument
 from microbootstrap.settings import FastStreamOpentelemetryConfig, FastStreamSettings
 
 
-class FastStreamBootstrapper(
-    ApplicationBootstrapper[FastStreamSettings, AsgiFastStream, FastStreamConfig],
-):
+class FastStreamBootstrapper(ApplicationBootstrapper[FastStreamSettings, AsgiFastStream, FastStreamConfig]):
     application_config = FastStreamConfig()
     application_type = AsgiFastStream
 
@@ -32,7 +31,9 @@ class FastStreamBootstrapper(
         }
 
 
-# TODO: add health checks, prometheus
+FastStreamBootstrapper.use_instrument()(SentryInstrument)
+
+
 @FastStreamBootstrapper.use_instrument()
 class FastStreamOpentelemetryInstrument(BaseOpentelemetryInstrument[FastStreamOpentelemetryConfig]):
     def is_ready(self) -> bool:
@@ -48,8 +49,13 @@ class FastStreamOpentelemetryInstrument(BaseOpentelemetryInstrument[FastStreamOp
         return FastStreamOpentelemetryConfig
 
 
-FastStreamBootstrapper.use_instrument()(SentryInstrument)
-FastStreamBootstrapper.use_instrument()(LoggingInstrument)
+@FastStreamBootstrapper.use_instrument()
+class FastStreamLoggingInstrument(LoggingInstrument):
+    def bootstrap_before(self) -> dict[str, typing.Any]:
+        return {"logger": structlog.get_logger("faststream")}
+
+
+# TODO: add prometheus here
 
 
 @FastStreamBootstrapper.use_instrument()
