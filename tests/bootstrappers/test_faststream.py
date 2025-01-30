@@ -1,14 +1,19 @@
 import typing
+from unittest import mock
 from unittest.mock import MagicMock
 
+import faker
 import pytest
 from fastapi import status
 from fastapi.testclient import TestClient
 from faststream.redis import RedisBroker, TestRedisBroker
+from faststream.redis.opentelemetry import RedisTelemetryMiddleware
 from faststream.redis.prometheus import RedisPrometheusMiddleware
 
 from microbootstrap.bootstrappers.faststream import FastStreamBootstrapper
 from microbootstrap.config.faststream import FastStreamConfig
+from microbootstrap.instruments.health_checks_instrument import HealthChecksConfig
+from microbootstrap.instruments.opentelemetry_instrument import FastStreamOpentelemetryConfig, OpentelemetryConfig
 from microbootstrap.instruments.prometheus_instrument import FastStreamPrometheusConfig
 from microbootstrap.settings import FastStreamSettings
 
@@ -63,3 +68,38 @@ def test_faststream_configure_application_lifespan(broker: RedisBroker, magic_mo
 
     with TestClient(app=application):
         assert magic_mock.called
+
+
+def test_faststream_health_check(broker: RedisBroker) -> None:
+    test_health_path: typing.Final = "/test-health-path"
+    application: typing.Final = (
+        FastStreamBootstrapper(FastStreamSettings())
+        .configure_application(FastStreamConfig(broker=broker))
+        .configure_instruments(HealthChecksConfig(health_checks_path=test_health_path))
+        .bootstrap()
+    )
+
+    response: typing.Final = TestClient(app=application).get(test_health_path)
+    assert response.status_code == status.HTTP_200_OK
+
+
+async def test_faststream_opentelemetry(
+    monkeypatch: pytest.MonkeyPatch,
+    faker: faker.Faker,
+    broker: RedisBroker,
+    minimal_opentelemetry_config: OpentelemetryConfig,
+) -> None:
+    monkeypatch.setattr("opentelemetry.sdk.trace.TracerProvider.shutdown", mock.Mock())
+
+    FastStreamBootstrapper(FastStreamSettings()).configure_application(
+        FastStreamConfig(broker=broker)
+    ).configure_instruments(
+        FastStreamOpentelemetryConfig(
+            opentelemetry_middleware_cls=RedisTelemetryMiddleware, **minimal_opentelemetry_config.model_dump()
+        )
+    ).bootstrap()
+
+    async with TestRedisBroker(broker):
+        with mock.patch("opentelemetry.trace.use_span") as mock_capture_event:
+            await broker.publish(faker.pystr(), channel=faker.pystr())
+            assert mock_capture_event.called
