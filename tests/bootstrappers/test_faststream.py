@@ -13,6 +13,7 @@ from faststream.redis.prometheus import RedisPrometheusMiddleware
 from microbootstrap.bootstrappers.faststream import FastStreamBootstrapper
 from microbootstrap.config.faststream import FastStreamConfig
 from microbootstrap.instruments.health_checks_instrument import HealthChecksConfig
+from microbootstrap.instruments.logging_instrument import LoggingConfig
 from microbootstrap.instruments.opentelemetry_instrument import FastStreamOpentelemetryConfig, OpentelemetryConfig
 from microbootstrap.instruments.prometheus_instrument import FastStreamPrometheusConfig
 from microbootstrap.settings import FastStreamSettings
@@ -103,3 +104,9 @@ async def test_faststream_opentelemetry(
         with mock.patch("opentelemetry.trace.use_span") as mock_capture_event:
             await broker.publish(faker.pystr(), channel=faker.pystr())
             assert mock_capture_event.called
+
+
+async def test_faststream_logging(broker: RedisBroker, minimal_logging_config: LoggingConfig) -> None:
+    FastStreamBootstrapper(FastStreamSettings()).configure_application(
+        FastStreamConfig(broker=broker)
+    ).configure_instruments(minimal_logging_config).bootstrap()
