@@ -13,9 +13,9 @@ from microbootstrap.config.faststream import FastStreamConfig
 from microbootstrap.instruments.health_checks_instrument import HealthChecksInstrument
 from microbootstrap.instruments.logging_instrument import LoggingInstrument
 from microbootstrap.instruments.opentelemetry_instrument import BaseOpentelemetryInstrument
-from microbootstrap.instruments.prometheus_instrument import BasePrometheusConfig, PrometheusInstrument
+from microbootstrap.instruments.prometheus_instrument import PrometheusInstrument
 from microbootstrap.instruments.sentry_instrument import SentryInstrument
-from microbootstrap.settings import FastStreamOpentelemetryConfig, FastStreamSettings
+from microbootstrap.settings import FastStreamOpentelemetryConfig, FastStreamPrometheusConfig, FastStreamSettings
 
 
 class KwargsAsgiFastStream(AsgiFastStream):
@@ -64,9 +64,27 @@ class FastStreamLoggingInstrument(LoggingInstrument):
 
 
 @FastStreamBootstrapper.use_instrument()
-class FastStreamPrometheusInstrument(PrometheusInstrument[BasePrometheusConfig]):
+class FastStreamPrometheusInstrument(PrometheusInstrument[FastStreamPrometheusConfig]):
+    def is_ready(self) -> bool:
+        return bool(self.instrument_config.prometheus_middleware_cls and super().is_ready())
+
     def bootstrap_before(self) -> dict[str, typing.Any]:
-        return {"asgi_routes": ("/metrics", prometheus_client.make_asgi_app(prometheus_client.CollectorRegistry()))}
+        self.collector_registry = prometheus_client.CollectorRegistry()
+        return {
+            "asgi_routes": (
+                self.instrument_config.prometheus_metrics_path,
+                prometheus_client.make_asgi_app(self.collector_registry),
+            )
+        }
+
+    def bootstrap_after(self, application: AsgiFastStream) -> AsgiFastStream:  # type: ignore[override]
+        if (prometheus_middleware_cls := self.instrument_config.prometheus_middleware_cls) and application.broker:
+            application.broker.add_middleware(prometheus_middleware_cls(registry=self.collector_registry))
+        return application
+
+    @classmethod
+    def get_config_type(cls) -> type[FastStreamPrometheusConfig]:
+        return FastStreamPrometheusConfig
 
 
 @FastStreamBootstrapper.use_instrument()
@@ -81,4 +99,4 @@ class FastStreamHealthChecksInstrument(HealthChecksInstrument):
                 else AsgiResponse(b"Service is unhealthy", 500, headers={"content-type": "application/json"})
             )
 
-        return {"asgi_routes": ("/health", check_health)}
+        return {"asgi_routes": (self.instrument_config.health_checks_path, check_health)}
