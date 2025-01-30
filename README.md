@@ -45,8 +45,10 @@ With <b>microbootstrap</b>, you receive an application with lightweight built-in
 
 Those instruments can be bootstrapped for:
 
-- `fastapi`
-- `litestar`
+- `fastapi`,
+- `litestar`,
+- or `faststream` service,
+- or even a service that doesn't use one of these frameworks.
 
 Interested? Let's dive right in ⚡
 
@@ -71,22 +73,30 @@ Interested? Let's dive right in ⚡
 
 ## Installation
 
-You can install the package using either `pip` or `poetry`.
 Also, you can specify extras during installation for concrete framework:
 
 - `fastapi`
 - `litestar`
+- `faststream` (ASGI app)
+
+Also we have `granian` extra that is requires for `create_granian_server`.
+
+For uv:
+
+```bash
+uv add "microbootstrap[fastapi]"
+```
 
 For poetry:
 
 ```bash
-$ poetry add microbootstrap -E fastapi
+poetry add microbootstrap -E fastapi
 ```
 
 For pip:
 
 ```bash
-$ pip install microbootstrap[fastapi]
+pip install "microbootstrap[fastapi]"
 ```
 
 ## Quickstart
@@ -224,7 +234,7 @@ These settings are subsequently passed to the [sentry-sdk](https://pypi.org/proj
 
 ### Prometheus
 
-Prometheus integration presents a challenge because the underlying libraries for `FastAPI` and `Litestar` differ significantly, making it impossible to unify them under a single interface. As a result, the Prometheus settings for `FastAPI` and `Litestar` must be configured separately.
+Prometheus integration presents a challenge because the underlying libraries for `FastAPI`, `Litestar` and `FastStream` differ significantly, making it impossible to unify them under a single interface. As a result, the Prometheus settings for `FastAPI`, `Litestar` and `FastStream` must be configured separately.
 
 #### FastAPI
 
@@ -234,7 +244,7 @@ To bootstrap prometheus you have to provide `prometheus_metrics_path`
 from microbootstrap.settings import FastApiSettings
 
 
-class YourFastApiSettings(FastApiSettings):
+class YourSettings(FastApiSettings):
     service_name: str
 
     prometheus_metrics_path: str = "/metrics"
@@ -255,7 +265,7 @@ Parameters description:
 - `prometheus_instrument_params` - will be passed to `Instrumentor.instrument(...)`.
 - `prometheus_expose_params` - will be passed to `Instrumentor.expose(...)`.
 
-FastApi prometheus bootstrapper uses [prometheus-fastapi-instrumentator](https://github.com/trallnag/prometheus-fastapi-instrumentator) that's why there are three different dict for parameters.
+FastAPI prometheus bootstrapper uses [prometheus-fastapi-instrumentator](https://github.com/trallnag/prometheus-fastapi-instrumentator) that's why there are three different dict for parameters.
 
 #### Litestar
 
@@ -265,7 +275,7 @@ To bootstrap prometheus you have to provide `prometheus_metrics_path`
 from microbootstrap.settings import LitestarSettings
 
 
-class YourFastApiSettings(LitestarSettings):
+class YourSettings(LitestarSettings):
     service_name: str
 
     prometheus_metrics_path: str = "/metrics"
@@ -280,6 +290,30 @@ Parameters description:
 - `prometheus_metrics_path` - path to metrics handler.
 - `prometheus_additional_params` - will be passed to `litestar.contrib.prometheus.PrometheusConfig`.
 
+#### FastStream
+
+To bootstrap prometheus you have to provide `prometheus_metrics_path` and `prometheus_middleware_cls`:
+
+```python
+from microbootstrap import FastStreamSettings
+from faststream.redis.prometheus import RedisPrometheusMiddleware
+
+
+class YourSettings(FastStreamSettings):
+    service_name: str
+
+    prometheus_metrics_path: str = "/metrics"
+    prometheus_middleware_cls: type[FastStreamPrometheusMiddlewareProtocol] | None = RedisPrometheusMiddleware
+
+    ... # Other settings here
+```
+
+Parameters description:
+
+- `service_name` - will be attached to metric's names, there are no name restrictions.
+- `prometheus_metrics_path` - path to metrics handler.
+- `prometheus_middleware_cls` - Prometheus middleware for your broker.
+
 ### Opentelemetry
 
 To bootstrap Opentelemetry, you must provide several parameters:
@@ -293,7 +327,7 @@ To bootstrap Opentelemetry, you must provide several parameters:
 However, additional parameters can also be supplied if needed.
 
 ```python
-from microbootstrap.settings import BaseServiceSettings
+from microbootstrap.settings import BaseServiceSettings, FastStreamPrometheusMiddlewareProtocol
 from microbootstrap.instruments.opentelemetry_instrument import OpenTelemetryInstrumentor
 
 
@@ -325,6 +359,21 @@ Parameters description:
 - `opentelemetry_exclude_urls` - list of ignored urls.
 
 These settings are subsequently passed to [opentelemetry](https://opentelemetry.io/), finalizing your Opentelemetry integration.
+
+#### FastStream
+
+For FastStream you also should pass `opentelemetry_middleware_cls` - OpenTelemetry middleware for your broker
+
+```python
+from microbootstrap import FastStreamSettings, FastStreamTelemetryMiddlewareProtocol
+from faststream.redis.opentelemetry import RedisTelemetryMiddleware
+
+
+class YourSettings(FastStreamSettings):
+    ...
+    opentelemetry_middleware_cls: type[FastStreamTelemetryMiddlewareProtocol] | None = RedisTelemetryMiddleware
+    ...
+```
 
 ### Logging
 
@@ -411,6 +460,18 @@ Parameter descriptions:
 - `swagger_path` - The path where the documentation can be found.
 - `swagger_offline_docs` - A boolean value that, when set to True, allows the Swagger JS bundles to be accessed offline. This is because the service starts to host via static.
 - `swagger_extra_params` - Additional parameters to pass into the OpenAPI configuration.
+
+#### FastStream AsyncAPI documentation
+
+AsyncAPI documentation is available by default under `/asyncapi` route. You can change that by setting `asyncapi_path`:
+
+```python
+from microbootstrap import FastStreamSettings
+
+
+class YourSettings(FastStreamSettings):
+    asyncapi_path: str | None = None
+```
 
 ### Health checks
 

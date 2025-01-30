@@ -7,6 +7,11 @@ from microbootstrap.helpers import is_valid_path
 from microbootstrap.instruments.base import BaseInstrumentConfig, Instrument
 
 
+if typing.TYPE_CHECKING:
+    import faststream
+    import prometheus_client
+
+
 PrometheusConfigT = typing.TypeVar("PrometheusConfigT", bound="BasePrometheusConfig")
 
 
@@ -25,6 +30,23 @@ class FastApiPrometheusConfig(BasePrometheusConfig):
     prometheus_instrumentator_params: dict[str, typing.Any] = pydantic.Field(default_factory=dict)
     prometheus_instrument_params: dict[str, typing.Any] = pydantic.Field(default_factory=dict)
     prometheus_expose_params: dict[str, typing.Any] = pydantic.Field(default_factory=dict)
+
+
+@typing.runtime_checkable
+class FastStreamPrometheusMiddlewareProtocol(typing.Protocol):
+    def __init__(
+        self,
+        *,
+        registry: prometheus_client.CollectorRegistry,
+        app_name: str = ...,
+        metrics_prefix: str = "faststream",
+        received_messages_size_buckets: typing.Sequence[float] | None = None,
+    ) -> None: ...
+    def __call__(self, msg: typing.Any | None) -> faststream.BaseMiddleware: ...  # noqa: ANN401
+
+
+class FastStreamPrometheusConfig(BasePrometheusConfig):
+    prometheus_middleware_cls: type[FastStreamPrometheusMiddlewareProtocol] | None = None
 
 
 class PrometheusInstrument(Instrument[PrometheusConfigT]):
