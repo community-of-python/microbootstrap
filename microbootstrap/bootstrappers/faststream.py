@@ -1,11 +1,14 @@
 from __future__ import annotations
+import json
 import typing
 
 import typing_extensions
-from faststream.asgi import AsgiFastStream
+from faststream.asgi import AsgiFastStream, AsgiResponse
+from faststream.asgi import get as handle_get
 
 from microbootstrap.bootstrappers.base import ApplicationBootstrapper
 from microbootstrap.config.faststream import FastStreamConfig
+from microbootstrap.instruments.health_checks_instrument import HealthChecksInstrument
 from microbootstrap.instruments.logging_instrument import LoggingInstrument
 from microbootstrap.instruments.opentelemetry_instrument import OpentelemetryInstrument
 from microbootstrap.instruments.sentry_instrument import SentryInstrument
@@ -49,3 +52,18 @@ class FastStreamOpentelemetryInstrument(OpentelemetryInstrument):
 
 FastStreamBootstrapper.use_instrument()(SentryInstrument)
 FastStreamBootstrapper.use_instrument()(LoggingInstrument)
+
+
+@FastStreamBootstrapper.use_instrument()
+class FastStreamHealthChecksInstrument(HealthChecksInstrument):
+    def bootstrap_before(self) -> dict[str, typing.Any]:
+        @handle_get
+        async def check_health(scope: typing.Any) -> AsgiResponse:  # noqa: ANN401, ARG001
+            health_check_data = await self.health_check.check_health()
+            return (
+                AsgiResponse(json.dumps(health_check_data).encode(), 200, headers={"content-type": "text/plain"})
+                if health_check_data["health_status"]
+                else AsgiResponse(b"Service is unhealthy", 500, headers={"content-type": "application/json"})
+            )
+
+        return {"asgi_routes": ("/health", check_health)}

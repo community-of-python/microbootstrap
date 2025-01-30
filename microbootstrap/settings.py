@@ -110,6 +110,8 @@ class FastStreamSettings(  # type: ignore[misc]
     LoggingConfig,
     FastStreamOpentelemetryConfig,
     SentryConfig,
+    # PrometheusConfig,
+    HealthChecksConfig,
 ):
     """Settings for a faststream bootstrap."""
 
