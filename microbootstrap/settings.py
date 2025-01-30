@@ -8,6 +8,7 @@ import pydantic_settings
 from microbootstrap import (
     CorsConfig,
     FastApiPrometheusConfig,
+    FastStreamOpentelemetryConfig,
     FastStreamPrometheusConfig,
     HealthChecksConfig,
     LitestarPrometheusConfig,
@@ -16,7 +17,6 @@ from microbootstrap import (
     SentryConfig,
     SwaggerConfig,
 )
-from microbootstrap.instruments.opentelemetry_instrument import FastStreamOpentelemetryConfig
 
 
 SettingsT = typing.TypeVar("SettingsT", bound="BaseServiceSettings")
