@@ -36,10 +36,8 @@ class FastStreamOpentelemetryInstrument(OpentelemetryInstrument):
         return bool(self.instrument_config.telemetry_middleware_cls and super().is_ready())
 
     def bootstrap_after(self, application: faststream.FastStream) -> dict[str, typing.Any]:  # type: ignore[override]
-        if not (telemetry_middleware_cls := self.instrument_config.telemetry_middleware_cls) or not application.broker:
-            return {}
-
-        application.broker.add_middleware(telemetry_middleware_cls(tracer_provider=self.tracer_provider))
+        if (telemetry_middleware_cls := self.instrument_config.telemetry_middleware_cls) and application.broker:
+            application.broker.add_middleware(telemetry_middleware_cls(tracer_provider=self.tracer_provider))
         return {}
 
     @classmethod
