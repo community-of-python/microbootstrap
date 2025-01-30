@@ -17,6 +17,12 @@ from microbootstrap import (
 )
 
 
+if typing.TYPE_CHECKING:
+    import faststream
+    from opentelemetry.metrics import Meter, MeterProvider
+    from opentelemetry.trace import TracerProvider
+
+
 SettingsT = typing.TypeVar("SettingsT", bound="BaseServiceSettings")
 ENV_PREFIX_VAR_NAME: typing.Final = "ENVIRONMENT_PREFIX"
 ENV_PREFIX: typing.Final = os.getenv(ENV_PREFIX_VAR_NAME, "")
@@ -80,6 +86,31 @@ class FastApiSettings(  # type: ignore[misc]
     HealthChecksConfig,
 ):
     """Settings for a fastapi botstrap."""
+
+
+@typing.runtime_checkable
+class FastStreamTelemetryMiddlewareProtocol(typing.Protocol):
+    def __init__(
+        self,
+        *,
+        tracer_provider: TracerProvider | None = None,
+        meter_provider: MeterProvider | None = None,
+        meter: Meter | None = None,
+    ) -> None: ...
+    def __call__(self, msg: typing.Any | None) -> faststream.BaseMiddleware: ...  # noqa: ANN401
+
+
+class FastStreamOpentelemetryConfig(OpentelemetryConfig):
+    telemetry_middleware_cls: type[FastStreamTelemetryMiddlewareProtocol] | None = None
+
+
+class FastStreamSettings(  # type: ignore[misc]
+    BaseServiceSettings,
+    LoggingConfig,
+    FastStreamOpentelemetryConfig,
+    SentryConfig,
+):
+    """Settings for a faststream bootstrap."""
 
 
 class InstrumentsSetupperSettings(  # type: ignore[misc]
