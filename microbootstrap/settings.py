@@ -1,9 +1,11 @@
 from __future__ import annotations
 import os
 import typing
+from typing import TYPE_CHECKING
 
 import pydantic
 import pydantic_settings
+from faststream.types import EMPTY
 
 from microbootstrap import (
     CorsConfig,
@@ -15,6 +17,10 @@ from microbootstrap import (
     SentryConfig,
     SwaggerConfig,
 )
+
+
+if TYPE_CHECKING:
+    from prometheus_client import CollectorRegistry
 
 
 if typing.TYPE_CHECKING:
@@ -102,6 +108,23 @@ class FastStreamTelemetryMiddlewareProtocol(typing.Protocol):
 
 class FastStreamOpentelemetryConfig(OpentelemetryConfig):
     telemetry_middleware_cls: type[FastStreamTelemetryMiddlewareProtocol] | None = None
+
+
+@typing.runtime_checkable
+class FastStreamPrometheusMiddlewareProtocol(typing.Protocol):
+    def __init__(
+        self,
+        *,
+        registry: CollectorRegistry,
+        app_name: str = EMPTY,
+        metrics_prefix: str = "faststream",
+        received_messages_size_buckets: typing.Sequence[float] | None = None,
+    ) -> None: ...
+    def __call__(self, msg: typing.Any | None) -> faststream.BaseMiddleware: ...  # noqa: ANN401
+
+
+class FastStreamPrometheusConfig(OpentelemetryConfig):
+    prometheus_middleware_cls: type[FastStreamPrometheusMiddlewareProtocol] | None = None
 
 
 class FastStreamSettings(  # type: ignore[misc]

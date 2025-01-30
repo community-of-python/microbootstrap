@@ -62,7 +62,7 @@ litestar = [
     "prometheus-client>=0.20",
 ]
 granian = ["granian[reload]>=1"]
-faststream = ["faststream~=0.5"]
+faststream = ["faststream~=0.5", "prometheus-client>=0.20"]
 
 [dependency-groups]
 dev = [

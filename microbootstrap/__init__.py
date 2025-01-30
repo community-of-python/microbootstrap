@@ -8,6 +8,8 @@ from microbootstrap.instruments.swagger_instrument import SwaggerConfig
 from microbootstrap.settings import FastApiSettings, InstrumentsSetupperSettings, LitestarSettings
 
 
+# TODO: export faststream stuff
+
 __all__ = (
     "CorsConfig",
     "FastApiPrometheusConfig",
