@@ -17,6 +17,7 @@ from microbootstrap import (
     SentryConfig,
     SwaggerConfig,
 )
+from microbootstrap.instruments.prometheus_instrument import BasePrometheusConfig
 
 
 if TYPE_CHECKING:
@@ -94,6 +95,7 @@ class FastApiSettings(  # type: ignore[misc]
     """Settings for a fastapi botstrap."""
 
 
+# TODO: move elsewhere
 @typing.runtime_checkable
 class FastStreamTelemetryMiddlewareProtocol(typing.Protocol):
     def __init__(
@@ -106,10 +108,12 @@ class FastStreamTelemetryMiddlewareProtocol(typing.Protocol):
     def __call__(self, msg: typing.Any | None) -> faststream.BaseMiddleware: ...  # noqa: ANN401
 
 
+# TODO: move elsewhere
 class FastStreamOpentelemetryConfig(OpentelemetryConfig):
     telemetry_middleware_cls: type[FastStreamTelemetryMiddlewareProtocol] | None = None
 
 
+# TODO: move elsewhere
 @typing.runtime_checkable
 class FastStreamPrometheusMiddlewareProtocol(typing.Protocol):
     def __init__(
@@ -123,7 +127,8 @@ class FastStreamPrometheusMiddlewareProtocol(typing.Protocol):
     def __call__(self, msg: typing.Any | None) -> faststream.BaseMiddleware: ...  # noqa: ANN401
 
 
-class FastStreamPrometheusConfig(OpentelemetryConfig):
+# TODO: move elsewhere
+class FastStreamPrometheusConfig(BasePrometheusConfig):
     prometheus_middleware_cls: type[FastStreamPrometheusMiddlewareProtocol] | None = None
 
 
@@ -133,7 +138,7 @@ class FastStreamSettings(  # type: ignore[misc]
     LoggingConfig,
     FastStreamOpentelemetryConfig,
     SentryConfig,
-    # PrometheusConfig,
+    FastStreamPrometheusConfig,
     HealthChecksConfig,
 ):
     """Settings for a faststream bootstrap."""
