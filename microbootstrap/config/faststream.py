@@ -7,14 +7,13 @@ if typing.TYPE_CHECKING:
     import faststream.asyncapi.schema as asyncapi
     from faststream.asgi.types import ASGIApp
     from faststream.broker.core.usecase import BrokerUsecase
-    from faststream.types import AnyDict, AnyHttpUrl, Lifespan, LoggerProto
+    from faststream.types import AnyDict, AnyHttpUrl, Lifespan
 
 
 @dataclasses.dataclass
 class FastStreamConfig:
     broker: BrokerUsecase[typing.Any, typing.Any] | None = None
     asgi_routes: typing.Sequence[tuple[str, ASGIApp]] = ()
-    logger: LoggerProto | None = None
     lifespan: Lifespan | None = None
     terms_of_service: AnyHttpUrl | None = None
     license: asyncapi.License | asyncapi.LicenseDict | AnyDict | None = None

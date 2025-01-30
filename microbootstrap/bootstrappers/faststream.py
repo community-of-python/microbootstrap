@@ -18,9 +18,15 @@ from microbootstrap.instruments.sentry_instrument import SentryInstrument
 from microbootstrap.settings import FastStreamOpentelemetryConfig, FastStreamSettings
 
 
+class KwargsAsgiFastStream(AsgiFastStream):
+    def __init__(self, **kwargs: typing.Any) -> None:  # noqa: ANN401
+        # `broker` argument is positional-only
+        super().__init__(kwargs.pop("broker", None), **kwargs)
+
+
 class FastStreamBootstrapper(ApplicationBootstrapper[FastStreamSettings, AsgiFastStream, FastStreamConfig]):
     application_config = FastStreamConfig()
-    application_type = AsgiFastStream
+    application_type = KwargsAsgiFastStream
 
     def bootstrap_before(self: typing_extensions.Self) -> dict[str, typing.Any]:
         return {
@@ -54,7 +60,7 @@ class FastStreamOpentelemetryInstrument(BaseOpentelemetryInstrument[FastStreamOp
 @FastStreamBootstrapper.use_instrument()
 class FastStreamLoggingInstrument(LoggingInstrument):
     def bootstrap_before(self) -> dict[str, typing.Any]:
-        return {"logger": structlog.get_logger("faststream")}
+        return {"logger": structlog.get_logger("microbootstrap-faststream")}
 
 
 @FastStreamBootstrapper.use_instrument()
