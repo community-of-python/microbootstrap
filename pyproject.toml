@@ -31,22 +31,12 @@ classifiers = [
 ]
 dependencies = [
     "eval-type-backport>=0.2",
-    "fastapi>=0.100",
-    "fastapi-offline-docs>=1",
-    "granian>=1",
-    "health-checks>=1",
-    "litestar>=2.9",
-    "litestar-offline-docs>=1",
     "opentelemetry-api>=1.25.0",
     "opentelemetry-exporter-otlp>=1.25.0",
     "opentelemetry-exporter-prometheus-remote-write>=0.46b0",
     "opentelemetry-instrumentation>=0.46b0",
-    "opentelemetry-instrumentation-asgi>=0.46b0",
-    "opentelemetry-instrumentation-fastapi>=0.46b0",
     "opentelemetry-instrumentation-system-metrics>=0.46b0",
     "opentelemetry-sdk>=1.25.0",
-    "prometheus-client>=0.20",
-    "prometheus-fastapi-instrumentator>=6.1",
     "pydantic-settings>=2",
     "rich>=13",
     "sentry-sdk>=2.7",
@@ -54,6 +44,24 @@ dependencies = [
 ]
 dynamic = ["version"]
 authors = [{ name = "community-of-python" }]
+
+[project.optional-dependencies]
+fastapi = [
+    "fastapi>=0.100",
+    "fastapi-offline-docs>=1",
+    "health-checks>=1",
+    "opentelemetry-instrumentation-asgi>=0.46b0",
+    "opentelemetry-instrumentation-fastapi>=0.46b0",
+    "prometheus-fastapi-instrumentator>=6.1",
+]
+litestar = [
+    "litestar>=2.9",
+    "litestar-offline-docs>=1",
+    "health-checks>=1",
+    "opentelemetry-instrumentation-asgi>=0.46b0",
+    "prometheus-client>=0.20",
+]
+granian = ["granian[reload]>=1"]
 
 [dependency-groups]
 dev = [
