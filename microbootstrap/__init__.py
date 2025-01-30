@@ -9,7 +9,9 @@ from microbootstrap.settings import (
     FastApiSettings,
     FastStreamOpentelemetryConfig,
     FastStreamPrometheusConfig,
+    FastStreamPrometheusMiddlewareProtocol,
     FastStreamSettings,
+    FastStreamTelemetryMiddlewareProtocol,
     InstrumentsSetupperSettings,
     LitestarSettings,
 )

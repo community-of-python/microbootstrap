@@ -45,11 +45,13 @@ FastStreamBootstrapper.use_instrument()(SentryInstrument)
 @FastStreamBootstrapper.use_instrument()
 class FastStreamOpentelemetryInstrument(BaseOpentelemetryInstrument[FastStreamOpentelemetryConfig]):
     def is_ready(self) -> bool:
-        return bool(self.instrument_config.telemetry_middleware_cls and super().is_ready())
+        return bool(self.instrument_config.opentelemetry_middleware_cls and super().is_ready())
 
     def bootstrap_after(self, application: AsgiFastStream) -> AsgiFastStream:  # type: ignore[override]
-        if (telemetry_middleware_cls := self.instrument_config.telemetry_middleware_cls) and application.broker:
-            application.broker.add_middleware(telemetry_middleware_cls(tracer_provider=self.tracer_provider))
+        if self.instrument_config.opentelemetry_middleware_cls and application.broker:
+            application.broker.add_middleware(
+                self.instrument_config.opentelemetry_middleware_cls(tracer_provider=self.tracer_provider)
+            )
         return application
 
     @classmethod
@@ -78,8 +80,10 @@ class FastStreamPrometheusInstrument(PrometheusInstrument[FastStreamPrometheusCo
         }
 
     def bootstrap_after(self, application: AsgiFastStream) -> AsgiFastStream:  # type: ignore[override]
-        if (prometheus_middleware_cls := self.instrument_config.prometheus_middleware_cls) and application.broker:
-            application.broker.add_middleware(prometheus_middleware_cls(registry=self.collector_registry))
+        if self.instrument_config.prometheus_middleware_cls and application.broker:
+            application.broker.add_middleware(
+                self.instrument_config.prometheus_middleware_cls(registry=self.collector_registry)
+            )
         return application
 
     @classmethod

@@ -110,7 +110,7 @@ class FastStreamTelemetryMiddlewareProtocol(typing.Protocol):
 
 # TODO: move elsewhere
 class FastStreamOpentelemetryConfig(OpentelemetryConfig):
-    telemetry_middleware_cls: type[FastStreamTelemetryMiddlewareProtocol] | None = None
+    opentelemetry_middleware_cls: type[FastStreamTelemetryMiddlewareProtocol] | None = None
 
 
 # TODO: move elsewhere
@@ -143,7 +143,7 @@ class FastStreamSettings(  # type: ignore[misc]
 ):
     """Settings for a faststream bootstrap."""
 
-    asyncapi_path: str | None = None
+    asyncapi_path: str | None = "/asyncapi"
 
 
 class InstrumentsSetupperSettings(  # type: ignore[misc]
