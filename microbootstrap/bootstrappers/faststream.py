@@ -2,6 +2,7 @@ from __future__ import annotations
 import json
 import typing
 
+import prometheus_client
 import structlog
 import typing_extensions
 from faststream.asgi import AsgiFastStream, AsgiResponse
@@ -12,6 +13,7 @@ from microbootstrap.config.faststream import FastStreamConfig
 from microbootstrap.instruments.health_checks_instrument import HealthChecksInstrument
 from microbootstrap.instruments.logging_instrument import LoggingInstrument
 from microbootstrap.instruments.opentelemetry_instrument import BaseOpentelemetryInstrument
+from microbootstrap.instruments.prometheus_instrument import BasePrometheusConfig, PrometheusInstrument
 from microbootstrap.instruments.sentry_instrument import SentryInstrument
 from microbootstrap.settings import FastStreamOpentelemetryConfig, FastStreamSettings
 
@@ -55,7 +57,10 @@ class FastStreamLoggingInstrument(LoggingInstrument):
         return {"logger": structlog.get_logger("faststream")}
 
 
-# TODO: add prometheus here
+@FastStreamBootstrapper.use_instrument()
+class FastStreamPrometheusInstrument(PrometheusInstrument[BasePrometheusConfig]):
+    def bootstrap_before(self) -> dict[str, typing.Any]:
+        return {"asgi_routes": ("/metrics", prometheus_client.make_asgi_app(prometheus_client.CollectorRegistry()))}
 
 
 @FastStreamBootstrapper.use_instrument()
