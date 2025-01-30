@@ -10,7 +10,7 @@ from microbootstrap.bootstrappers.base import ApplicationBootstrapper
 from microbootstrap.config.faststream import FastStreamConfig
 from microbootstrap.instruments.health_checks_instrument import HealthChecksInstrument
 from microbootstrap.instruments.logging_instrument import LoggingInstrument
-from microbootstrap.instruments.opentelemetry_instrument import OpentelemetryInstrument
+from microbootstrap.instruments.opentelemetry_instrument import BaseOpentelemetryInstrument
 from microbootstrap.instruments.sentry_instrument import SentryInstrument
 from microbootstrap.settings import FastStreamOpentelemetryConfig, FastStreamSettings
 
@@ -34,9 +34,7 @@ class FastStreamBootstrapper(
 
 # TODO: add health checks, prometheus
 @FastStreamBootstrapper.use_instrument()
-class FastStreamOpentelemetryInstrument(OpentelemetryInstrument):
-    instrument_config: FastStreamOpentelemetryConfig
-
+class FastStreamOpentelemetryInstrument(BaseOpentelemetryInstrument[FastStreamOpentelemetryConfig]):
     def is_ready(self) -> bool:
         return bool(self.instrument_config.telemetry_middleware_cls and super().is_ready())
 

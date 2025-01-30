@@ -12,6 +12,9 @@ from opentelemetry.sdk.trace.export import BatchSpanProcessor
 from microbootstrap.instruments.base import BaseInstrumentConfig, Instrument
 
 
+OpentelemetryConfigT = typing.TypeVar("OpentelemetryConfigT", bound="OpentelemetryConfig")
+
+
 @dataclasses.dataclass()
 class OpenTelemetryInstrumentor:
     instrumentor: BaseInstrumentor
@@ -31,7 +34,7 @@ class OpentelemetryConfig(BaseInstrumentConfig):
     opentelemetry_exclude_urls: list[str] = pydantic.Field(default=[])
 
 
-class OpentelemetryInstrument(Instrument[OpentelemetryConfig]):
+class BaseOpentelemetryInstrument(Instrument[OpentelemetryConfigT]):
     instrument_name = "Opentelemetry"
     ready_condition = "Provide all necessary config parameters"
 
@@ -77,6 +80,8 @@ class OpentelemetryInstrument(Instrument[OpentelemetryConfig]):
                 **opentelemetry_instrumentor.additional_params,
             )
 
+
+class OpentelemetryInstrument(BaseOpentelemetryInstrument[OpentelemetryConfig]):
     @classmethod
     def get_config_type(cls) -> type[OpentelemetryConfig]:
         return OpentelemetryConfig
