@@ -106,6 +106,7 @@ class FastStreamOpentelemetryConfig(OpentelemetryConfig):
 
 class FastStreamSettings(  # type: ignore[misc]
     BaseServiceSettings,
+    ServerConfig,
     LoggingConfig,
     FastStreamOpentelemetryConfig,
     SentryConfig,

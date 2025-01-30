@@ -1,8 +1,8 @@
 from __future__ import annotations
 import typing
 
-import faststream
 import typing_extensions
+from faststream.asgi import AsgiFastStream
 
 from microbootstrap.bootstrappers.base import ApplicationBootstrapper
 from microbootstrap.config.faststream import FastStreamConfig
@@ -12,15 +12,11 @@ from microbootstrap.instruments.sentry_instrument import SentryInstrument
 from microbootstrap.settings import FastStreamOpentelemetryConfig, FastStreamSettings
 
 
-if typing.TYPE_CHECKING:
-    from faststream.asgi import AsgiFastStream
-
-
 class FastStreamBootstrapper(
-    ApplicationBootstrapper[FastStreamSettings, faststream.FastStream, FastStreamConfig],
+    ApplicationBootstrapper[FastStreamSettings, AsgiFastStream, FastStreamConfig],
 ):
     application_config = FastStreamConfig()
-    application_type = faststream.FastStream
+    application_type = AsgiFastStream
 
     def bootstrap_before(self: typing_extensions.Self) -> dict[str, typing.Any]:
         return {
@@ -29,12 +25,11 @@ class FastStreamBootstrapper(
             "description": self.settings.service_description,
             "on_shutdown": [self.teardown],
             "on_startup": [self.console_writer.print_bootstrap_table],
+            "asyncapi_path": self.settings.asyncapi_path,
         }
 
-    def bootstrap(self) -> AsgiFastStream:  # type: ignore[override]
-        return super().bootstrap().as_asgi(asyncapi_path=self.settings.asyncapi_path)
 
-
+# TODO: add health checks, prometheus
 @FastStreamBootstrapper.use_instrument()
 class FastStreamOpentelemetryInstrument(OpentelemetryInstrument):
     instrument_config: FastStreamOpentelemetryConfig
@@ -42,7 +37,7 @@ class FastStreamOpentelemetryInstrument(OpentelemetryInstrument):
     def is_ready(self) -> bool:
         return bool(self.instrument_config.telemetry_middleware_cls and super().is_ready())
 
-    def bootstrap_after(self, application: faststream.FastStream) -> faststream.FastStream:  # type: ignore[override]
+    def bootstrap_after(self, application: AsgiFastStream) -> AsgiFastStream:  # type: ignore[override]
         if (telemetry_middleware_cls := self.instrument_config.telemetry_middleware_cls) and application.broker:
             application.broker.add_middleware(telemetry_middleware_cls(tracer_provider=self.tracer_provider))
         return application
