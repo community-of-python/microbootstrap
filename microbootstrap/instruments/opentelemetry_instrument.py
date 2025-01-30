@@ -6,8 +6,14 @@ import pydantic
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor  # type: ignore[attr-defined] # noqa: TC002
 from opentelemetry.sdk import resources
-from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace import TracerProvider as SdkTracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
+
+
+if typing.TYPE_CHECKING:
+    import faststream
+    from opentelemetry.metrics import Meter, MeterProvider
+    from opentelemetry.trace import TracerProvider
 
 from microbootstrap.instruments.base import BaseInstrumentConfig, Instrument
 
@@ -32,6 +38,22 @@ class OpentelemetryConfig(BaseInstrumentConfig):
     opentelemetry_insecure: bool = pydantic.Field(default=True)
     opentelemetry_instrumentors: list[OpenTelemetryInstrumentor] = pydantic.Field(default_factory=list)
     opentelemetry_exclude_urls: list[str] = pydantic.Field(default=[])
+
+
+@typing.runtime_checkable
+class FastStreamTelemetryMiddlewareProtocol(typing.Protocol):
+    def __init__(
+        self,
+        *,
+        tracer_provider: TracerProvider | None = None,
+        meter_provider: MeterProvider | None = None,
+        meter: Meter | None = None,
+    ) -> None: ...
+    def __call__(self, msg: typing.Any | None) -> faststream.BaseMiddleware: ...  # noqa: ANN401
+
+
+class FastStreamOpentelemetryConfig(OpentelemetryConfig):
+    opentelemetry_middleware_cls: type[FastStreamTelemetryMiddlewareProtocol] | None = None
 
 
 class BaseOpentelemetryInstrument(Instrument[OpentelemetryConfigT]):
@@ -65,7 +87,7 @@ class BaseOpentelemetryInstrument(Instrument[OpentelemetryConfigT]):
             },
         )
 
-        self.tracer_provider = TracerProvider(resource=resource)
+        self.tracer_provider = SdkTracerProvider(resource=resource)
         self.tracer_provider.add_span_processor(
             BatchSpanProcessor(
                 OTLPSpanExporter(

@@ -12,10 +12,13 @@ from microbootstrap.bootstrappers.base import ApplicationBootstrapper
 from microbootstrap.config.faststream import FastStreamConfig
 from microbootstrap.instruments.health_checks_instrument import HealthChecksInstrument
 from microbootstrap.instruments.logging_instrument import LoggingInstrument
-from microbootstrap.instruments.opentelemetry_instrument import BaseOpentelemetryInstrument
-from microbootstrap.instruments.prometheus_instrument import PrometheusInstrument
+from microbootstrap.instruments.opentelemetry_instrument import (
+    BaseOpentelemetryInstrument,
+    FastStreamOpentelemetryConfig,
+)
+from microbootstrap.instruments.prometheus_instrument import FastStreamPrometheusConfig, PrometheusInstrument
 from microbootstrap.instruments.sentry_instrument import SentryInstrument
-from microbootstrap.settings import FastStreamOpentelemetryConfig, FastStreamPrometheusConfig, FastStreamSettings
+from microbootstrap.settings import FastStreamSettings
 
 
 class KwargsAsgiFastStream(AsgiFastStream):

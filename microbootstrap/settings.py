@@ -1,15 +1,14 @@
 from __future__ import annotations
 import os
 import typing
-from typing import TYPE_CHECKING
 
 import pydantic
 import pydantic_settings
-from faststream.types import EMPTY
 
 from microbootstrap import (
     CorsConfig,
     FastApiPrometheusConfig,
+    FastStreamPrometheusConfig,
     HealthChecksConfig,
     LitestarPrometheusConfig,
     LoggingConfig,
@@ -17,17 +16,7 @@ from microbootstrap import (
     SentryConfig,
     SwaggerConfig,
 )
-from microbootstrap.instruments.prometheus_instrument import BasePrometheusConfig
-
-
-if TYPE_CHECKING:
-    from prometheus_client import CollectorRegistry
-
-
-if typing.TYPE_CHECKING:
-    import faststream
-    from opentelemetry.metrics import Meter, MeterProvider
-    from opentelemetry.trace import TracerProvider
+from microbootstrap.instruments.opentelemetry_instrument import FastStreamOpentelemetryConfig
 
 
 SettingsT = typing.TypeVar("SettingsT", bound="BaseServiceSettings")
@@ -93,43 +82,6 @@ class FastApiSettings(  # type: ignore[misc]
     HealthChecksConfig,
 ):
     """Settings for a fastapi botstrap."""
-
-
-# TODO: move elsewhere
-@typing.runtime_checkable
-class FastStreamTelemetryMiddlewareProtocol(typing.Protocol):
-    def __init__(
-        self,
-        *,
-        tracer_provider: TracerProvider | None = None,
-        meter_provider: MeterProvider | None = None,
-        meter: Meter | None = None,
-    ) -> None: ...
-    def __call__(self, msg: typing.Any | None) -> faststream.BaseMiddleware: ...  # noqa: ANN401
-
-
-# TODO: move elsewhere
-class FastStreamOpentelemetryConfig(OpentelemetryConfig):
-    opentelemetry_middleware_cls: type[FastStreamTelemetryMiddlewareProtocol] | None = None
-
-
-# TODO: move elsewhere
-@typing.runtime_checkable
-class FastStreamPrometheusMiddlewareProtocol(typing.Protocol):
-    def __init__(
-        self,
-        *,
-        registry: CollectorRegistry,
-        app_name: str = EMPTY,
-        metrics_prefix: str = "faststream",
-        received_messages_size_buckets: typing.Sequence[float] | None = None,
-    ) -> None: ...
-    def __call__(self, msg: typing.Any | None) -> faststream.BaseMiddleware: ...  # noqa: ANN401
-
-
-# TODO: move elsewhere
-class FastStreamPrometheusConfig(BasePrometheusConfig):
-    prometheus_middleware_cls: type[FastStreamPrometheusMiddlewareProtocol] | None = None
 
 
 class FastStreamSettings(  # type: ignore[misc]
