@@ -1,16 +1,7 @@
 import dataclasses
 import typing
 
-from faststream.asyncapi.schema import (
-    Contact,
-    ContactDict,
-    ExternalDocs,
-    ExternalDocsDict,
-    License,
-    LicenseDict,
-    Tag,
-    TagDict,
-)
+import faststream.asyncapi.schema as asyncapi
 from faststream.broker.core.usecase import BrokerUsecase
 from faststream.types import AnyDict, AnyHttpUrl, Lifespan, LoggerProto
 
@@ -24,10 +15,10 @@ class FastStreamConfig:
     version: str | None = None
     description: str | None = None
     terms_of_service: AnyHttpUrl | None = None
-    license: License | LicenseDict | AnyDict | None = None
-    contact: Contact | ContactDict | AnyDict | None = None
-    tags: typing.Sequence[Tag | TagDict | AnyDict] | None = None
-    external_docs: ExternalDocs | ExternalDocsDict | AnyDict | None = None
+    license: asyncapi.License | asyncapi.LicenseDict | AnyDict | None = None
+    contact: asyncapi.Contact | asyncapi.ContactDict | AnyDict | None = None
+    tags: typing.Sequence[asyncapi.Tag | asyncapi.TagDict | AnyDict] | None = None
+    external_docs: asyncapi.ExternalDocs | asyncapi.ExternalDocsDict | AnyDict | None = None
     identifier: str | None = None
     on_startup: typing.Sequence[typing.Callable[..., typing.Any]] = ()
     after_startup: typing.Sequence[typing.Callable[..., typing.Any]] = ()
