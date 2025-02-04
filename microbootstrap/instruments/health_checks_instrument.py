@@ -1,12 +1,12 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING
+import typing
 
 from health_checks.http_based import DefaultHTTPHealthCheck
 
 from microbootstrap.instruments.base import BaseInstrumentConfig, Instrument
 
 
-if TYPE_CHECKING:
+if typing.TYPE_CHECKING:
     from health_checks.base import HealthCheck
 
 
