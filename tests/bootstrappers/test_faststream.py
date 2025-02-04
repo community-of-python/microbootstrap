@@ -71,17 +71,31 @@ def test_faststream_configure_application_lifespan(broker: RedisBroker, magic_mo
         assert magic_mock.called
 
 
-def test_faststream_health_check(broker: RedisBroker) -> None:
-    test_health_path: typing.Final = "/test-health-path"
-    application: typing.Final = (
-        FastStreamBootstrapper(FastStreamSettings())
-        .configure_application(FastStreamConfig(broker=broker))
-        .configure_instruments(HealthChecksConfig(health_checks_path=test_health_path))
-        .bootstrap()
-    )
+class TestFastStreamHealthCheck:
+    def test_500(self, broker: RedisBroker) -> None:
+        test_health_path: typing.Final = "/test-health-path"
+        application: typing.Final = (
+            FastStreamBootstrapper(FastStreamSettings())
+            .configure_application(FastStreamConfig(broker=broker))
+            .configure_instruments(HealthChecksConfig(health_checks_path=test_health_path))
+            .bootstrap()
+        )
 
-    response: typing.Final = TestClient(app=application).get(test_health_path)
-    assert response.status_code == status.HTTP_200_OK
+        response: typing.Final = TestClient(app=application).get(test_health_path)
+        assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
+
+    async def test_ok(self, broker: RedisBroker) -> None:
+        test_health_path: typing.Final = "/test-health-path"
+        application: typing.Final = (
+            FastStreamBootstrapper(FastStreamSettings())
+            .configure_application(FastStreamConfig(broker=broker))
+            .configure_instruments(HealthChecksConfig(health_checks_path=test_health_path))
+            .bootstrap()
+        )
+
+        async with TestRedisBroker(broker):
+            response: typing.Final = TestClient(app=application).get(test_health_path)
+        assert response.status_code == status.HTTP_200_OK
 
 
 async def test_faststream_opentelemetry(
