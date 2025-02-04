@@ -1,8 +1,13 @@
 from __future__ import annotations
+from typing import TYPE_CHECKING
 
 from health_checks.http_based import DefaultHTTPHealthCheck
 
 from microbootstrap.instruments.base import BaseInstrumentConfig, Instrument
+
+
+if TYPE_CHECKING:
+    from health_checks.base import HealthCheck
 
 
 class HealthChecksConfig(BaseInstrumentConfig):
@@ -19,7 +24,7 @@ class HealthChecksInstrument(Instrument[HealthChecksConfig]):
     ready_condition = "Set health_checks_enabled to True"
 
     def bootstrap(self) -> None:
-        self.health_check = DefaultHTTPHealthCheck(
+        self.health_check: HealthCheck = DefaultHTTPHealthCheck(
             service_version=self.instrument_config.service_version,
             service_name=self.instrument_config.service_name,
         )

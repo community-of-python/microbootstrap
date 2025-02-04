@@ -1,4 +1,5 @@
 from __future__ import annotations
+import dataclasses
 import json
 import typing
 
@@ -7,6 +8,7 @@ import structlog
 import typing_extensions
 from faststream.asgi import AsgiFastStream, AsgiResponse
 from faststream.asgi import get as handle_get
+from health_checks.http_based import BaseHTTPHealthCheck
 
 from microbootstrap.bootstrappers.base import ApplicationBootstrapper
 from microbootstrap.config.faststream import FastStreamConfig
@@ -96,8 +98,17 @@ class FastStreamPrometheusInstrument(PrometheusInstrument[FastStreamPrometheusCo
         return FastStreamPrometheusConfig
 
 
+@dataclasses.dataclass
+class FastStreamHealthCheck(BaseHTTPHealthCheck):
+    application: AsgiFastStream | None = None
+
+    async def update_health_status(self) -> bool:
+        return await self.application.broker.ping(timeout=5) if self.application and self.application.broker else False
+
+
 @FastStreamBootstrapper.use_instrument()
 class FastStreamHealthChecksInstrument(HealthChecksInstrument):
+    def bootstrap(self) -> None: ...
     def bootstrap_before(self) -> dict[str, typing.Any]:
         @handle_get
         async def check_health(scope: typing.Any) -> AsgiResponse:  # noqa: ANN401, ARG001
@@ -109,3 +120,11 @@ class FastStreamHealthChecksInstrument(HealthChecksInstrument):
             )
 
         return {"asgi_routes": ((self.instrument_config.health_checks_path, check_health),)}
+
+    def bootstrap_after(self, application: AsgiFastStream) -> AsgiFastStream:  # type: ignore[override]
+        self.health_check = FastStreamHealthCheck(
+            service_version=self.instrument_config.service_version,
+            service_name=self.instrument_config.service_name,
+            application=application,
+        )
+        return application
