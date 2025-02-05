@@ -397,6 +397,7 @@ class YourSettings(BaseServiceSettings):
     logging_unset_handlers: list[str] = ["uvicorn", "uvicorn.access"]
     logging_extra_processors: list[typing.Any] = []
     logging_exclude_endpoints: list[str] = []
+    logging_turn_off_middleware: bool = False
 ```
 
 Parameters description:
@@ -407,6 +408,7 @@ Parameters description:
 - `logging_unset_handlers` - Unset logger handlers.
 - `logging_extra_processors` - Set additional structlog processors if needed.
 - `logging_exclude_endpoints` - Exclude logging on specific endpoints.
+- `logging_turn_off_middleware` - Turning off logging middleware.
 
 ### CORS
 
