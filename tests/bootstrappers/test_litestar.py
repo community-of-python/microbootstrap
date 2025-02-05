@@ -2,6 +2,7 @@ import typing  # noqa: I001
 from unittest.mock import MagicMock
 
 import litestar
+import pytest
 from litestar import status_codes
 from litestar.middleware.base import MiddlewareProtocol
 from litestar.testing import AsyncTestClient
@@ -13,11 +14,14 @@ from microbootstrap.config.litestar import LitestarConfig
 from microbootstrap.bootstrappers.fastapi import FastApiBootstrapper  # noqa: F401
 
 
-async def test_litestar_configure_instrument() -> None:
+@pytest.mark.parametrize("logging_turn_off_middleware", [True, False])
+async def test_litestar_configure_instrument(logging_turn_off_middleware: bool) -> None:
     test_metrics_path: typing.Final = "/test-metrics-path"
 
     application: typing.Final = (
-        LitestarBootstrapper(LitestarSettings())
+        LitestarBootstrapper(
+            LitestarSettings(logging_turn_off_middleware=logging_turn_off_middleware, service_debug=False)
+        )
         .configure_instrument(
             LitestarPrometheusConfig(prometheus_metrics_path=test_metrics_path),
         )
