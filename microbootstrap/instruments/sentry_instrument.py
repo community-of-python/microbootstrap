@@ -1,4 +1,5 @@
 from __future__ import annotations
+import contextlib
 import typing
 
 import pydantic
@@ -19,6 +20,7 @@ class SentryConfig(BaseInstrumentConfig):
     sentry_attach_stacktrace: bool = True
     sentry_integrations: list[Integration] = pydantic.Field(default_factory=list)
     sentry_additional_params: dict[str, typing.Any] = pydantic.Field(default_factory=dict)
+    sentry_tags: dict[str, str] | None = None
 
 
 class SentryInstrument(Instrument[SentryConfig]):
@@ -40,6 +42,10 @@ class SentryInstrument(Instrument[SentryConfig]):
             integrations=self.instrument_config.sentry_integrations,
             **self.instrument_config.sentry_additional_params,
         )
+        if self.instrument_config.sentry_tags:
+            # for sentry<2.1.0
+            with contextlib.suppress(AttributeError):
+                sentry_sdk.set_tags(self.instrument_config.sentry_tags)
 
     @classmethod
     def get_config_type(cls) -> type[SentryConfig]:

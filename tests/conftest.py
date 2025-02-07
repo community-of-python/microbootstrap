@@ -37,7 +37,7 @@ def default_litestar_app() -> litestar.Litestar:
 
 @pytest.fixture
 def minimal_sentry_config() -> SentryConfig:
-    return SentryConfig(sentry_dsn="https://examplePublicKey@o0.ingest.sentry.io/0")
+    return SentryConfig(sentry_dsn="https://examplePublicKey@o0.ingest.sentry.io/0", sentry_tags={"test": "test"})
 
 
 @pytest.fixture
