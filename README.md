@@ -226,6 +226,7 @@ class YourSettings(BaseServiceSettings):
     sentry_attach_stacktrace: bool = True
     sentry_integrations: list[Integration] = []
     sentry_additional_params: dict[str, typing.Any] = {}
+    sentry_tags: dict[str, str] | None = None
 
     ... # Other settings here
 ```
