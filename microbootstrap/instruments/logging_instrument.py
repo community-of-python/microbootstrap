@@ -125,7 +125,7 @@ class LoggingConfig(BaseInstrumentConfig):
     logging_unset_handlers: list[str] = pydantic.Field(
         default_factory=lambda: ["uvicorn", "uvicorn.access"],
     )
-    logging_exclude_endpoints: list[str] = pydantic.Field(default_factory=list)
+    logging_exclude_endpoints: list[str] = pydantic.Field(default_factory=lambda: ["/health/", "/metrics"])
     logging_turn_off_middleware: bool = False
 
 
