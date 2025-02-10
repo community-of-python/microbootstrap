@@ -397,7 +397,7 @@ class YourSettings(BaseServiceSettings):
     logging_buffer_capacity: int = 10
     logging_unset_handlers: list[str] = ["uvicorn", "uvicorn.access"]
     logging_extra_processors: list[typing.Any] = []
-    logging_exclude_endpoints: list[str] = []
+    logging_exclude_endpoints: list[str] = ["/health/", "/metrics"]
     logging_turn_off_middleware: bool = False
 ```
 
