@@ -75,14 +75,13 @@ def test_litestar_logging_bootstrap_working(
 
     assert fill_log_mock.call_count == 2  # noqa: PLR2004
 
+
 def test_litestar_logging_bootstrap_ignores_health(
     monkeypatch: pytest.MonkeyPatch, minimal_logging_config: LoggingConfig
 ) -> None:
     logging_instrument: typing.Final = LitestarLoggingInstrument(minimal_logging_config)
     logging_instrument.bootstrap()
-    litestar_application: typing.Final = litestar.Litestar(
-        **logging_instrument.bootstrap_before()
-    )
+    litestar_application: typing.Final = litestar.Litestar(**logging_instrument.bootstrap_before())
     monkeypatch.setattr("microbootstrap.middlewares.litestar.fill_log_message", fill_log_mock := mock.Mock())
 
     with LitestarTestClient(app=litestar_application) as test_client:

@@ -3,11 +3,11 @@ import logging
 import logging.handlers
 import time
 import typing
-import typing_extensions
 import urllib.parse
 
 import pydantic
 import structlog
+import typing_extensions
 from opentelemetry import trace
 
 from microbootstrap.instruments.base import BaseInstrumentConfig, Instrument
