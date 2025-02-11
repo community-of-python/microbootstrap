@@ -1,9 +1,11 @@
 import logging
 import typing
 from io import StringIO
+from unittest import mock
 
 import fastapi
 import litestar
+import pytest
 from fastapi.testclient import TestClient as FastAPITestClient
 from litestar.testing import TestClient as LitestarTestClient
 from opentelemetry import trace
@@ -133,18 +135,37 @@ def test_memory_logger_factory_error() -> None:
     assert error_message in test_stream.getvalue()
 
 
-def test_fastapi_logging_bootstrap_working(minimal_logging_config: LoggingConfig) -> None:
-    logging_instrument: typing.Final = FastApiLoggingInstrument(minimal_logging_config)
-
+def test_fastapi_logging_bootstrap_working(
+    monkeypatch: pytest.MonkeyPatch, minimal_logging_config: LoggingConfig
+) -> None:
     fastapi_application: typing.Final = fastapi.FastAPI()
 
     @fastapi_application.get("/test-handler")
     async def test_handler() -> str:
         return "Ok"
 
+    logging_instrument: typing.Final = FastApiLoggingInstrument(minimal_logging_config)
     logging_instrument.bootstrap()
     logging_instrument.bootstrap_after(fastapi_application)
+    monkeypatch.setattr("microbootstrap.middlewares.fastapi.fill_log_message", fill_log_mock := mock.Mock())
 
     with FastAPITestClient(app=fastapi_application) as test_client:
         test_client.get("/test-handler?test-query=1")
         test_client.get("/test-handler")
+
+    assert fill_log_mock.call_count == 2  # noqa: PLR2004
+
+
+def test_fastapi_logging_bootstrap_ignores_health(
+    monkeypatch: pytest.MonkeyPatch, minimal_logging_config: LoggingConfig
+) -> None:
+    fastapi_application: typing.Final = fastapi.FastAPI()
+    logging_instrument: typing.Final = FastApiLoggingInstrument(minimal_logging_config)
+    logging_instrument.bootstrap()
+    logging_instrument.bootstrap_after(fastapi_application)
+    monkeypatch.setattr("microbootstrap.middlewares.fastapi.fill_log_message", fill_log_mock := mock.Mock())
+
+    with FastAPITestClient(app=fastapi_application) as test_client:
+        test_client.get("/health")
+
+    assert fill_log_mock.call_count == 0

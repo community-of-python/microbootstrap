@@ -17,8 +17,9 @@ def build_fastapi_logging_middleware(
             request: fastapi.Request,
             call_next: RequestResponseEndpoint,
         ) -> fastapi.Response:
+            request_path: typing.Final = request.url.path.removesuffix("/")
             should_log: typing.Final = not any(
-                exclude_endpoint in str(request.url) for exclude_endpoint in exclude_endpoints
+                exclude_endpoint == request_path for exclude_endpoint in exclude_endpoints
             )
             start_time: typing.Final = time.perf_counter_ns()
             try:
