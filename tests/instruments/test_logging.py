@@ -53,7 +53,9 @@ def test_litestar_logging_bootstrap(minimal_logging_config: LoggingConfig) -> No
     assert len(bootsrap_result["middleware"]) == 1
 
 
-def test_litestar_logging_bootstrap_working(minimal_logging_config: LoggingConfig) -> None:
+def test_litestar_logging_bootstrap_working(
+    monkeypatch: pytest.MonkeyPatch, minimal_logging_config: LoggingConfig
+) -> None:
     logging_instrument: typing.Final = LitestarLoggingInstrument(minimal_logging_config)
 
     @litestar.get("/test-handler")
@@ -65,10 +67,28 @@ def test_litestar_logging_bootstrap_working(minimal_logging_config: LoggingConfi
         route_handlers=[error_handler],
         **logging_instrument.bootstrap_before(),
     )
+    monkeypatch.setattr("microbootstrap.middlewares.litestar.fill_log_message", fill_log_mock := mock.Mock())
 
     with LitestarTestClient(app=litestar_application) as test_client:
         test_client.get("/test-handler?test-query=1")
         test_client.get("/test-handler")
+
+    assert fill_log_mock.call_count == 2  # noqa: PLR2004
+
+def test_litestar_logging_bootstrap_ignores_health(
+    monkeypatch: pytest.MonkeyPatch, minimal_logging_config: LoggingConfig
+) -> None:
+    logging_instrument: typing.Final = LitestarLoggingInstrument(minimal_logging_config)
+    logging_instrument.bootstrap()
+    litestar_application: typing.Final = litestar.Litestar(
+        **logging_instrument.bootstrap_before()
+    )
+    monkeypatch.setattr("microbootstrap.middlewares.litestar.fill_log_message", fill_log_mock := mock.Mock())
+
+    with LitestarTestClient(app=litestar_application) as test_client:
+        test_client.get("/health")
+
+    assert fill_log_mock.call_count == 0
 
 
 def test_litestar_logging_bootstrap_tracer_injection(minimal_logging_config: LoggingConfig) -> None:

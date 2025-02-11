@@ -27,9 +27,8 @@ def build_litestar_logging_middleware(
             start_time: typing.Final[int] = time.perf_counter_ns()
 
             async def log_message_wrapper(message: litestar.types.Message) -> None:
-                should_log: typing.Final = not any(
-                    exclude_endpoint in str(request.url) for exclude_endpoint in exclude_endpoints
-                )
+                request_path = request.url.path.removesuffix("/")
+                should_log: typing.Final = not any(one_endpoint == request_path for one_endpoint in exclude_endpoints)
                 if message["type"] == "http.response.start" and should_log:
                     log_level: str = "info" if message["status"] < HTTP_500_INTERNAL_SERVER_ERROR else "exception"
                     fill_log_message(log_level, request, message["status"], start_time)
