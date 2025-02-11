@@ -7,6 +7,7 @@ import urllib.parse
 
 import pydantic
 import structlog
+import typing_extensions
 from opentelemetry import trace
 
 from microbootstrap.instruments.base import BaseInstrumentConfig, Instrument
@@ -127,6 +128,13 @@ class LoggingConfig(BaseInstrumentConfig):
     )
     logging_exclude_endpoints: list[str] = pydantic.Field(default_factory=lambda: ["/health/", "/metrics"])
     logging_turn_off_middleware: bool = False
+
+    @pydantic.model_validator(mode="after")
+    def remove_trailing_slashes_from_logging_exclude_endpoints(self) -> typing_extensions.Self:
+        self.logging_exclude_endpoints = [
+            one_endpoint.removesuffix("/") for one_endpoint in self.logging_exclude_endpoints
+        ]
+        return self
 
 
 class LoggingInstrument(Instrument[LoggingConfig]):
