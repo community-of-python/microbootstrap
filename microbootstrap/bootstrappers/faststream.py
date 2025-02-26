@@ -1,4 +1,5 @@
 from __future__ import annotations
+import contextlib
 import dataclasses
 import json
 import typing
@@ -8,7 +9,6 @@ import structlog
 import typing_extensions
 from faststream.asgi import AsgiFastStream, AsgiResponse
 from faststream.asgi import get as handle_get
-from health_checks.http_based import BaseHTTPHealthCheck
 
 from microbootstrap.bootstrappers.base import ApplicationBootstrapper
 from microbootstrap.config.faststream import FastStreamConfig
@@ -21,6 +21,10 @@ from microbootstrap.instruments.opentelemetry_instrument import (
 from microbootstrap.instruments.prometheus_instrument import FastStreamPrometheusConfig, PrometheusInstrument
 from microbootstrap.instruments.sentry_instrument import SentryInstrument
 from microbootstrap.settings import FastStreamSettings
+
+
+with contextlib.suppress(ImportError):
+    from health_checks.http_based import BaseHTTPHealthCheck
 
 
 class KwargsAsgiFastStream(AsgiFastStream):

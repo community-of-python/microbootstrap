@@ -1,10 +1,10 @@
 from __future__ import annotations
+import contextlib
 import typing
 
 import litestar
 import litestar.types
 import typing_extensions
-from health_checks.litestar_healthcheck import build_litestar_health_check_router
 from litestar import openapi
 from litestar.config.cors import CORSConfig as LitestarCorsConfig
 from litestar.contrib.opentelemetry.config import OpenTelemetryConfig as LitestarOpentelemetryConfig
@@ -24,6 +24,10 @@ from microbootstrap.instruments.sentry_instrument import SentryInstrument
 from microbootstrap.instruments.swagger_instrument import SwaggerInstrument
 from microbootstrap.middlewares.litestar import build_litestar_logging_middleware
 from microbootstrap.settings import LitestarSettings
+
+
+with contextlib.suppress(ImportError):
+    from health_checks.litestar_healthcheck import build_litestar_health_check_router
 
 
 class LitestarBootstrapper(
