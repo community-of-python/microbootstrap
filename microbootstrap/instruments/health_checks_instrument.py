@@ -1,13 +1,16 @@
 from __future__ import annotations
+import contextlib
 import typing
-
-from health_checks.http_based import DefaultHTTPHealthCheck
 
 from microbootstrap.instruments.base import BaseInstrumentConfig, Instrument
 
 
 if typing.TYPE_CHECKING:
     from health_checks.base import HealthCheck
+
+
+with contextlib.suppress(ImportError):
+    from health_checks.http_based import DefaultHTTPHealthCheck
 
 
 class HealthChecksConfig(BaseInstrumentConfig):

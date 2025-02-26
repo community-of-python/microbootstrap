@@ -4,7 +4,6 @@ import typing
 import fastapi
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi_offline_docs import enable_offline_docs
-from health_checks.fastapi_healthcheck import build_fastapi_health_check_router
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from prometheus_fastapi_instrumentator import Instrumentator
 
@@ -19,6 +18,10 @@ from microbootstrap.instruments.sentry_instrument import SentryInstrument
 from microbootstrap.instruments.swagger_instrument import SwaggerInstrument
 from microbootstrap.middlewares.fastapi import build_fastapi_logging_middleware
 from microbootstrap.settings import FastApiSettings
+
+
+with contextlib.suppress(ImportError):
+    from health_checks.fastapi_healthcheck import build_fastapi_health_check_router
 
 
 ApplicationT = typing.TypeVar("ApplicationT", bound=fastapi.FastAPI)
