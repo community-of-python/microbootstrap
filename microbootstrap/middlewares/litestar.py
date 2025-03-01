@@ -8,11 +8,14 @@ from litestar.middleware.base import MiddlewareProtocol
 from litestar.status_codes import HTTP_500_INTERNAL_SERVER_ERROR
 
 from microbootstrap.instruments.logging_instrument import fill_log_message
+from .utils import optimize_exclude_paths
 
 
 def build_litestar_logging_middleware(
     exclude_endpoints: typing.Iterable[str],
 ) -> type[MiddlewareProtocol]:
+    endpoints_to_ignore: typing.Collection[str] = optimize_exclude_paths(exclude_endpoints)
+
     class LitestarLoggingMiddleware(MiddlewareProtocol):
         def __init__(self, app: litestar.types.ASGIApp) -> None:
             self.app = app
@@ -26,9 +29,8 @@ def build_litestar_logging_middleware(
             request: typing.Final[litestar.Request] = litestar.Request(request_scope)  # type: ignore[type-arg]
 
             request_path = request.url.path.removesuffix("/")
-            should_log: typing.Final = not any(one_endpoint == request_path for one_endpoint in exclude_endpoints)
 
-            if not should_log:
+            if request_path in endpoints_to_ignore:
                 await self.app(request_scope, receive, send_function)
                 return
 
