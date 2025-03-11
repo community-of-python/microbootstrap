@@ -10,7 +10,7 @@ from prometheus_fastapi_instrumentator import Instrumentator
 from microbootstrap.bootstrappers.base import ApplicationBootstrapper
 from microbootstrap.config.fastapi import FastApiConfig
 from microbootstrap.instruments.cors_instrument import CorsInstrument
-from microbootstrap.instruments.health_checks_instrument import HealthChecksInstrument
+from microbootstrap.instruments.health_checks_instrument import HealthChecksInstrument, HealthCheckTypedDict
 from microbootstrap.instruments.logging_instrument import LoggingInstrument
 from microbootstrap.instruments.opentelemetry_instrument import OpentelemetryInstrument
 from microbootstrap.instruments.prometheus_instrument import FastApiPrometheusConfig, PrometheusInstrument
@@ -18,10 +18,6 @@ from microbootstrap.instruments.sentry_instrument import SentryInstrument
 from microbootstrap.instruments.swagger_instrument import SwaggerInstrument
 from microbootstrap.middlewares.fastapi import build_fastapi_logging_middleware
 from microbootstrap.settings import FastApiSettings
-
-
-with contextlib.suppress(ImportError):
-    from health_checks.fastapi_healthcheck import build_fastapi_health_check_router
 
 
 ApplicationT = typing.TypeVar("ApplicationT", bound=fastapi.FastAPI)
@@ -131,12 +127,18 @@ class FastApiPrometheusInstrument(PrometheusInstrument[FastApiPrometheusConfig])
 
 @FastApiBootstrapper.use_instrument()
 class FastApiHealthChecksInstrument(HealthChecksInstrument):
-    def bootstrap_after(self, application: ApplicationT) -> ApplicationT:
-        application.include_router(
-            build_fastapi_health_check_router(
-                health_check=self.health_check,
-                health_check_endpoint=self.instrument_config.health_checks_path,
-                include_in_schema=self.instrument_config.health_checks_include_in_schema,
-            ),
+    def build_fastapi_health_check_router(self) -> fastapi.APIRouter:
+        fastapi_router: typing.Final = fastapi.APIRouter(
+            tags=["probes"],
+            include_in_schema=self.instrument_config.health_checks_include_in_schema,
         )
+
+        @fastapi_router.get(self.instrument_config.health_checks_path)
+        async def health_check_handler() -> HealthCheckTypedDict:
+            return self.render_health_check_data()
+
+        return fastapi_router
+
+    def bootstrap_after(self, application: ApplicationT) -> ApplicationT:
+        application.include_router(self.build_fastapi_health_check_router())
         return application

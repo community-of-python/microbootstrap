@@ -49,7 +49,6 @@ authors = [{ name = "community-of-python" }]
 fastapi = [
     "fastapi>=0.100",
     "fastapi-offline-docs>=1",
-    "health-checks>=1",
     "opentelemetry-instrumentation-asgi>=0.46b0",
     "opentelemetry-instrumentation-fastapi>=0.46b0",
     "prometheus-fastapi-instrumentator>=6.1",
@@ -57,7 +56,6 @@ fastapi = [
 litestar = [
     "litestar>=2.9",
     "litestar-offline-docs>=1",
-    "health-checks>=1",
     "opentelemetry-instrumentation-asgi>=0.46b0",
     "prometheus-client>=0.20",
 ]
