@@ -5,8 +5,8 @@ import fastapi
 from fastapi import status
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 
+from microbootstrap.helpers import optimize_exclude_paths
 from microbootstrap.instruments.logging_instrument import fill_log_message
-from .utils import optimize_exclude_paths
 
 
 def build_fastapi_logging_middleware(

@@ -7,8 +7,8 @@ import litestar.types
 from litestar.middleware.base import MiddlewareProtocol
 from litestar.status_codes import HTTP_500_INTERNAL_SERVER_ERROR
 
+from microbootstrap.helpers import optimize_exclude_paths
 from microbootstrap.instruments.logging_instrument import fill_log_message
-from .utils import optimize_exclude_paths
 
 
 def build_litestar_logging_middleware(

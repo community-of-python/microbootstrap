@@ -5,6 +5,7 @@ import pydantic
 import pytest
 
 from microbootstrap import exceptions, helpers
+from microbootstrap.helpers import optimize_exclude_paths
 
 
 @pytest.mark.parametrize(
@@ -146,3 +147,14 @@ def test_merge_dataclasses_configs(
     result: DataclassConfig,
 ) -> None:
     assert result == helpers.merge_dataclasses_configs(first_class, second_class)
+
+
+@pytest.mark.parametrize(
+    "exclude_paths",
+    [
+        ["path"],
+        ["path"] * 11,
+    ],
+)
+def test_optimize_exclude_paths(exclude_paths: list[str]) -> None:
+    optimize_exclude_paths(exclude_paths)
