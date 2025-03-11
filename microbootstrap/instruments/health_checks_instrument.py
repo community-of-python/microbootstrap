@@ -17,9 +17,6 @@ class HealthChecksInstrument(Instrument[HealthChecksConfig]):
     instrument_name = "Health checks"
     ready_condition = "Set health_checks_enabled to True"
 
-    async def define_health_status(self) -> bool:
-        return True
-
     def render_health_check_data(self) -> dict[str, typing.Any]:
         return {
             "service_version": self.instrument_config.service_version,

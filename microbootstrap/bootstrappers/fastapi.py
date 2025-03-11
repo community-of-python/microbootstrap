@@ -136,9 +136,6 @@ class FastApiHealthChecksInstrument(HealthChecksInstrument):
 
         @fastapi_router.get(self.instrument_config.health_checks_path)
         async def health_check_handler() -> JSONResponse:
-            if not await self.define_health_status():
-                raise fastapi.HTTPException(status_code=500, detail="Service is unhealthy.")
-
             return JSONResponse(content=self.render_health_check_data())
 
         return fastapi_router

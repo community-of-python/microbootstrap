@@ -149,8 +149,6 @@ class LitestarHealthChecksInstrument(HealthChecksInstrument):
     def build_litestar_health_check_router(self) -> litestar.Router:
         @litestar.get(media_type=litestar.MediaType.JSON)
         async def health_check_handler() -> dict[str, typing.Any]:
-            if not await self.define_health_status():
-                raise litestar.exceptions.HTTPException(status_code=500, detail="Service is unhealthy.")
             return self.render_health_check_data()
 
         return litestar.Router(
