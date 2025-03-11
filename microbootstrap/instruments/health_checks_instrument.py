@@ -1,7 +1,15 @@
 from __future__ import annotations
 import typing
 
+import typing_extensions
+
 from microbootstrap.instruments.base import BaseInstrumentConfig, Instrument
+
+
+class HealthCheckTypedDict(typing_extensions.TypedDict, total=False):
+    service_version: typing.Optional[str]  # noqa: UP007 (Litestar fails to build OpenAPI schema on Python 3.9)
+    service_name: typing.Optional[str]  # noqa: UP007 (Litestar fails to build OpenAPI schema on Python 3.9)
+    health_status: bool
 
 
 class HealthChecksConfig(BaseInstrumentConfig):
@@ -17,7 +25,7 @@ class HealthChecksInstrument(Instrument[HealthChecksConfig]):
     instrument_name = "Health checks"
     ready_condition = "Set health_checks_enabled to True"
 
-    def render_health_check_data(self) -> dict[str, typing.Any]:
+    def render_health_check_data(self) -> HealthCheckTypedDict:
         return {
             "service_version": self.instrument_config.service_version,
             "service_name": self.instrument_config.service_name,

@@ -16,7 +16,7 @@ from sentry_sdk.integrations.litestar import LitestarIntegration
 from microbootstrap.bootstrappers.base import ApplicationBootstrapper
 from microbootstrap.config.litestar import LitestarConfig
 from microbootstrap.instruments.cors_instrument import CorsInstrument
-from microbootstrap.instruments.health_checks_instrument import HealthChecksInstrument
+from microbootstrap.instruments.health_checks_instrument import HealthChecksInstrument, HealthCheckTypedDict
 from microbootstrap.instruments.logging_instrument import LoggingInstrument
 from microbootstrap.instruments.opentelemetry_instrument import OpentelemetryInstrument
 from microbootstrap.instruments.prometheus_instrument import LitestarPrometheusConfig, PrometheusInstrument
@@ -148,7 +148,7 @@ class LitestarPrometheusInstrument(PrometheusInstrument[LitestarPrometheusConfig
 class LitestarHealthChecksInstrument(HealthChecksInstrument):
     def build_litestar_health_check_router(self) -> litestar.Router:
         @litestar.get(media_type=litestar.MediaType.JSON)
-        async def health_check_handler() -> dict[str, typing.Any]:
+        async def health_check_handler() -> HealthCheckTypedDict:
             return self.render_health_check_data()
 
         return litestar.Router(

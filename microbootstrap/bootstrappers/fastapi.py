@@ -6,12 +6,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi_offline_docs import enable_offline_docs
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from prometheus_fastapi_instrumentator import Instrumentator
-from starlette.responses import JSONResponse
 
 from microbootstrap.bootstrappers.base import ApplicationBootstrapper
 from microbootstrap.config.fastapi import FastApiConfig
 from microbootstrap.instruments.cors_instrument import CorsInstrument
-from microbootstrap.instruments.health_checks_instrument import HealthChecksInstrument
+from microbootstrap.instruments.health_checks_instrument import HealthChecksInstrument, HealthCheckTypedDict
 from microbootstrap.instruments.logging_instrument import LoggingInstrument
 from microbootstrap.instruments.opentelemetry_instrument import OpentelemetryInstrument
 from microbootstrap.instruments.prometheus_instrument import FastApiPrometheusConfig, PrometheusInstrument
@@ -135,8 +134,8 @@ class FastApiHealthChecksInstrument(HealthChecksInstrument):
         )
 
         @fastapi_router.get(self.instrument_config.health_checks_path)
-        async def health_check_handler() -> JSONResponse:
-            return JSONResponse(content=self.render_health_check_data())
+        async def health_check_handler() -> HealthCheckTypedDict:
+            return self.render_health_check_data()
 
         return fastapi_router
 
