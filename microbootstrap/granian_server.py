@@ -26,8 +26,8 @@ def create_granian_server(
     target: str,
     settings: ServerConfig,
     **granian_options: typing.Any,  # noqa: ANN401
-) -> granian.Granian:
-    return granian.Granian(
+) -> granian.Granian:  # type: ignore[name-defined]
+    return granian.Granian(  # type: ignore[attr-defined]
         target=target,
         address=settings.server_host,
         port=settings.server_port,

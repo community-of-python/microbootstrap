@@ -1,6 +1,4 @@
 from __future__ import annotations
-import contextlib
-import dataclasses
 import json
 import typing
 
@@ -21,10 +19,6 @@ from microbootstrap.instruments.opentelemetry_instrument import (
 from microbootstrap.instruments.prometheus_instrument import FastStreamPrometheusConfig, PrometheusInstrument
 from microbootstrap.instruments.sentry_instrument import SentryInstrument
 from microbootstrap.settings import FastStreamSettings
-
-
-with contextlib.suppress(ImportError):
-    from health_checks.http_based import BaseHTTPHealthCheck
 
 
 class KwargsAsgiFastStream(AsgiFastStream):
@@ -102,33 +96,25 @@ class FastStreamPrometheusInstrument(PrometheusInstrument[FastStreamPrometheusCo
         return FastStreamPrometheusConfig
 
 
-@dataclasses.dataclass
-class FastStreamHealthCheck(BaseHTTPHealthCheck):
-    application: AsgiFastStream | None = None
-
-    async def update_health_status(self) -> bool:
-        return await self.application.broker.ping(timeout=5) if self.application and self.application.broker else False
-
-
 @FastStreamBootstrapper.use_instrument()
 class FastStreamHealthChecksInstrument(HealthChecksInstrument):
     def bootstrap(self) -> None: ...
     def bootstrap_before(self) -> dict[str, typing.Any]:
         @handle_get
         async def check_health(scope: typing.Any) -> AsgiResponse:  # noqa: ANN401, ARG001
-            health_check_data = await self.health_check.check_health()
             return (
-                AsgiResponse(json.dumps(health_check_data).encode(), 200, headers={"content-type": "text/plain"})
-                if health_check_data["health_status"]
+                AsgiResponse(
+                    json.dumps(self.render_health_check_data()).encode(), 200, headers={"content-type": "text/plain"}
+                )
+                if await self.define_health_status()
                 else AsgiResponse(b"Service is unhealthy", 500, headers={"content-type": "application/json"})
             )
 
         return {"asgi_routes": ((self.instrument_config.health_checks_path, check_health),)}
 
+    async def define_health_status(self) -> bool:
+        return await self.application.broker.ping(timeout=5) if self.application and self.application.broker else False
+
     def bootstrap_after(self, application: AsgiFastStream) -> AsgiFastStream:  # type: ignore[override]
-        self.health_check = FastStreamHealthCheck(
-            service_version=self.instrument_config.service_version,
-            service_name=self.instrument_config.service_name,
-            application=application,
-        )
+        self.application = application
         return application

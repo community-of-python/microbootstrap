@@ -1,8 +1,8 @@
 from __future__ import annotations
-import contextlib
 import typing
 
 import litestar
+import litestar.exceptions
 import litestar.types
 import typing_extensions
 from litestar import openapi
@@ -24,10 +24,6 @@ from microbootstrap.instruments.sentry_instrument import SentryInstrument
 from microbootstrap.instruments.swagger_instrument import SwaggerInstrument
 from microbootstrap.middlewares.litestar import build_litestar_logging_middleware
 from microbootstrap.settings import LitestarSettings
-
-
-with contextlib.suppress(ImportError):
-    from health_checks.litestar_healthcheck import build_litestar_health_check_router
 
 
 class LitestarBootstrapper(
@@ -150,13 +146,19 @@ class LitestarPrometheusInstrument(PrometheusInstrument[LitestarPrometheusConfig
 
 @LitestarBootstrapper.use_instrument()
 class LitestarHealthChecksInstrument(HealthChecksInstrument):
+    def build_litestar_health_check_router(self) -> litestar.Router:
+        @litestar.get(media_type=litestar.MediaType.JSON)
+        async def health_check_handler() -> dict[str, typing.Any]:
+            if not await self.define_health_status():
+                raise litestar.exceptions.HTTPException(status_code=500, detail="Service is unhealthy.")
+            return self.render_health_check_data()
+
+        return litestar.Router(
+            path=self.instrument_config.health_checks_path,
+            route_handlers=[health_check_handler],
+            tags=["probes"],
+            include_in_schema=self.instrument_config.health_checks_include_in_schema,
+        )
+
     def bootstrap_before(self) -> dict[str, typing.Any]:
-        return {
-            "route_handlers": [
-                build_litestar_health_check_router(
-                    health_check=self.health_check,
-                    health_check_endpoint=self.instrument_config.health_checks_path,
-                    include_in_schema=self.instrument_config.health_checks_include_in_schema,
-                ),
-            ],
-        }
+        return {"route_handlers": [self.build_litestar_health_check_router()]}

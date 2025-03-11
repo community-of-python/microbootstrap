@@ -1,16 +1,7 @@
 from __future__ import annotations
-import contextlib
 import typing
 
 from microbootstrap.instruments.base import BaseInstrumentConfig, Instrument
-
-
-if typing.TYPE_CHECKING:
-    from health_checks.base import HealthCheck
-
-
-with contextlib.suppress(ImportError):
-    from health_checks.http_based import DefaultHTTPHealthCheck
 
 
 class HealthChecksConfig(BaseInstrumentConfig):
@@ -26,11 +17,15 @@ class HealthChecksInstrument(Instrument[HealthChecksConfig]):
     instrument_name = "Health checks"
     ready_condition = "Set health_checks_enabled to True"
 
-    def bootstrap(self) -> None:
-        self.health_check: HealthCheck = DefaultHTTPHealthCheck(
-            service_version=self.instrument_config.service_version,
-            service_name=self.instrument_config.service_name,
-        )
+    async def define_health_status(self) -> bool:
+        return True
+
+    def render_health_check_data(self) -> dict[str, typing.Any]:
+        return {
+            "service_version": self.instrument_config.service_version,
+            "service_name": self.instrument_config.service_name,
+            "health_status": True,
+        }
 
     def is_ready(self) -> bool:
         return self.instrument_config.health_checks_enabled

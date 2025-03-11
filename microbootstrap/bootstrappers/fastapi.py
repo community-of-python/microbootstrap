@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi_offline_docs import enable_offline_docs
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from prometheus_fastapi_instrumentator import Instrumentator
+from starlette.responses import JSONResponse
 
 from microbootstrap.bootstrappers.base import ApplicationBootstrapper
 from microbootstrap.config.fastapi import FastApiConfig
@@ -18,10 +19,6 @@ from microbootstrap.instruments.sentry_instrument import SentryInstrument
 from microbootstrap.instruments.swagger_instrument import SwaggerInstrument
 from microbootstrap.middlewares.fastapi import build_fastapi_logging_middleware
 from microbootstrap.settings import FastApiSettings
-
-
-with contextlib.suppress(ImportError):
-    from health_checks.fastapi_healthcheck import build_fastapi_health_check_router
 
 
 ApplicationT = typing.TypeVar("ApplicationT", bound=fastapi.FastAPI)
@@ -131,12 +128,21 @@ class FastApiPrometheusInstrument(PrometheusInstrument[FastApiPrometheusConfig])
 
 @FastApiBootstrapper.use_instrument()
 class FastApiHealthChecksInstrument(HealthChecksInstrument):
-    def bootstrap_after(self, application: ApplicationT) -> ApplicationT:
-        application.include_router(
-            build_fastapi_health_check_router(
-                health_check=self.health_check,
-                health_check_endpoint=self.instrument_config.health_checks_path,
-                include_in_schema=self.instrument_config.health_checks_include_in_schema,
-            ),
+    def build_fastapi_health_check_router(self) -> fastapi.APIRouter:
+        fastapi_router: typing.Final = fastapi.APIRouter(
+            tags=["probes"],
+            include_in_schema=self.instrument_config.health_checks_include_in_schema,
         )
+
+        @fastapi_router.get(self.instrument_config.health_checks_path)
+        async def health_check_handler() -> JSONResponse:
+            if not await self.define_health_status():
+                raise fastapi.HTTPException(status_code=500, detail="Service is unhealthy.")
+
+            return JSONResponse(content=self.render_health_check_data())
+
+        return fastapi_router
+
+    def bootstrap_after(self, application: ApplicationT) -> ApplicationT:
+        application.include_router(self.build_fastapi_health_check_router())
         return application
