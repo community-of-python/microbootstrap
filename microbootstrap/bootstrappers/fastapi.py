@@ -91,7 +91,7 @@ class FastApiOpentelemetryInstrument(OpentelemetryInstrument):
         FastAPIInstrumentor.instrument_app(
             application,
             tracer_provider=self.tracer_provider,
-            excluded_urls=self.instrument_config.opentelemetry_exclude_urls,
+            excluded_urls=",".join(self.instrument_config.opentelemetry_exclude_urls),
         )
         return application
 
