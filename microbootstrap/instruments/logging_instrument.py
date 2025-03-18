@@ -38,7 +38,7 @@ def fill_log_message(
     start_time: int,
 ) -> None:
     process_time: typing.Final = time.perf_counter_ns() - start_time
-    url_with_query: typing.Final = make_path_with_query_string(typing.cast(ScopeType, request.scope))
+    url_with_query: typing.Final = make_path_with_query_string(typing.cast("ScopeType", request.scope))
     client_host: typing.Final = request.client.host if request.client is not None else None
     client_port: typing.Final = request.client.port if request.client is not None else None
     http_method: typing.Final = request.method
