@@ -30,6 +30,7 @@ class OpenTelemetryInstrumentor:
 class OpentelemetryConfig(BaseInstrumentConfig):
     service_name: str = "micro-service"
     service_version: str = "1.0.0"
+    health_checks_path: str = "/health/"
 
     opentelemetry_service_name: str | None = None
     opentelemetry_container_name: str | None = None
@@ -104,6 +105,12 @@ class BaseOpentelemetryInstrument(Instrument[OpentelemetryConfigT]):
 
 
 class OpentelemetryInstrument(BaseOpentelemetryInstrument[OpentelemetryConfig]):
+    def define_exclude_urls(self) -> list[str]:
+        exclude_urls = [*self.instrument_config.opentelemetry_exclude_urls]
+        if self.instrument_config.health_checks_path and self.instrument_config.health_checks_path not in exclude_urls:
+            exclude_urls.append(self.instrument_config.health_checks_path)
+        return exclude_urls
+
     @classmethod
     def get_config_type(cls) -> type[OpentelemetryConfig]:
         return OpentelemetryConfig
