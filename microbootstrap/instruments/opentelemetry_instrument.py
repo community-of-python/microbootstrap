@@ -8,6 +8,7 @@ from opentelemetry.instrumentation.instrumentor import BaseInstrumentor  # type:
 from opentelemetry.sdk import resources
 from opentelemetry.sdk.trace import TracerProvider as SdkTracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
+from opentelemetry.trace import set_tracer_provider
 
 
 if typing.TYPE_CHECKING:
@@ -102,6 +103,7 @@ class BaseOpentelemetryInstrument(Instrument[OpentelemetryConfigT]):
                 tracer_provider=self.tracer_provider,
                 **opentelemetry_instrumentor.additional_params,
             )
+        set_tracer_provider(self.tracer_provider)
 
 
 class OpentelemetryInstrument(BaseOpentelemetryInstrument[OpentelemetryConfig]):
