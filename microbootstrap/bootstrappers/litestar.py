@@ -109,7 +109,7 @@ class LitestarOpentelemetryInstrument(OpentelemetryInstrument):
             "middleware": [
                 LitestarOpentelemetryConfig(
                     tracer_provider=self.tracer_provider,
-                    exclude=self.instrument_config.opentelemetry_exclude_urls,
+                    exclude=self.define_exclude_urls(),
                 ).middleware,
             ],
         }
