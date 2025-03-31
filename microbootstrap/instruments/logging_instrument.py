@@ -57,18 +57,16 @@ def fill_log_message(
 
 
 def tracer_injection(_: WrappedLogger, __: str, event_dict: EventDict) -> EventDict:
-    event_dict["tracing"] = {}
-    current_span: typing.Final[trace.Span] = trace.get_current_span()
-    if current_span == trace.INVALID_SPAN:
+    current_span = trace.get_current_span()
+    if not current_span.is_recording():
+        event_dict["tracing"] = {}
         return event_dict
 
-    span_context: typing.Final[trace.SpanContext] = current_span.get_span_context()
-    if span_context == trace.INVALID_SPAN_CONTEXT:
-        return event_dict
-
-    event_dict["tracing"]["trace_id"] = format(span_context.span_id, "016x")
-    event_dict["tracing"]["span_id"] = format(span_context.trace_id, "032x")
-
+    current_span_context = current_span.get_span_context()
+    event_dict["tracing"] = {
+        "span_id": trace.format_span_id(current_span_context.span_id),
+        "trace_id": trace.format_trace_id(current_span_context.trace_id),
+    }
     return event_dict
 
 
