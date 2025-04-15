@@ -39,7 +39,7 @@ class OpentelemetryConfig(BaseInstrumentConfig):
     opentelemetry_namespace: str | None = None
     opentelemetry_insecure: bool = pydantic.Field(default=True)
     opentelemetry_instrumentors: list[OpenTelemetryInstrumentor] = pydantic.Field(default_factory=list)
-    opentelemetry_exclude_urls: list[str] = pydantic.Field(default=[])
+    opentelemetry_exclude_urls: list[str] = pydantic.Field(default=["/metrics"])
 
 
 @typing.runtime_checkable
