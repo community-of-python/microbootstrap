@@ -104,4 +104,5 @@ class ApplicationBootstrapper(abc.ABC, typing.Generic[SettingsT, ApplicationT, D
 
     def teardown(self) -> None:
         for instrument in self.instrument_box.instruments:
-            instrument.teardown()
+            if instrument.is_ready():
+                instrument.teardown()
