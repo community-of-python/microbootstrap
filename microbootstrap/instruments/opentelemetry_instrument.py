@@ -1,5 +1,6 @@
 from __future__ import annotations
 import dataclasses
+import os
 import typing
 
 import pydantic
@@ -7,7 +8,7 @@ from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExport
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor  # type: ignore[attr-defined] # noqa: TC002
 from opentelemetry.sdk import resources
 from opentelemetry.sdk.trace import TracerProvider as SdkTracerProvider
-from opentelemetry.sdk.trace.export import BatchSpanProcessor
+from opentelemetry.sdk.trace.export import BatchSpanProcessor, ConsoleSpanExporter, SimpleSpanProcessor
 from opentelemetry.trace import set_tracer_provider
 from pyroscope.otel import PyroscopeSpanProcessor  # type: ignore[import-untyped]
 
@@ -30,6 +31,7 @@ class OpenTelemetryInstrumentor:
 
 
 class OpentelemetryConfig(BaseInstrumentConfig):
+    service_debug: bool = True
     service_name: str = "micro-service"
     service_version: str = "1.0.0"
     health_checks_path: str = "/health/"
@@ -95,6 +97,10 @@ class BaseOpentelemetryInstrument(Instrument[OpentelemetryConfigT]):
         if self.instrument_config.pyroscope_endpoint:
             self.tracer_provider.add_span_processor(PyroscopeSpanProcessor())
 
+        if self.instrument_config.service_debug:
+            self.tracer_provider.add_span_processor(
+                SimpleSpanProcessor(ConsoleSpanExporter(formatter=lambda span: span.to_json(indent=None) + os.linesep))
+            )
         self.tracer_provider.add_span_processor(
             BatchSpanProcessor(
                 OTLPSpanExporter(
