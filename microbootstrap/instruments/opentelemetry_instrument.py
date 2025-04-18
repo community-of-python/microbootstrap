@@ -67,7 +67,7 @@ class BaseOpentelemetryInstrument(Instrument[OpentelemetryConfigT]):
     ready_condition = "Provide all necessary config parameters"
 
     def is_ready(self) -> bool:
-        return bool(self.instrument_config.opentelemetry_endpoint)
+        return bool(self.instrument_config.opentelemetry_endpoint) or self.instrument_config.service_debug
 
     def teardown(self) -> None:
         for instrumentor_with_params in self.instrument_config.opentelemetry_instrumentors:
@@ -94,14 +94,16 @@ class BaseOpentelemetryInstrument(Instrument[OpentelemetryConfigT]):
             self.tracer_provider.add_span_processor(
                 SimpleSpanProcessor(ConsoleSpanExporter(formatter=lambda span: span.to_json(indent=None) + os.linesep))
             )
-        self.tracer_provider.add_span_processor(
-            BatchSpanProcessor(
-                OTLPSpanExporter(
-                    endpoint=self.instrument_config.opentelemetry_endpoint,
-                    insecure=self.instrument_config.opentelemetry_insecure,
+        if self.instrument_config.opentelemetry_endpoint:
+            self.tracer_provider.add_span_processor(
+                BatchSpanProcessor(
+                    OTLPSpanExporter(
+                        endpoint=self.instrument_config.opentelemetry_endpoint,
+                        insecure=self.instrument_config.opentelemetry_insecure,
+                    ),
                 ),
-            ),
-        )
+            )
+
         for opentelemetry_instrumentor in self.instrument_config.opentelemetry_instrumentors:
             opentelemetry_instrumentor.instrumentor.instrument(
                 tracer_provider=self.tracer_provider,
