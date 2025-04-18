@@ -1,4 +1,4 @@
-import litestar
+import litestar  # noqa: INP001
 
 from microbootstrap import LitestarSettings
 from microbootstrap.bootstrappers.litestar import LitestarBootstrapper
