@@ -316,9 +316,9 @@ Parameters description:
 - `prometheus_metrics_path` - path to metrics handler.
 - `prometheus_middleware_cls` - Prometheus middleware for your broker.
 
-### [Opentelemetry](https://opentelemetry.io/)
+### [OpenTelemetry](https://opentelemetry.io/)
 
-To bootstrap Opentelemetry, you must provide `opentelemetry_endpoint`.
+To bootstrap OpenTelemetry, you must provide `opentelemetry_endpoint` or set `service_debug` to `True`. In debug mode traces are sent to the console.
 
 However, additional parameters can also be supplied if needed.
 
