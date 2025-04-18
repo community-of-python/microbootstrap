@@ -1,4 +1,4 @@
-import litestar  # noqa: INP001
+import litestar
 
 from microbootstrap import LitestarSettings
 from microbootstrap.bootstrappers.litestar import LitestarBootstrapper
@@ -19,13 +19,9 @@ async def hello_world() -> dict[str, str]:
 
 def create_app() -> litestar.Litestar:
     return (
-        LitestarBootstrapper(settings)
-        .configure_application(LitestarConfig(route_handlers=[hello_world]))
-        .bootstrap()
+        LitestarBootstrapper(settings).configure_application(LitestarConfig(route_handlers=[hello_world])).bootstrap()
     )
 
 
 if __name__ == "__main__":
-    create_granian_server(
-        "examples.litestar_app:create_app", settings, factory=True
-    ).serve()
+    create_granian_server("examples.litestar_app:create_app", settings, factory=True).serve()

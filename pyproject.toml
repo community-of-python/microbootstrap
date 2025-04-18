@@ -127,6 +127,7 @@ lines-after-imports = 2
 
 [tool.ruff.lint.extend-per-file-ignores]
 "tests/*.py" = ["S101", "S311"]
+"examples/*.py" = ["INP001"]
 
 [tool.coverage.report]
 exclude_also = ["if typing.TYPE_CHECKING:", 'class \w+\(typing.Protocol\):']
