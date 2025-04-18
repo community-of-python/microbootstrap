@@ -1,9 +1,14 @@
 import pydantic
 import pytest
-from pyroscope.otel import PyroscopeSpanProcessor  # type: ignore[import-untyped]
 
 from microbootstrap.instruments.opentelemetry_instrument import OpentelemetryConfig, OpentelemetryInstrument
 from microbootstrap.instruments.pyroscope_instrument import PyroscopeConfig, PyroscopeInstrument
+
+
+try:
+    from pyroscope.otel import PyroscopeSpanProcessor  # type: ignore[import-untyped]
+except ImportError:
+    pytest.skip("pyroscope is not installed", allow_module_level=True)
 
 
 class TestPyroscopeInstrument:

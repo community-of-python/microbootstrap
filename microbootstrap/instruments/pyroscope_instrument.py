@@ -1,9 +1,14 @@
 from __future__ import annotations
 
 import pydantic  # noqa: TC002
-import pyroscope  # type: ignore[import-untyped]
 
 from microbootstrap.instruments.base import BaseInstrumentConfig, Instrument
+
+
+try:
+    import pyroscope  # type: ignore[import-untyped]
+except ImportError:
+    pyroscope = None
 
 
 class PyroscopeConfig(BaseInstrumentConfig):
@@ -18,17 +23,19 @@ class PyroscopeInstrument(Instrument[PyroscopeConfig]):
     ready_condition = "Provide endpoint"
 
     def is_ready(self) -> bool:
-        return bool(self.instrument_config.pyroscope_endpoint)
+        return all([self.instrument_config.pyroscope_endpoint, pyroscope])
 
     def teardown(self) -> None:
-        pyroscope.shutdown()
+        if pyroscope:
+            pyroscope.shutdown()
 
     def bootstrap(self) -> None:
-        pyroscope.configure(
-            application_name=self.instrument_config.service_name,
-            server_address=str(self.instrument_config.pyroscope_endpoint),
-            sample_rate=self.instrument_config.pyroscope_sample_rate,
-        )
+        if pyroscope:
+            pyroscope.configure(
+                application_name=self.instrument_config.service_name,
+                server_address=str(self.instrument_config.pyroscope_endpoint),
+                sample_rate=self.instrument_config.pyroscope_sample_rate,
+            )
 
     @classmethod
     def get_config_type(cls) -> type[PyroscopeConfig]:
