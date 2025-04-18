@@ -1,7 +1,7 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING
 
-import pyroscope_io  # type: ignore[import-untyped]
+import pyroscope  # type: ignore[import-untyped]
 
 from microbootstrap.instruments.base import BaseInstrumentConfig, Instrument
 
@@ -22,13 +22,13 @@ class PyroscopeInstrument(Instrument[PyroscopeConfig]):
     ready_condition = "Provide endpoint"
 
     def is_ready(self) -> bool:
-        return all([self.instrument_config.pyroscope_endpoint, self.instrument_config.pyroscope_sample_rate])
+        return bool(self.instrument_config.pyroscope_endpoint)
 
     def teardown(self) -> None:
-        pyroscope_io.shutdown()
+        pyroscope.shutdown()
 
     def bootstrap(self) -> None:
-        pyroscope_io.configure(
+        pyroscope.configure(
             application_name=self.instrument_config.service_name,
             server_address=self.instrument_config.pyroscope_endpoint,
             sample_rate=self.instrument_config.pyroscope_sample_rate,

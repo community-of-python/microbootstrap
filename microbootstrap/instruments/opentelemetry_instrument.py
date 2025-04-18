@@ -9,6 +9,7 @@ from opentelemetry.sdk import resources
 from opentelemetry.sdk.trace import TracerProvider as SdkTracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
 from opentelemetry.trace import set_tracer_provider
+from pyroscope.otel import PyroscopeSpanProcessor  # type: ignore[import-untyped]
 
 
 if typing.TYPE_CHECKING:
@@ -32,6 +33,7 @@ class OpentelemetryConfig(BaseInstrumentConfig):
     service_name: str = "micro-service"
     service_version: str = "1.0.0"
     health_checks_path: str = "/health/"
+    pyroscope_endpoint: pydantic.HttpUrl | None = None
 
     opentelemetry_service_name: str | None = None
     opentelemetry_container_name: str | None = None
@@ -90,6 +92,9 @@ class BaseOpentelemetryInstrument(Instrument[OpentelemetryConfigT]):
         )
 
         self.tracer_provider = SdkTracerProvider(resource=resource)
+        if self.instrument_config.pyroscope_endpoint:
+            self.tracer_provider.add_span_processor(PyroscopeSpanProcessor())
+
         self.tracer_provider.add_span_processor(
             BatchSpanProcessor(
                 OTLPSpanExporter(
