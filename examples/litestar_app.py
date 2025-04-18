@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import litestar
 
 from microbootstrap import LitestarSettings
