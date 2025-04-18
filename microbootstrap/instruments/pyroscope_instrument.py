@@ -26,7 +26,7 @@ class PyroscopeInstrument(Instrument[PyroscopeConfig]):
     def bootstrap(self) -> None:
         pyroscope.configure(
             application_name=self.instrument_config.service_name,
-            server_address=self.instrument_config.pyroscope_endpoint,
+            server_address=str(self.instrument_config.pyroscope_endpoint),
             sample_rate=self.instrument_config.pyroscope_sample_rate,
         )
 
