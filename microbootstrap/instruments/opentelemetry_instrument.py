@@ -12,13 +12,19 @@ from opentelemetry.sdk.trace import TracerProvider as SdkTracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor, ConsoleSpanExporter, SimpleSpanProcessor
 from opentelemetry.trace import set_tracer_provider
 
+from microbootstrap.instruments.base import BaseInstrumentConfig, Instrument
+
+
+try:
+    from pyroscope.otel import PyroscopeSpanProcessor  # type: ignore[import-untyped]
+except ImportError:  # pragma: no cover
+    PyroscopeSpanProcessor = None
+
 
 if typing.TYPE_CHECKING:
     import faststream
     from opentelemetry.metrics import Meter, MeterProvider
     from opentelemetry.trace import TracerProvider
-
-from microbootstrap.instruments.base import BaseInstrumentConfig, Instrument
 
 
 OpentelemetryConfigT = typing.TypeVar("OpentelemetryConfigT", bound="OpentelemetryConfig")
@@ -35,6 +41,7 @@ class OpentelemetryConfig(BaseInstrumentConfig):
     service_name: str = "micro-service"
     service_version: str = "1.0.0"
     health_checks_path: str = "/health/"
+    pyroscope_endpoint: pydantic.HttpUrl | None = None
 
     opentelemetry_service_name: str | None = None
     opentelemetry_container_name: str | None = None
@@ -90,6 +97,9 @@ class BaseOpentelemetryInstrument(Instrument[OpentelemetryConfigT]):
         resource: typing.Final = resources.Resource.create(attributes=attributes)
 
         self.tracer_provider = SdkTracerProvider(resource=resource)
+        if self.instrument_config.pyroscope_endpoint and PyroscopeSpanProcessor:
+            self.tracer_provider.add_span_processor(PyroscopeSpanProcessor())
+
         if self.instrument_config.service_debug:
             self.tracer_provider.add_span_processor(SimpleSpanProcessor(ConsoleSpanExporter(formatter=_format_span)))
         if self.instrument_config.opentelemetry_endpoint:

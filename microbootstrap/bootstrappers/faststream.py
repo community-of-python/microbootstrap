@@ -17,6 +17,7 @@ from microbootstrap.instruments.opentelemetry_instrument import (
     FastStreamOpentelemetryConfig,
 )
 from microbootstrap.instruments.prometheus_instrument import FastStreamPrometheusConfig, PrometheusInstrument
+from microbootstrap.instruments.pyroscope_instrument import PyroscopeInstrument
 from microbootstrap.instruments.sentry_instrument import SentryInstrument
 from microbootstrap.settings import FastStreamSettings
 
@@ -43,6 +44,7 @@ class FastStreamBootstrapper(ApplicationBootstrapper[FastStreamSettings, AsgiFas
 
 
 FastStreamBootstrapper.use_instrument()(SentryInstrument)
+FastStreamBootstrapper.use_instrument()(PyroscopeInstrument)
 
 
 @FastStreamBootstrapper.use_instrument()
