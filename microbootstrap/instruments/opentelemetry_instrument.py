@@ -17,7 +17,7 @@ from microbootstrap.instruments.base import BaseInstrumentConfig, Instrument
 
 try:
     from pyroscope.otel import PyroscopeSpanProcessor  # type: ignore[import-untyped]
-except ImportError:
+except ImportError:  # pragma: no cover
     PyroscopeSpanProcessor = None
 
 

@@ -7,7 +7,7 @@ from microbootstrap.instruments.pyroscope_instrument import PyroscopeConfig, Pyr
 
 try:
     from pyroscope.otel import PyroscopeSpanProcessor  # type: ignore[import-untyped]
-except ImportError:
+except ImportError:  # pragma: no cover
     pytest.skip("pyroscope is not installed", allow_module_level=True)
 
 
