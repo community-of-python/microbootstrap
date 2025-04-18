@@ -78,8 +78,6 @@ def minimal_health_checks_config() -> HealthChecksConfig:
 @pytest.fixture
 def minimal_opentelemetry_config() -> OpentelemetryConfig:
     return OpentelemetryConfig(
-        service_name="test-micro-service",
-        service_version="1.0.0",
         opentelemetry_endpoint="/my-engdpoint",
         opentelemetry_namespace="namespace",
         opentelemetry_container_name="container-name",
