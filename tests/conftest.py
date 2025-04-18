@@ -5,6 +5,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import litestar
 import pytest
+from sentry_sdk.transport import Transport as SentryTransport
 
 import microbootstrap.settings
 from microbootstrap import (
@@ -22,6 +23,10 @@ from microbootstrap.instruments.swagger_instrument import SwaggerConfig
 from microbootstrap.settings import BaseServiceSettings, ServerConfig
 
 
+if typing.TYPE_CHECKING:
+    from sentry_sdk.envelope import Envelope as SentryEnvelope
+
+
 pytestmark = [pytest.mark.anyio]
 
 
@@ -35,9 +40,17 @@ def default_litestar_app() -> litestar.Litestar:
     return litestar.Litestar()
 
 
+class MockSentryTransport(SentryTransport):
+    def capture_envelope(self, envelope: SentryEnvelope) -> None: ...
+
+
 @pytest.fixture
 def minimal_sentry_config() -> SentryConfig:
-    return SentryConfig(sentry_dsn="https://examplePublicKey@o0.ingest.sentry.io/0", sentry_tags={"test": "test"})
+    return SentryConfig(
+        sentry_dsn="https://examplePublicKey@o0.ingest.sentry.io/0",
+        sentry_tags={"test": "test"},
+        sentry_additional_params={"transport": MockSentryTransport()},
+    )
 
 
 @pytest.fixture
