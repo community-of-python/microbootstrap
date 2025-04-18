@@ -8,7 +8,7 @@ from microbootstrap.instruments.base import BaseInstrumentConfig, Instrument
 try:
     import pyroscope  # type: ignore[import-untyped]
 except ImportError:
-    pyroscope = None
+    pyroscope = None  # Not supported on Windows
 
 
 class PyroscopeConfig(BaseInstrumentConfig):
