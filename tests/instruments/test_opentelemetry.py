@@ -23,7 +23,7 @@ def test_opentelemetry_is_ready(
 
 
 def test_opentelemetry_bootstrap_is_not_ready(minimal_opentelemetry_config: OpentelemetryConfig) -> None:
-    minimal_opentelemetry_config.service_name = ""
+    minimal_opentelemetry_config.opentelemetry_endpoint = None
     opentelemetry_instrument: typing.Final = OpentelemetryInstrument(minimal_opentelemetry_config)
     assert not opentelemetry_instrument.is_ready()
 
