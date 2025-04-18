@@ -7,6 +7,7 @@ import pydantic
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor  # type: ignore[attr-defined] # noqa: TC002
 from opentelemetry.sdk import resources
+from opentelemetry.sdk.trace import ReadableSpan
 from opentelemetry.sdk.trace import TracerProvider as SdkTracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor, ConsoleSpanExporter, SimpleSpanProcessor
 from opentelemetry.trace import set_tracer_provider
@@ -62,6 +63,10 @@ class FastStreamOpentelemetryConfig(OpentelemetryConfig):
     opentelemetry_middleware_cls: type[FastStreamTelemetryMiddlewareProtocol] | None = None
 
 
+def _format_span(readable_span: ReadableSpan) -> str:
+    return typing.cast("str", readable_span.to_json(indent=None)) + os.linesep
+
+
 class BaseOpentelemetryInstrument(Instrument[OpentelemetryConfigT]):
     instrument_name = "Opentelemetry"
     ready_condition = "Provide all necessary config parameters"
@@ -91,9 +96,7 @@ class BaseOpentelemetryInstrument(Instrument[OpentelemetryConfigT]):
             self.tracer_provider.add_span_processor(PyroscopeSpanProcessor())
 
         if self.instrument_config.service_debug:
-            self.tracer_provider.add_span_processor(
-                SimpleSpanProcessor(ConsoleSpanExporter(formatter=lambda span: span.to_json(indent=None) + os.linesep))
-            )
+            self.tracer_provider.add_span_processor(SimpleSpanProcessor(ConsoleSpanExporter(formatter=_format_span)))
         if self.instrument_config.opentelemetry_endpoint:
             self.tracer_provider.add_span_processor(
                 BatchSpanProcessor(
@@ -103,7 +106,6 @@ class BaseOpentelemetryInstrument(Instrument[OpentelemetryConfigT]):
                     ),
                 ),
             )
-
         for opentelemetry_instrumentor in self.instrument_config.opentelemetry_instrumentors:
             opentelemetry_instrumentor.instrumentor.instrument(
                 tracer_provider=self.tracer_provider,
