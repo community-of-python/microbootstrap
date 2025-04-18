@@ -7,13 +7,13 @@ from microbootstrap.settings import LitestarSettings
 
 
 @litestar.get("/")
-def hello_world() -> dict[str, str]:
+async def hello_world() -> dict[str, str]:
     return {"hello": "world"}
 
 
 def create_app() -> litestar.Litestar:
     return (
-        LitestarBootstrapper(LitestarSettings())
+        LitestarBootstrapper(LitestarSettings(pyroscope_endpoint="http://localhost:4040"))
         .configure_application(LitestarConfig(route_handlers=[hello_world]))
         .bootstrap()
     )
