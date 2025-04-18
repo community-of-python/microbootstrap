@@ -1,13 +1,9 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING
 
+import pydantic  # noqa: TC002
 import pyroscope  # type: ignore[import-untyped]
 
 from microbootstrap.instruments.base import BaseInstrumentConfig, Instrument
-
-
-if TYPE_CHECKING:
-    import pydantic
 
 
 class PyroscopeConfig(BaseInstrumentConfig):

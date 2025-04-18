@@ -67,31 +67,24 @@ class BaseOpentelemetryInstrument(Instrument[OpentelemetryConfigT]):
     ready_condition = "Provide all necessary config parameters"
 
     def is_ready(self) -> bool:
-        return all(
-            [
-                self.instrument_config.opentelemetry_endpoint,
-                self.instrument_config.opentelemetry_namespace,
-                self.instrument_config.service_name,
-                self.instrument_config.service_version,
-                self.instrument_config.opentelemetry_container_name,
-            ],
-        )
+        return bool(self.instrument_config.opentelemetry_endpoint)
 
     def teardown(self) -> None:
         for instrumentor_with_params in self.instrument_config.opentelemetry_instrumentors:
             instrumentor_with_params.instrumentor.uninstrument(**instrumentor_with_params.additional_params)
 
     def bootstrap(self) -> None:
-        resource: typing.Final = resources.Resource.create(
-            attributes={
-                resources.SERVICE_NAME: self.instrument_config.opentelemetry_service_name
-                or self.instrument_config.service_name,
-                resources.TELEMETRY_SDK_LANGUAGE: "python",
-                resources.SERVICE_NAMESPACE: self.instrument_config.opentelemetry_namespace,  # type: ignore[dict-item]
-                resources.SERVICE_VERSION: self.instrument_config.service_version,
-                resources.CONTAINER_NAME: self.instrument_config.opentelemetry_container_name,  # type: ignore[dict-item]
-            },
-        )
+        attributes = {
+            resources.SERVICE_NAME: self.instrument_config.opentelemetry_service_name
+            or self.instrument_config.service_name,
+            resources.TELEMETRY_SDK_LANGUAGE: "python",
+            resources.SERVICE_VERSION: self.instrument_config.service_version,
+        }
+        if self.instrument_config.opentelemetry_namespace:
+            attributes[resources.SERVICE_NAMESPACE] = self.instrument_config.opentelemetry_namespace
+        if self.instrument_config.opentelemetry_container_name:
+            attributes[resources.CONTAINER_NAME] = self.instrument_config.opentelemetry_container_name
+        resource: typing.Final = resources.Resource.create(attributes=attributes)
 
         self.tracer_provider = SdkTracerProvider(resource=resource)
         if self.instrument_config.pyroscope_endpoint:
