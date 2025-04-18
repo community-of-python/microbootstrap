@@ -20,7 +20,7 @@ class PyroscopeConfig(BaseInstrumentConfig):
 
 class PyroscopeInstrument(Instrument[PyroscopeConfig]):
     instrument_name = "Pyroscope"
-    ready_condition = "Provide endpoint"
+    ready_condition = "Provide pyroscope_endpoint"
 
     def is_ready(self) -> bool:
         return all([self.instrument_config.pyroscope_endpoint, pyroscope])
