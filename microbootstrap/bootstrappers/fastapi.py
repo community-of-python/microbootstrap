@@ -14,6 +14,7 @@ from microbootstrap.instruments.health_checks_instrument import HealthChecksInst
 from microbootstrap.instruments.logging_instrument import LoggingInstrument
 from microbootstrap.instruments.opentelemetry_instrument import OpentelemetryInstrument
 from microbootstrap.instruments.prometheus_instrument import FastApiPrometheusConfig, PrometheusInstrument
+from microbootstrap.instruments.pyroscope_instrument import PyroscopeInstrument
 from microbootstrap.instruments.sentry_instrument import SentryInstrument
 from microbootstrap.instruments.swagger_instrument import SwaggerInstrument
 from microbootstrap.middlewares.fastapi import build_fastapi_logging_middleware
@@ -83,6 +84,9 @@ class FastApiCorsInstrument(CorsInstrument):
             max_age=self.instrument_config.cors_max_age,
         )
         return application
+
+
+FastApiBootstrapper.use_instrument()(PyroscopeInstrument)
 
 
 @FastApiBootstrapper.use_instrument()
