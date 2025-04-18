@@ -200,13 +200,14 @@ At present, the following instruments are supported for bootstrapping:
 - `sentry`
 - `prometheus`
 - `opentelemetry`
+- `pyroscope`
 - `logging`
 - `cors`
 - `swagger`
 
 Let's clarify the process required to bootstrap these instruments.
 
-### Sentry
+### [Sentry](https://sentry.io/)
 
 To bootstrap Sentry, you must provide at least the `sentry_dsn`.
 Additional parameters can also be supplied through the settings object.
@@ -233,7 +234,7 @@ class YourSettings(BaseServiceSettings):
 
 These settings are subsequently passed to the [sentry-sdk](https://pypi.org/project/sentry-sdk/) package, finalizing your Sentry integration.
 
-### Prometheus
+### [Prometheus](https://prometheus.io/)
 
 Prometheus integration presents a challenge because the underlying libraries for `FastAPI`, `Litestar` and `FastStream` differ significantly, making it impossible to unify them under a single interface. As a result, the Prometheus settings for `FastAPI`, `Litestar` and `FastStream` must be configured separately.
 
@@ -315,15 +316,9 @@ Parameters description:
 - `prometheus_metrics_path` - path to metrics handler.
 - `prometheus_middleware_cls` - Prometheus middleware for your broker.
 
-### Opentelemetry
+### [Opentelemetry](https://opentelemetry.io/)
 
-To bootstrap Opentelemetry, you must provide several parameters:
-
-- `service_name`
-- `service_version`
-- `opentelemetry_endpoint`
-- `opentelemetry_namespace`
-- `opentelemetry_container_name`
+To bootstrap Opentelemetry, you must provide `opentelemetry_endpoint`.
 
 However, additional parameters can also be supplied if needed.
 
@@ -375,6 +370,14 @@ class YourSettings(FastStreamSettings):
     opentelemetry_middleware_cls: type[FastStreamTelemetryMiddlewareProtocol] | None = RedisTelemetryMiddleware
     ...
 ```
+
+### [Pyroscope](https://pyroscope.io)
+
+To integrate Pyroscope, specify the `pyroscope_endpoint`. The `service_name` will be used as the application name. You can also set `pyroscope_sample_rate` (default is 100).
+
+When both Pyroscope and OpenTelemetry are enabled, profile span IDs will be included in traces using [`pyroscope-otel`](https://github.com/grafana/otel-profiling-python) for correlation.
+
+Note that Pyroscope integration is not supported on Windows.
 
 ### Logging
 

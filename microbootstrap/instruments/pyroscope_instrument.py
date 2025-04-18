@@ -26,16 +26,14 @@ class PyroscopeInstrument(Instrument[PyroscopeConfig]):
         return all([self.instrument_config.pyroscope_endpoint, pyroscope])
 
     def teardown(self) -> None:
-        if pyroscope:
-            pyroscope.shutdown()
+        pyroscope.shutdown()
 
     def bootstrap(self) -> None:
-        if pyroscope:
-            pyroscope.configure(
-                application_name=self.instrument_config.service_name,
-                server_address=str(self.instrument_config.pyroscope_endpoint),
-                sample_rate=self.instrument_config.pyroscope_sample_rate,
-            )
+        pyroscope.configure(
+            application_name=self.instrument_config.service_name,
+            server_address=str(self.instrument_config.pyroscope_endpoint),
+            sample_rate=self.instrument_config.pyroscope_sample_rate,
+        )
 
     @classmethod
     def get_config_type(cls) -> type[PyroscopeConfig]:
