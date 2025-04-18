@@ -41,6 +41,8 @@ dependencies = [
     "rich>=13",
     "sentry-sdk>=2.7",
     "structlog>=24",
+    "pyroscope-io",
+    "pyroscope-otel",
 ]
 dynamic = ["version"]
 authors = [{ name = "community-of-python" }]

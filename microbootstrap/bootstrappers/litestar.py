@@ -20,6 +20,7 @@ from microbootstrap.instruments.health_checks_instrument import HealthChecksInst
 from microbootstrap.instruments.logging_instrument import LoggingInstrument
 from microbootstrap.instruments.opentelemetry_instrument import OpentelemetryInstrument
 from microbootstrap.instruments.prometheus_instrument import LitestarPrometheusConfig, PrometheusInstrument
+from microbootstrap.instruments.pyroscope_instrument import PyroscopeInstrument
 from microbootstrap.instruments.sentry_instrument import SentryInstrument
 from microbootstrap.instruments.swagger_instrument import SwaggerInstrument
 from microbootstrap.middlewares.litestar import build_litestar_logging_middleware
@@ -100,6 +101,9 @@ class LitestarCorsInstrument(CorsInstrument):
                 max_age=self.instrument_config.cors_max_age,
             ),
         }
+
+
+LitestarBootstrapper.use_instrument()(PyroscopeInstrument)
 
 
 @LitestarBootstrapper.use_instrument()
