@@ -6,6 +6,12 @@ from microbootstrap.config.litestar import LitestarConfig
 from microbootstrap.granian_server import create_granian_server
 
 
+class Settings(LitestarSettings): ...
+
+
+settings = Settings()
+
+
 @litestar.get("/")
 async def hello_world() -> dict[str, str]:
     return {"hello": "world"}
@@ -13,11 +19,13 @@ async def hello_world() -> dict[str, str]:
 
 def create_app() -> litestar.Litestar:
     return (
-        LitestarBootstrapper(LitestarSettings(pyroscope_endpoint="http://localhost:4040"))
+        LitestarBootstrapper(settings)
         .configure_application(LitestarConfig(route_handlers=[hello_world]))
         .bootstrap()
     )
 
 
 if __name__ == "__main__":
-    create_granian_server("t:create_app", LitestarSettings(), factory=True).serve()
+    create_granian_server(
+        "examples.litestar_app:create_app", settings, factory=True
+    ).serve()
