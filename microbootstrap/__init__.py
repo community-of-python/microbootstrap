@@ -12,6 +12,7 @@ from microbootstrap.instruments.prometheus_instrument import (
     FastStreamPrometheusMiddlewareProtocol,
     LitestarPrometheusConfig,
 )
+from microbootstrap.instruments.pyroscope_instrument import PyroscopeConfig
 from microbootstrap.instruments.sentry_instrument import SentryConfig
 from microbootstrap.instruments.swagger_instrument import SwaggerConfig
 from microbootstrap.settings import (
@@ -37,6 +38,7 @@ __all__ = (
     "LitestarSettings",
     "LoggingConfig",
     "OpentelemetryConfig",
+    "PyroscopeConfig",
     "SentryConfig",
     "SwaggerConfig",
 )
