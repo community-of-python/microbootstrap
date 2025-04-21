@@ -14,6 +14,7 @@ from microbootstrap import (
     LitestarPrometheusConfig,
     LoggingConfig,
     OpentelemetryConfig,
+    PyroscopeConfig,
     SentryConfig,
     SwaggerConfig,
 )
@@ -66,6 +67,7 @@ class LitestarSettings(  # type: ignore[misc]
     SwaggerConfig,
     CorsConfig,
     HealthChecksConfig,
+    PyroscopeConfig,
 ):
     """Settings for a litestar botstrap."""
 
@@ -80,6 +82,7 @@ class FastApiSettings(  # type: ignore[misc]
     SwaggerConfig,
     CorsConfig,
     HealthChecksConfig,
+    PyroscopeConfig,
 ):
     """Settings for a fastapi botstrap."""
 
@@ -92,6 +95,7 @@ class FastStreamSettings(  # type: ignore[misc]
     SentryConfig,
     FastStreamPrometheusConfig,
     HealthChecksConfig,
+    PyroscopeConfig,
 ):
     """Settings for a faststream bootstrap."""
 
@@ -103,5 +107,6 @@ class InstrumentsSetupperSettings(  # type: ignore[misc]
     LoggingConfig,
     OpentelemetryConfig,
     SentryConfig,
+    PyroscopeConfig,
 ):
     """Settings for a vanilla service."""
