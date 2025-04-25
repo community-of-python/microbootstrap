@@ -373,7 +373,11 @@ class YourSettings(FastStreamSettings):
 
 ### [Pyroscope](https://pyroscope.io)
 
-To integrate Pyroscope, specify the `pyroscope_endpoint`. The `service_name` will be used as the application name. You can also set `pyroscope_sample_rate` (default is 100).
+To integrate Pyroscope, specify the `pyroscope_endpoint`.
+
+- The `opentelemetry_service_name` will be used as the application name.
+- `service_namespace` tag will be added with `opentelemetry_namespace` value.
+- You can also set `pyroscope_sample_rate`, `pyroscope_auth_token`, `pyroscope_tags` and `pyroscope_additional_params` — params that will be passed to `pyroscope.configure`.
 
 When both Pyroscope and OpenTelemetry are enabled, profile span IDs will be included in traces using [`pyroscope-otel`](https://github.com/grafana/otel-profiling-python) for correlation.
 
