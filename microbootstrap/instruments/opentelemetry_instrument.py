@@ -1,28 +1,30 @@
 from __future__ import annotations
 import dataclasses
 import os
+import threading
 import typing
 
 import pydantic
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor  # type: ignore[attr-defined] # noqa: TC002
 from opentelemetry.sdk import resources
-from opentelemetry.sdk.trace import ReadableSpan
+from opentelemetry.sdk.trace import ReadableSpan, Span, SpanProcessor
 from opentelemetry.sdk.trace import TracerProvider as SdkTracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor, ConsoleSpanExporter, SimpleSpanProcessor
-from opentelemetry.trace import set_tracer_provider
+from opentelemetry.trace import format_span_id, set_tracer_provider
 
 from microbootstrap.instruments.base import BaseInstrumentConfig, Instrument
 
 
 try:
-    from pyroscope.otel import PyroscopeSpanProcessor  # type: ignore[import-untyped]
+    import pyroscope
 except ImportError:  # pragma: no cover
-    PyroscopeSpanProcessor = None
+    pyroscope = None
 
 
 if typing.TYPE_CHECKING:
     import faststream
+    from opentelemetry.context import Context
     from opentelemetry.metrics import Meter, MeterProvider
     from opentelemetry.trace import TracerProvider
 
@@ -97,7 +99,7 @@ class BaseOpentelemetryInstrument(Instrument[OpentelemetryConfigT]):
         resource: typing.Final = resources.Resource.create(attributes=attributes)
 
         self.tracer_provider = SdkTracerProvider(resource=resource)
-        if self.instrument_config.pyroscope_endpoint and PyroscopeSpanProcessor:
+        if self.instrument_config.pyroscope_endpoint and pyroscope:
             self.tracer_provider.add_span_processor(PyroscopeSpanProcessor())
 
         if self.instrument_config.service_debug:
@@ -129,3 +131,34 @@ class OpentelemetryInstrument(BaseOpentelemetryInstrument[OpentelemetryConfig]):
     @classmethod
     def get_config_type(cls) -> type[OpentelemetryConfig]:
         return OpentelemetryConfig
+
+
+OTEL_PROFILE_ID_KEY: typing.Final = "pyroscope.profile.id"
+PYROSCOPE_SPAN_ID_KEY: typing.Final = "span_id"
+PYROSCOPE_SPAN_NAME_KEY: typing.Final = "span_id"
+
+
+def _is_root_span(span: ReadableSpan) -> bool:
+    return span.parent is None or span.parent.is_remote
+
+
+# Extended `pyroscope-otel` span processor: https://github.com/grafana/otel-profiling-python/blob/990662d416943e992ab70036b35b27488c98336a/src/pyroscope/otel/__init__.py
+# Includes `span_name` to identify if it makes sense to go to profiles from traces.
+class PyroscopeSpanProcessor(SpanProcessor):
+    def on_start(self, span: Span, parent_context: Context | None = None) -> None:  # noqa: ARG002
+        if _is_root_span(span):
+            formatted_span_id = format_span_id(span.context.span_id)
+            thread_id = threading.get_ident()
+
+            span.set_attribute(OTEL_PROFILE_ID_KEY, formatted_span_id)
+            pyroscope.add_thread_tag(thread_id, PYROSCOPE_SPAN_ID_KEY, formatted_span_id)
+            pyroscope.add_thread_tag(thread_id, PYROSCOPE_SPAN_ID_KEY, formatted_span_id)
+
+    def on_end(self, span: ReadableSpan) -> None:
+        if _is_root_span(span):
+            thread_id = threading.get_ident()
+            pyroscope.remove_thread_tag(thread_id, PYROSCOPE_SPAN_ID_KEY, format_span_id(span.context.span_id))
+            pyroscope.remove_thread_tag(thread_id, PYROSCOPE_SPAN_NAME_KEY, format_span_id(span.context.span_id))
+
+    def force_flush(self, timeout_millis: int = 30000) -> bool:  # noqa: ARG002
+        return True
