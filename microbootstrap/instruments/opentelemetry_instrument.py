@@ -135,7 +135,7 @@ class OpentelemetryInstrument(BaseOpentelemetryInstrument[OpentelemetryConfig]):
 
 OTEL_PROFILE_ID_KEY: typing.Final = "pyroscope.profile.id"
 PYROSCOPE_SPAN_ID_KEY: typing.Final = "span_id"
-PYROSCOPE_SPAN_NAME_KEY: typing.Final = "span_id"
+PYROSCOPE_SPAN_NAME_KEY: typing.Final = "span_name"
 
 
 def _is_root_span(span: ReadableSpan) -> bool:
@@ -152,13 +152,13 @@ class PyroscopeSpanProcessor(SpanProcessor):
 
             span.set_attribute(OTEL_PROFILE_ID_KEY, formatted_span_id)
             pyroscope.add_thread_tag(thread_id, PYROSCOPE_SPAN_ID_KEY, formatted_span_id)
-            pyroscope.add_thread_tag(thread_id, PYROSCOPE_SPAN_ID_KEY, formatted_span_id)
+            pyroscope.add_thread_tag(thread_id, PYROSCOPE_SPAN_NAME_KEY, span.name)
 
     def on_end(self, span: ReadableSpan) -> None:
         if _is_root_span(span):
             thread_id = threading.get_ident()
             pyroscope.remove_thread_tag(thread_id, PYROSCOPE_SPAN_ID_KEY, format_span_id(span.context.span_id))
-            pyroscope.remove_thread_tag(thread_id, PYROSCOPE_SPAN_NAME_KEY, format_span_id(span.context.span_id))
+            pyroscope.remove_thread_tag(thread_id, PYROSCOPE_SPAN_NAME_KEY, span.name)
 
-    def force_flush(self, timeout_millis: int = 30000) -> bool:  # noqa: ARG002
+    def force_flush(self, timeout_millis: int = 30000) -> bool:  # noqa: ARG002  # pragma: no cover
         return True
