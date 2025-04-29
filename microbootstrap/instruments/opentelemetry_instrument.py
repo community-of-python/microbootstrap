@@ -17,7 +17,7 @@ from microbootstrap.instruments.base import BaseInstrumentConfig, Instrument
 
 
 try:
-    import pyroscope
+    import pyroscope  # type: ignore[import-untyped]
 except ImportError:  # pragma: no cover
     pyroscope = None
 
