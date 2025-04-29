@@ -42,7 +42,6 @@ dependencies = [
     "sentry-sdk>=2.7",
     "structlog>=24",
     "pyroscope-io; platform_system != 'Windows'",
-    "pyroscope-otel; platform_system != 'Windows'",
 ]
 dynamic = ["version"]
 authors = [{ name = "community-of-python" }]
