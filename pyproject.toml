@@ -42,6 +42,17 @@ dependencies = [
     "sentry-sdk>=2.7",
     "structlog>=24",
     "pyroscope-io; platform_system != 'Windows'",
+    "opentelemetry-distro[otlp]>=0.54b1",
+    "opentelemetry-instrumentation-aio-pika>=0.54b1",
+    "opentelemetry-instrumentation-aiohttp-client>=0.54b1",
+    "opentelemetry-instrumentation-aiokafka>=0.54b1",
+    "opentelemetry-instrumentation-asyncpg>=0.54b1",
+    "opentelemetry-instrumentation-httpx>=0.54b1",
+    "opentelemetry-instrumentation-logging>=0.54b1",
+    "opentelemetry-instrumentation-redis>=0.54b1",
+    "opentelemetry-instrumentation-psycopg>=0.54b1",
+    "opentelemetry-instrumentation-sqlalchemy>=0.54b1",
+    "opentelemetry-instrumentation-asyncio>=0.54b1",
 ]
 dynamic = ["version"]
 authors = [{ name = "community-of-python" }]
@@ -68,7 +79,6 @@ dev = [
     "anyio>=4.8.0",
     "httpx>=0.28.1",
     "mypy>=1.14.1",
-    "opentelemetry-instrumentation-redis>=0.48b0",
     "pre-commit>=4.0.1",
     "pytest>=8.3.4",
     "pytest-cov>=6.0.0",
