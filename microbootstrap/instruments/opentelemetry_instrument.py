@@ -6,13 +6,13 @@ import typing
 
 import pydantic
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
+from opentelemetry.instrumentation import auto_instrumentation
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor  # type: ignore[attr-defined] # noqa: TC002
 from opentelemetry.sdk import resources
 from opentelemetry.sdk.trace import ReadableSpan, Span, SpanProcessor
 from opentelemetry.sdk.trace import TracerProvider as SdkTracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor, ConsoleSpanExporter, SimpleSpanProcessor
 from opentelemetry.trace import format_span_id, set_tracer_provider
-from opentelemetry.instrumentation import auto_instrumentation
 
 from microbootstrap.instruments.base import BaseInstrumentConfig, Instrument
 
