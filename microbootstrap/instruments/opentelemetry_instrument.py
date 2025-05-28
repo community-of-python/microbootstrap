@@ -87,7 +87,7 @@ class BaseOpentelemetryInstrument(Instrument[OpentelemetryConfigT]):
             instrumentor_with_params.instrumentor.uninstrument(**instrumentor_with_params.additional_params)
 
     def bootstrap(self) -> None:
-        auto_instrumentation.initialize()
+        auto_instrumentation.initialize()  # type: ignore[no-untyped-call]
 
         attributes = {
             resources.SERVICE_NAME: self.instrument_config.opentelemetry_service_name
