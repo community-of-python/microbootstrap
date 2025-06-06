@@ -5,6 +5,7 @@ from microbootstrap.console_writer import ConsoleWriter
 from microbootstrap.instruments.instrument_box import InstrumentBox
 from microbootstrap.instruments.logging_instrument import LoggingInstrument
 from microbootstrap.instruments.opentelemetry_instrument import OpentelemetryInstrument
+from microbootstrap.instruments.pyroscope_instrument import PyroscopeInstrument
 from microbootstrap.instruments.sentry_instrument import SentryInstrument
 
 
@@ -67,3 +68,4 @@ class InstrumentsSetupper:
 InstrumentsSetupper.use_instrument()(LoggingInstrument)
 InstrumentsSetupper.use_instrument()(SentryInstrument)
 InstrumentsSetupper.use_instrument()(OpentelemetryInstrument)
+InstrumentsSetupper.use_instrument()(PyroscopeInstrument)
