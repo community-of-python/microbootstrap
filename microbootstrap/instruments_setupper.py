@@ -56,7 +56,8 @@ class InstrumentsSetupper:
 
     def teardown(self) -> None:
         for instrument in self.instrument_box.instruments:
-            instrument.teardown()
+            if instrument.is_ready():
+                instrument.teardown()
 
     def __enter__(self) -> None:
         self.setup()
