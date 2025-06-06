@@ -632,7 +632,7 @@ application: litestar.Litestar = (
 
 ### Using microbootstrap without a framework
 
-When working on projects that don't use Litestar or FastAPI, you can still take advantage of monitoring and logging capabilities using `InstrumentsSetupper`. This class sets up Sentry, OpenTelemetry, and Logging instruments in a way that's easy to integrate with your project.
+When working on projects that don't use Litestar or FastAPI, you can still take advantage of monitoring and logging capabilities using `InstrumentsSetupper`. This class sets up Sentry, OpenTelemetry, Pyroscope and Logging instruments in a way that's easy to integrate with your project.
 
 You can use `InstrumentsSetupper` as a context manager, like this:
 
