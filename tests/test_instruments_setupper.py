@@ -44,6 +44,7 @@ def test_instruments_setupper_causes_instruments_lifespan() -> None:
         mock.call.is_ready(),
         mock.call.bootstrap(),
         mock.call.write_status(current_setupper.console_writer),
+        mock.call.is_ready(),
         mock.call.teardown(),
     ]
     assert all_mock_calls == [expected_successful_instrument_calls] * instruments_count
