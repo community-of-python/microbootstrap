@@ -12,6 +12,7 @@ from opentelemetry.sdk import resources
 from opentelemetry.sdk.trace import ReadableSpan, Span, SpanProcessor
 from opentelemetry.sdk.trace import TracerProvider as SdkTracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor, ConsoleSpanExporter, SimpleSpanProcessor
+from opentelemetry.semconv.resource import ResourceAttributes
 from opentelemetry.trace import format_span_id, set_tracer_provider
 
 from microbootstrap.instruments.base import BaseInstrumentConfig, Instrument
@@ -90,15 +91,15 @@ class BaseOpentelemetryInstrument(Instrument[OpentelemetryConfigT]):
         auto_instrumentation.initialize()
 
         attributes = {
-            resources.SERVICE_NAME: self.instrument_config.opentelemetry_service_name
+            ResourceAttributes.SERVICE_NAME: self.instrument_config.opentelemetry_service_name
             or self.instrument_config.service_name,
-            resources.TELEMETRY_SDK_LANGUAGE: "python",
-            resources.SERVICE_VERSION: self.instrument_config.service_version,
+            ResourceAttributes.TELEMETRY_SDK_LANGUAGE: "python",
+            ResourceAttributes.SERVICE_VERSION: self.instrument_config.service_version,
         }
         if self.instrument_config.opentelemetry_namespace:
-            attributes[resources.SERVICE_NAMESPACE] = self.instrument_config.opentelemetry_namespace
+            attributes[ResourceAttributes.SERVICE_NAMESPACE] = self.instrument_config.opentelemetry_namespace
         if self.instrument_config.opentelemetry_container_name:
-            attributes[resources.CONTAINER_NAME] = self.instrument_config.opentelemetry_container_name
+            attributes[ResourceAttributes.CONTAINER_NAME] = self.instrument_config.opentelemetry_container_name
         resource: typing.Final = resources.Resource.create(attributes=attributes)
 
         self.tracer_provider = SdkTracerProvider(resource=resource)
