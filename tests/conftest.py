@@ -16,6 +16,7 @@ from microbootstrap import (
     SentryConfig,
 )
 from microbootstrap.console_writer import ConsoleWriter
+from microbootstrap.instruments import opentelemetry_instrument
 from microbootstrap.instruments.cors_instrument import CorsConfig
 from microbootstrap.instruments.health_checks_instrument import HealthChecksConfig
 from microbootstrap.instruments.prometheus_instrument import BasePrometheusConfig
@@ -126,3 +127,8 @@ def console_writer() -> ConsoleWriter:
 def reset_reloaded_settings_module() -> typing.Iterator[None]:
     yield
     importlib.reload(microbootstrap.settings)
+
+
+@pytest.fixture(autouse=True)
+def disable_auto_instrumentation(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(opentelemetry_instrument, "auto_instrumentation", MagicMock())
