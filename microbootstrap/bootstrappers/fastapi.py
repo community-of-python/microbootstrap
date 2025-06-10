@@ -104,8 +104,8 @@ class FastApiOpentelemetryInstrument(OpentelemetryInstrument):
 class FastApiLoggingInstrument(LoggingInstrument):
     def bootstrap_after(self, application: ApplicationT) -> ApplicationT:
         if not self.instrument_config.logging_turn_off_middleware:
-            application.add_middleware(  # type: ignore[call-arg]
-                build_fastapi_logging_middleware(self.instrument_config.logging_exclude_endpoints),  # type: ignore[arg-type]
+            application.add_middleware(
+                build_fastapi_logging_middleware(self.instrument_config.logging_exclude_endpoints),
             )
         return application
 
