@@ -100,7 +100,7 @@ class BaseOpentelemetryInstrument(Instrument[OpentelemetryConfigT]):
             attributes[ResourceAttributes.SERVICE_NAMESPACE] = self.instrument_config.opentelemetry_namespace
         if self.instrument_config.opentelemetry_container_name:
             attributes[ResourceAttributes.CONTAINER_NAME] = self.instrument_config.opentelemetry_container_name
-        resource: typing.Final = resources.Resource.create(attributes=attributes)  # type: ignore[attr-defined]
+        resource: typing.Final = resources.Resource.create(attributes=attributes)
 
         self.tracer_provider = SdkTracerProvider(resource=resource)
         if self.instrument_config.pyroscope_endpoint and pyroscope:
