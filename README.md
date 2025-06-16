@@ -138,6 +138,66 @@ application: litestar.Litestar = LitestarBootstrapper(settings).bootstrap()
 
 This approach will provide you with an application that has all the essential instruments already set up for you.
 
+### FastAPI
+
+```python
+import fastapi
+
+from microbootstrap import FastApiSettings
+from microbootstrap.bootstrappers.fastapi import FastApiBootstrapper
+
+
+class YourSettings(FastApiSettings):
+    # General settings
+    service_debug: bool = False
+    service_name: str = "my-awesome-service"
+
+    # Sentry settings
+    sentry_dsn: str = "your-sentry-dsn"
+
+    # Prometheus settings
+    prometheus_metrics_path: str = "/my-path"
+
+    # Opentelemetry settings
+    opentelemetry_container_name: str = "your-container"
+    opentelemetry_endpoint: str = "/opentelemetry-endpoint"
+
+
+settings = YourSettings()
+
+application: fastapi.FastAPI = FastApiBootstrapper(settings).bootstrap()
+```
+
+### FastStream
+
+```python
+from faststream.asgi import AsgiFastStream
+
+from microbootstrap import FastStreamSettings
+from microbootstrap.bootstrappers.faststream import FastStreamBootstrapper
+
+
+class YourSettings(FastStreamSettings):
+    # General settings
+    service_debug: bool = False
+    service_name: str = "my-awesome-service"
+
+    # Sentry settings
+    sentry_dsn: str = "your-sentry-dsn"
+
+    # Prometheus settings
+    prometheus_metrics_path: str = "/my-path"
+
+    # Opentelemetry settings
+    opentelemetry_container_name: str = "your-container"
+    opentelemetry_endpoint: str = "/opentelemetry-endpoint"
+
+
+settings = YourSettings()
+
+application: AsgiFastStream = FastStreamBootstrapper(settings).bootstrap()
+```
+
 ## Settings
 
 The settings object is the core of microbootstrap.
