@@ -53,6 +53,7 @@ dependencies = [
     "opentelemetry-instrumentation-psycopg>=0.54b1",
     "opentelemetry-instrumentation-sqlalchemy>=0.54b1",
     "opentelemetry-instrumentation-asyncio>=0.54b1",
+    "orjson>=3.10.18",
 ]
 dynamic = ["version"]
 authors = [{ name = "community-of-python" }]
