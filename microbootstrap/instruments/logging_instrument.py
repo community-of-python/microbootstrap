@@ -5,6 +5,7 @@ import time
 import typing
 import urllib.parse
 
+import orjson
 import pydantic
 import structlog
 import typing_extensions
@@ -81,7 +82,7 @@ DEFAULT_STRUCTLOG_PROCESSORS: typing.Final[list[typing.Any]] = [
     structlog.processors.format_exc_info,
     structlog.processors.UnicodeDecoder(),
 ]
-DEFAULT_STRUCTLOG_FORMATTER_PROCESSOR: typing.Final = structlog.processors.JSONRenderer()
+DEFAULT_STRUCTLOG_FORMATTER_PROCESSOR: typing.Final = structlog.processors.JSONRenderer(serializer=orjson.dumps)
 
 
 class MemoryLoggerFactory(structlog.stdlib.LoggerFactory):
