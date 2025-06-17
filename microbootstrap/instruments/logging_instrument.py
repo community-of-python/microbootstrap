@@ -1,4 +1,4 @@
-from __future__ import annotations
+from future import annotations
 import logging
 import logging.handlers
 import time
@@ -71,18 +71,29 @@ def tracer_injection(_: WrappedLogger, __: str, event_dict: EventDict) -> EventD
     return event_dict
 
 
-DEFAULT_STRUCTLOG_PROCESSORS: typing.Final[list[typing.Any]] = [
-    structlog.stdlib.filter_by_level,
-    structlog.stdlib.add_log_level,
+DEFAULT_STRUCTLOG_PRE_CHAIN_PROCESSORS: typing.Final[list[typing.Any]] = [
     structlog.stdlib.add_logger_name,
-    tracer_injection,
+    structlog.stdlib.add_log_level,
     structlog.stdlib.PositionalArgumentsFormatter(),
     structlog.processors.TimeStamper(fmt="%Y-%m-%d %H:%M:%S"),
     structlog.processors.StackInfoRenderer(),
     structlog.processors.format_exc_info,
+]
+DEFAULT_STRUCTLOG_PROCESSORS: typing.Final[list[typing.Any]] = [
+    *DEFAULT_STRUCTLOG_PRE_CHAIN_PROCESSORS,
+    structlog.stdlib.filter_by_level,
+    tracer_injection,
     structlog.processors.UnicodeDecoder(),
 ]
-DEFAULT_STRUCTLOG_FORMATTER_PROCESSOR: typing.Final = structlog.processors.JSONRenderer(serializer=orjson.dumps)
+
+
+def _serialize_log_with_orjson_to_string(value: typing.Any, **kwargs: typing.Any) -> str:  # noqa: ANN401
+    return orjson.dumps(value, **kwargs).decode()
+
+
+DEFAULT_STRUCTLOG_FORMATTER_PROCESSOR: typing.Final = structlog.processors.JSONRenderer(
+    serializer=_serialize_log_with_orjson_to_string
+)
 
 
 class MemoryLoggerFactory(structlog.stdlib.LoggerFactory):
@@ -150,6 +161,8 @@ class LoggingInstrument(Instrument[LoggingConfig]):
         for unset_handlers_logger in self.instrument_config.logging_unset_handlers:
             logging.getLogger(unset_handlers_logger).handlers = []
 
+        stream_handler: typing.Final = logging.StreamHandler()
+        root_logger: typing.Final = logging.getLogger()
         structlog.configure(
             processors=[
                 *DEFAULT_STRUCTLOG_PROCESSORS,
@@ -165,6 +178,17 @@ class LoggingInstrument(Instrument[LoggingConfig]):
             wrapper_class=structlog.stdlib.BoundLogger,
             cache_logger_on_first_use=True,
         )
+        stream_handler.setFormatter(
+            structlog.stdlib.ProcessorFormatter(
+                foreign_pre_chain=[
+                    *DEFAULT_STRUCTLOG_PRE_CHAIN_PROCESSORS,
+                    structlog.stdlib.ProcessorFormatter.remove_processors_meta,
+                ],
+                processors=[structlog.processors.JSONRenderer()],
+                logger=root_logger,
+            )
+        )
+        root_logger.addHandler(stream_handler)
 
     @classmethod
     def get_config_type(cls) -> type[LoggingConfig]:
