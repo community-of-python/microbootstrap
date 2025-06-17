@@ -150,10 +150,14 @@ class LoggingInstrument(Instrument[LoggingConfig]):
         for unset_handlers_logger in self.instrument_config.logging_unset_handlers:
             logging.getLogger(unset_handlers_logger).handlers = []
 
+        stream_handler: typing.Final = logging.StreamHandler()
+        root_logger: typing.Final = logging.getLogger()
+        *foreign_pre_chain, renderer = structlog.get_config()["processors"]
         structlog.configure(
             processors=[
                 *DEFAULT_STRUCTLOG_PROCESSORS,
                 *self.instrument_config.logging_extra_processors,
+                *foreign_pre_chain,
                 DEFAULT_STRUCTLOG_FORMATTER_PROCESSOR,
             ],
             context_class=dict,
@@ -165,6 +169,17 @@ class LoggingInstrument(Instrument[LoggingConfig]):
             wrapper_class=structlog.stdlib.BoundLogger,
             cache_logger_on_first_use=True,
         )
+        stream_handler.setFormatter(
+            structlog.stdlib.ProcessorFormatter(
+                foreign_pre_chain=[
+                    *foreign_pre_chain,
+                    structlog.stdlib.ProcessorFormatter.remove_processors_meta,
+                ],
+                processors=[renderer],
+                logger=root_logger,
+            )
+        )
+        root_logger.addHandler(stream_handler)
 
     @classmethod
     def get_config_type(cls) -> type[LoggingConfig]:
