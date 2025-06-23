@@ -7,8 +7,8 @@ from microbootstrap.instruments.base import BaseInstrumentConfig, Instrument
 
 
 class HealthCheckTypedDict(typing_extensions.TypedDict, total=False):
-    service_version: typing.Optional[str]  # noqa: UP007 (Litestar fails to build OpenAPI schema on Python 3.9)
-    service_name: typing.Optional[str]  # noqa: UP007 (Litestar fails to build OpenAPI schema on Python 3.9)
+    service_version: typing.Optional[str]  # noqa: UP045 (Litestar fails to build OpenAPI schema on Python 3.9)
+    service_name: typing.Optional[str]  # noqa: UP045 (Litestar fails to build OpenAPI schema on Python 3.9)
     health_status: bool
 
 
