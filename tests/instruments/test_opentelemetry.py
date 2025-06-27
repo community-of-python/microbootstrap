@@ -8,40 +8,42 @@ import pytest
 from fastapi.testclient import TestClient as FastAPITestClient
 from litestar.middleware.base import DefineMiddleware
 from litestar.testing import TestClient as LitestarTestClient
+from opentelemetry.instrumentation.dependencies import DependencyConflictError
 
 from microbootstrap import OpentelemetryConfig
 from microbootstrap.bootstrappers.fastapi import FastApiOpentelemetryInstrument
 from microbootstrap.bootstrappers.litestar import LitestarOpentelemetryInstrument
+from microbootstrap.instruments import opentelemetry_instrument
 from microbootstrap.instruments.opentelemetry_instrument import OpentelemetryInstrument
 
 
 def test_opentelemetry_is_ready(
     minimal_opentelemetry_config: OpentelemetryConfig,
 ) -> None:
-    opentelemetry_instrument: typing.Final = OpentelemetryInstrument(minimal_opentelemetry_config)
-    assert opentelemetry_instrument.is_ready()
+    test_opentelemetry_instrument: typing.Final = OpentelemetryInstrument(minimal_opentelemetry_config)
+    assert test_opentelemetry_instrument.is_ready()
 
 
 def test_opentelemetry_bootstrap_is_not_ready(minimal_opentelemetry_config: OpentelemetryConfig) -> None:
     minimal_opentelemetry_config.service_debug = False
     minimal_opentelemetry_config.opentelemetry_endpoint = None
-    opentelemetry_instrument: typing.Final = OpentelemetryInstrument(minimal_opentelemetry_config)
-    assert not opentelemetry_instrument.is_ready()
+    test_opentelemetry_instrument: typing.Final = OpentelemetryInstrument(minimal_opentelemetry_config)
+    assert not test_opentelemetry_instrument.is_ready()
 
 
 def test_opentelemetry_bootstrap_after(
     default_litestar_app: litestar.Litestar,
     minimal_opentelemetry_config: OpentelemetryConfig,
 ) -> None:
-    opentelemetry_instrument: typing.Final = OpentelemetryInstrument(minimal_opentelemetry_config)
-    assert opentelemetry_instrument.bootstrap_after(default_litestar_app) == default_litestar_app
+    test_opentelemetry_instrument: typing.Final = OpentelemetryInstrument(minimal_opentelemetry_config)
+    assert test_opentelemetry_instrument.bootstrap_after(default_litestar_app) == default_litestar_app
 
 
 def test_opentelemetry_teardown(
     minimal_opentelemetry_config: OpentelemetryConfig,
 ) -> None:
-    opentelemetry_instrument: typing.Final = OpentelemetryInstrument(minimal_opentelemetry_config)
-    assert opentelemetry_instrument.teardown() is None  # type: ignore[func-returns-value]
+    test_opentelemetry_instrument: typing.Final = OpentelemetryInstrument(minimal_opentelemetry_config)
+    assert test_opentelemetry_instrument.teardown() is None  # type: ignore[func-returns-value]
 
 
 def test_litestar_opentelemetry_bootstrap(
@@ -49,10 +51,10 @@ def test_litestar_opentelemetry_bootstrap(
     magic_mock: MagicMock,
 ) -> None:
     minimal_opentelemetry_config.opentelemetry_instrumentors = [magic_mock]
-    opentelemetry_instrument: typing.Final = LitestarOpentelemetryInstrument(minimal_opentelemetry_config)
+    test_opentelemetry_instrument: typing.Final = LitestarOpentelemetryInstrument(minimal_opentelemetry_config)
 
-    opentelemetry_instrument.bootstrap()
-    opentelemetry_bootstrap_result: typing.Final = opentelemetry_instrument.bootstrap_before()
+    test_opentelemetry_instrument.bootstrap()
+    opentelemetry_bootstrap_result: typing.Final = test_opentelemetry_instrument.bootstrap_before()
 
     assert opentelemetry_bootstrap_result
     assert "middleware" in opentelemetry_bootstrap_result
@@ -66,18 +68,18 @@ def test_litestar_opentelemetry_teardown(
     magic_mock: MagicMock,
 ) -> None:
     minimal_opentelemetry_config.opentelemetry_instrumentors = [magic_mock]
-    opentelemetry_instrument: typing.Final = LitestarOpentelemetryInstrument(minimal_opentelemetry_config)
+    test_opentelemetry_instrument: typing.Final = LitestarOpentelemetryInstrument(minimal_opentelemetry_config)
 
-    opentelemetry_instrument.teardown()
+    test_opentelemetry_instrument.teardown()
 
 
 def test_litestar_opentelemetry_bootstrap_working(
     minimal_opentelemetry_config: OpentelemetryConfig,
     async_mock: AsyncMock,
 ) -> None:
-    opentelemetry_instrument: typing.Final = LitestarOpentelemetryInstrument(minimal_opentelemetry_config)
-    opentelemetry_instrument.bootstrap()
-    opentelemetry_bootstrap_result: typing.Final = opentelemetry_instrument.bootstrap_before()
+    test_opentelemetry_instrument: typing.Final = LitestarOpentelemetryInstrument(minimal_opentelemetry_config)
+    test_opentelemetry_instrument.bootstrap()
+    opentelemetry_bootstrap_result: typing.Final = test_opentelemetry_instrument.bootstrap_before()
 
     opentelemetry_middleware = opentelemetry_bootstrap_result["middleware"][0]
     assert isinstance(opentelemetry_middleware, DefineMiddleware)
@@ -104,9 +106,9 @@ def test_fastapi_opentelemetry_bootstrap_working(
 ) -> None:
     monkeypatch.setattr("opentelemetry.sdk.trace.TracerProvider.shutdown", Mock())
 
-    opentelemetry_instrument: typing.Final = FastApiOpentelemetryInstrument(minimal_opentelemetry_config)
-    opentelemetry_instrument.bootstrap()
-    fastapi_application: typing.Final = opentelemetry_instrument.bootstrap_after(fastapi.FastAPI())
+    test_opentelemetry_instrument: typing.Final = FastApiOpentelemetryInstrument(minimal_opentelemetry_config)
+    test_opentelemetry_instrument.bootstrap()
+    fastapi_application: typing.Final = test_opentelemetry_instrument.bootstrap_after(fastapi.FastAPI())
 
     @fastapi_application.get("/test-handler")
     async def test_handler() -> None:
@@ -115,3 +117,52 @@ def test_fastapi_opentelemetry_bootstrap_working(
     with patch("opentelemetry.trace.use_span") as mock_capture_event:
         FastAPITestClient(app=fastapi_application).get("/test-handler")
         assert mock_capture_event.called
+
+
+@pytest.mark.parametrize(
+    ("instruments", "result"),
+    [
+        (
+            [
+                MagicMock(),
+                MagicMock(load=MagicMock(side_effect=ImportError)),
+                MagicMock(load=MagicMock(side_effect=DependencyConflictError("Hello"))),
+                MagicMock(load=MagicMock(side_effect=ModuleNotFoundError)),
+            ],
+            "ok",
+        ),
+        (
+            [
+                MagicMock(load=MagicMock(side_effect=ValueError)),
+            ],
+            "raise",
+        ),
+        (
+            [
+                MagicMock(load=MagicMock(side_effect=ValueError)),
+            ],
+            "exclude",
+        ),
+    ],
+)
+def test_instrumentors_loader(
+    minimal_opentelemetry_config: OpentelemetryConfig,
+    instruments: list[MagicMock],
+    result: str,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    if result == "exclude":
+        minimal_opentelemetry_config.opentelemetry_disabled_instrumentations = ["exclude_this", "exclude_that"]
+        instruments[0].name = "exclude_this"
+    monkeypatch.setattr(
+        opentelemetry_instrument,
+        "entry_points",
+        MagicMock(return_value=[*instruments]),
+    )
+
+    if result != "raise":
+        opentelemetry_instrument.OpentelemetryInstrument(instrument_config=minimal_opentelemetry_config).bootstrap()
+        return
+
+    with pytest.raises(ValueError):  # noqa: PT011
+        opentelemetry_instrument.OpentelemetryInstrument(instrument_config=minimal_opentelemetry_config).bootstrap()
