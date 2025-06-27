@@ -1,5 +1,6 @@
 from __future__ import annotations
 import dataclasses
+import logging
 import os
 import threading
 import typing
@@ -7,6 +8,8 @@ import typing
 import pydantic
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
 from opentelemetry.instrumentation import auto_instrumentation
+from opentelemetry.instrumentation.dependencies import DependencyConflictError
+from opentelemetry.instrumentation.environment_variables import OTEL_PYTHON_DISABLED_INSTRUMENTATIONS
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor  # type: ignore[attr-defined] # noqa: TC002
 from opentelemetry.sdk import resources
 from opentelemetry.sdk.trace import ReadableSpan, Span, SpanProcessor
@@ -14,8 +17,12 @@ from opentelemetry.sdk.trace import TracerProvider as SdkTracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor, ConsoleSpanExporter, SimpleSpanProcessor
 from opentelemetry.semconv.resource import ResourceAttributes
 from opentelemetry.trace import format_span_id, set_tracer_provider
+from opentelemetry.util._importlib_metadata import entry_points
 
 from microbootstrap.instruments.base import BaseInstrumentConfig, Instrument
+
+
+LOGGER_OBJ = logging.getLogger(__name__)
 
 
 try:
@@ -74,6 +81,44 @@ class FastStreamOpentelemetryConfig(OpentelemetryConfig):
 
 def _format_span(readable_span: ReadableSpan) -> str:
     return typing.cast("str", readable_span.to_json(indent=None)) + os.linesep
+
+
+def _load_instrumentors() -> None:
+    package_to_exclude: typing.Final = [
+        one_package_to_exclude.strip()
+        for one_package_to_exclude in os.environ.get(OTEL_PYTHON_DISABLED_INSTRUMENTATIONS, "").split(",")
+    ]
+
+    for entry_point in entry_points(group="opentelemetry_pre_instrument"):
+        entry_point.load()()
+
+    for entry_point in entry_points(group="opentelemetry_instrumentor"):
+        if entry_point.name in package_to_exclude:
+            LOGGER_OBJ.info("Instrumentation skipped for library %s", entry_point.name)
+            continue
+
+        try:
+            entry_point.load()()  # distro.load_instrumentor(entry_point, raise_exception_on_conflict=True)
+            LOGGER_OBJ.info("Instrumented %s", entry_point.name)
+        except DependencyConflictError as exc:
+            LOGGER_OBJ.warning(
+                "Skipping instrumentation %s: %s",
+                entry_point.name,
+                exc.conflict,
+            )
+            continue
+        except ModuleNotFoundError as exc:
+            LOGGER_OBJ.warning("Skipping instrumentation %s: %s", entry_point.name, exc.msg)
+            continue
+        except ImportError:
+            LOGGER_OBJ.warning("Importing of %s failed, skipping it", entry_point.name)
+            continue
+        except Exception:
+            LOGGER_OBJ.warning("Instrumenting of %s failed", entry_point.name)
+            raise
+
+    for entry_point in entry_points(group="opentelemetry_post_instrument"):
+        entry_point.load()()
 
 
 class BaseOpentelemetryInstrument(Instrument[OpentelemetryConfigT]):
