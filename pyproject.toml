@@ -2,7 +2,7 @@
 name = "microbootstrap"
 description = "Package for bootstrapping new micro-services"
 readme = "README.md"
-requires-python = ">=3.9,<4"
+requires-python = ">=3.10,<4"
 keywords = [
     "python",
     "microservice",
@@ -23,7 +23,6 @@ classifiers = [
     "Programming Language :: Python",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3 :: Only",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
@@ -101,13 +100,13 @@ source = "vcs"
 [tool.mypy]
 plugins = ["pydantic.mypy"]
 files = ["microbootstrap", "tests"]
-python_version = "3.9"
+python_version = "3.10"
 strict = true
 pretty = true
 show_error_codes = true
 
 [tool.ruff]
-target-version = "py39"
+target-version = "py310"
 line-length = 120
 
 [tool.ruff.format]
