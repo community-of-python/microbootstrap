@@ -82,7 +82,15 @@ DEFAULT_STRUCTLOG_PROCESSORS: typing.Final[list[typing.Any]] = [
     structlog.processors.format_exc_info,
     structlog.processors.UnicodeDecoder(),
 ]
-DEFAULT_STRUCTLOG_FORMATTER_PROCESSOR: typing.Final = structlog.processors.JSONRenderer(serializer=orjson.dumps)
+
+
+def _serialize_log_with_orjson_to_string(value: typing.Any, **kwargs: typing.Any) -> str:  # noqa: ANN401
+    return orjson.dumps(value, **kwargs).decode()
+
+
+DEFAULT_STRUCTLOG_FORMATTER_PROCESSOR: typing.Final = structlog.processors.JSONRenderer(
+    serializer=_serialize_log_with_orjson_to_string
+)
 
 
 class MemoryLoggerFactory(structlog.stdlib.LoggerFactory):
