@@ -52,6 +52,7 @@ dependencies = [
     "opentelemetry-instrumentation-psycopg>=0.54b1",
     "opentelemetry-instrumentation-sqlalchemy>=0.54b1",
     "opentelemetry-instrumentation-asyncio>=0.54b1",
+    "opentelemetry-instrumentation-asgi>=0.46b0",
     "orjson>=3.10.18",
 ]
 dynamic = ["version"]
@@ -61,14 +62,12 @@ authors = [{ name = "community-of-python" }]
 fastapi = [
     "fastapi>=0.100",
     "fastapi-offline-docs>=1",
-    "opentelemetry-instrumentation-asgi>=0.46b0",
     "opentelemetry-instrumentation-fastapi>=0.46b0",
     "prometheus-fastapi-instrumentator>=6.1",
 ]
 litestar = [
     "litestar>=2.9",
     "litestar-offline-docs>=1",
-    "opentelemetry-instrumentation-asgi>=0.46b0",
     "prometheus-client>=0.20",
 ]
 granian = ["granian[reload]>=1"]
