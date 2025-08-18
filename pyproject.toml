@@ -55,7 +55,7 @@ dependencies = [
     "opentelemetry-instrumentation-asgi>=0.46b0",
     "orjson>=3.10.18",
 ]
-dynamic = ["version"]
+version = "0"
 authors = [{ name = "community-of-python" }]
 
 [project.optional-dependencies]
@@ -90,11 +90,12 @@ dev = [
 ]
 
 [build-system]
-requires = ["hatchling", "hatch-vcs"]
-build-backend = "hatchling.build"
+requires = ["uv_build"]
+build-backend = "uv_build"
 
-[tool.hatch.version]
-source = "vcs"
+[tool.uv.build-backend]
+module-name = "microbootstrap"
+module-root = ""
 
 [tool.mypy]
 plugins = ["pydantic.mypy"]
