@@ -378,7 +378,7 @@ Parameters description:
 
 ### [OpenTelemetry](https://opentelemetry.io/)
 
-To bootstrap OpenTelemetry, you must provide `opentelemetry_endpoint` or set `service_debug` to `True`. In debug mode traces are sent to the console.
+To bootstrap OpenTelemetry, you must provide `opentelemetry_endpoint` or set `opentelemetry_log_traces` to `True`.
 
 However, additional parameters can also be supplied if needed.
 
@@ -413,6 +413,7 @@ Parameters description:
 - `opentelemetry_container_name` - will be passed to the `Resource`.
 - `opentelemetry_instrumentors` - a list of extra instrumentors.
 - `opentelemetry_exclude_urls` - list of ignored urls.
+- `opentelemetry_log_traces` - traces will be logged to stdout.
 
 These settings are subsequently passed to [opentelemetry](https://opentelemetry.io/), finalizing your Opentelemetry integration.
 

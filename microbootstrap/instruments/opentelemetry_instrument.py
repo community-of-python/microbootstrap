@@ -66,6 +66,7 @@ class OpentelemetryConfig(BaseInstrumentConfig):
             for one_package_to_exclude in os.environ.get(OTEL_PYTHON_DISABLED_INSTRUMENTATIONS, "").split(",")
         ]
     )
+    opentelemetry_log_traces: bool = False
 
 
 @typing.runtime_checkable
@@ -138,7 +139,7 @@ class BaseOpentelemetryInstrument(Instrument[OpentelemetryConfigT]):
         if self.instrument_config.pyroscope_endpoint and pyroscope:
             self.tracer_provider.add_span_processor(PyroscopeSpanProcessor())
 
-        if self.instrument_config.service_debug:
+        if self.instrument_config.opentelemetry_log_traces:
             self.tracer_provider.add_span_processor(SimpleSpanProcessor(ConsoleSpanExporter(formatter=_format_span)))
         if self.instrument_config.opentelemetry_endpoint:
             self.tracer_provider.add_span_processor(
