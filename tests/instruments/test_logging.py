@@ -7,15 +7,20 @@ import fastapi
 import litestar
 import pytest
 from fastapi.testclient import TestClient as FastAPITestClient
+from faststream.redis import RedisBroker, TestRedisBroker
 from litestar.testing import TestClient as LitestarTestClient
 from opentelemetry import trace
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import ConsoleSpanExporter, SimpleSpanProcessor
 
 from microbootstrap import LoggingConfig
-from microbootstrap.bootstrappers.fastapi import FastApiLoggingInstrument
-from microbootstrap.bootstrappers.litestar import LitestarLoggingInstrument
+from microbootstrap.bootstrappers.fastapi import FastApiBootstrapper, FastApiLoggingInstrument
+from microbootstrap.bootstrappers.faststream import FastStreamBootstrapper
+from microbootstrap.bootstrappers.litestar import LitestarBootstrapper, LitestarLoggingInstrument
+from microbootstrap.config.faststream import FastStreamConfig
+from microbootstrap.config.litestar import LitestarConfig
 from microbootstrap.instruments.logging_instrument import LoggingInstrument, MemoryLoggerFactory
+from microbootstrap.settings import FastApiSettings, FastStreamSettings, LitestarSettings
 
 
 def test_logging_is_ready(minimal_logging_config: LoggingConfig) -> None:
@@ -47,10 +52,10 @@ def test_logging_teardown(
 def test_litestar_logging_bootstrap(minimal_logging_config: LoggingConfig) -> None:
     logging_instrument: typing.Final = LitestarLoggingInstrument(minimal_logging_config)
     logging_instrument.bootstrap()
-    bootsrap_result: typing.Final = logging_instrument.bootstrap_before()
-    assert "middleware" in bootsrap_result
-    assert isinstance(bootsrap_result["middleware"], list)
-    assert len(bootsrap_result["middleware"]) == 1
+    bootstrap_result: typing.Final = logging_instrument.bootstrap_before()
+    assert "middleware" in bootstrap_result
+    assert isinstance(bootstrap_result["middleware"], list)
+    assert len(bootstrap_result["middleware"]) == 1
 
 
 def test_litestar_logging_bootstrap_working(
@@ -188,3 +193,62 @@ def test_fastapi_logging_bootstrap_ignores_health(
         test_client.get("/health")
 
     assert fill_log_mock.call_count == 0
+
+
+class TestForeignLogs:
+    def test_litestar(self, capsys: pytest.CaptureFixture[str]) -> None:
+        logger = logging.getLogger()
+
+        @litestar.get()
+        async def greet() -> str:
+            logger.info("said hi")
+            return "hi"
+
+        application = (
+            LitestarBootstrapper(LitestarSettings(service_debug=False, logging_buffer_capacity=0))
+            .configure_application(LitestarConfig(route_handlers=[greet]))
+            .bootstrap()
+        )
+        with LitestarTestClient(application) as test_client:
+            test_client.get("/")
+
+        stdout = capsys.readouterr().out
+        assert '{"event":"said hi","level":"info","logger":"root"' in stdout
+        assert stdout.count("said hi") == 1
+
+    def test_fastapi(self, capsys: pytest.CaptureFixture[str]) -> None:
+        logger = logging.getLogger()
+        application = FastApiBootstrapper(FastApiSettings(service_debug=False, logging_buffer_capacity=0)).bootstrap()
+
+        @application.get("/")
+        async def greet() -> str:
+            logger.info("said hi")
+            return "hi"
+
+        with FastAPITestClient(application) as test_client:
+            test_client.get("/")
+
+        stdout = capsys.readouterr().out
+        assert '{"event":"said hi","level":"info","logger":"root"' in stdout
+        assert stdout.count("said hi") == 1
+
+    async def test_faststream(self, capsys: pytest.CaptureFixture[str]) -> None:
+        logger = logging.getLogger()
+        broker = RedisBroker()
+
+        @broker.subscriber("greetings")
+        async def greet() -> None:
+            logger.info("said hi")
+
+        (
+            FastStreamBootstrapper(FastStreamSettings(service_debug=False, logging_buffer_capacity=0))
+            .configure_application(FastStreamConfig(broker=broker))
+            .bootstrap()
+        )
+
+        async with TestRedisBroker(broker):
+            await broker.publish(message="hello", channel="greetings")
+
+        stdout = capsys.readouterr().out
+        assert '{"event":"said hi","level":"info","logger":"root"' in stdout
+        assert stdout.count("said hi") == 1

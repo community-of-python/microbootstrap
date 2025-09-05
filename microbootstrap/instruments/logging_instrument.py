@@ -1,6 +1,7 @@
 from __future__ import annotations
 import logging
 import logging.handlers
+import sys
 import time
 import typing
 import urllib.parse
@@ -71,7 +72,7 @@ def tracer_injection(_: WrappedLogger, __: str, event_dict: EventDict) -> EventD
     return event_dict
 
 
-DEFAULT_STRUCTLOG_PROCESSORS: typing.Final[list[typing.Any]] = [
+STRUCTLOG_PRE_CHAIN_PROCESSORS: typing.Final[list[typing.Any]] = [
     structlog.stdlib.filter_by_level,
     structlog.stdlib.add_log_level,
     structlog.stdlib.add_logger_name,
@@ -88,7 +89,7 @@ def _serialize_log_with_orjson_to_string(value: typing.Any, **kwargs: typing.Any
     return orjson.dumps(value, **kwargs).decode()
 
 
-DEFAULT_STRUCTLOG_FORMATTER_PROCESSOR: typing.Final = structlog.processors.JSONRenderer(
+STRUCTLOG_FORMATTER_PROCESSOR: typing.Final = structlog.processors.JSONRenderer(
     serializer=_serialize_log_with_orjson_to_string
 )
 
@@ -154,15 +155,16 @@ class LoggingInstrument(Instrument[LoggingConfig]):
     def teardown(self) -> None:
         structlog.reset_defaults()
 
-    def bootstrap(self) -> None:
+    def _unset_handlers(self) -> None:
         for unset_handlers_logger in self.instrument_config.logging_unset_handlers:
             logging.getLogger(unset_handlers_logger).handlers = []
 
+    def _configure_structlog_loggers(self) -> None:
         structlog.configure(
             processors=[
-                *DEFAULT_STRUCTLOG_PROCESSORS,
+                *STRUCTLOG_PRE_CHAIN_PROCESSORS,
                 *self.instrument_config.logging_extra_processors,
-                DEFAULT_STRUCTLOG_FORMATTER_PROCESSOR,
+                STRUCTLOG_FORMATTER_PROCESSOR,
             ],
             context_class=dict,
             logger_factory=MemoryLoggerFactory(
@@ -173,6 +175,27 @@ class LoggingInstrument(Instrument[LoggingConfig]):
             wrapper_class=structlog.stdlib.BoundLogger,
             cache_logger_on_first_use=True,
         )
+
+    def _configure_foreign_loggers(self) -> None:
+        root_logger: typing.Final = logging.getLogger()
+        stream_handler: typing.Final = logging.StreamHandler(sys.stdout)
+        stream_handler.setFormatter(
+            structlog.stdlib.ProcessorFormatter(
+                foreign_pre_chain=STRUCTLOG_PRE_CHAIN_PROCESSORS,
+                processors=[
+                    structlog.stdlib.ProcessorFormatter.remove_processors_meta,
+                    STRUCTLOG_FORMATTER_PROCESSOR,
+                ],
+                logger=root_logger,
+            )
+        )
+        root_logger.addHandler(stream_handler)
+        root_logger.setLevel(self.instrument_config.logging_log_level)
+
+    def bootstrap(self) -> None:
+        self._unset_handlers()
+        self._configure_structlog_loggers()
+        self._configure_foreign_loggers()
 
     @classmethod
     def get_config_type(cls) -> type[LoggingConfig]:
