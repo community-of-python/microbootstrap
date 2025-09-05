@@ -1,6 +1,7 @@
 from __future__ import annotations
 import logging
 import logging.handlers
+import sys
 import time
 import typing
 import urllib.parse
@@ -177,7 +178,7 @@ class LoggingInstrument(Instrument[LoggingConfig]):
 
     def _configure_third_party_loggers(self) -> None:
         root_logger: typing.Final = logging.getLogger()
-        stream_handler: typing.Final = logging.StreamHandler()
+        stream_handler: typing.Final = logging.StreamHandler(sys.stdout)
         stream_handler.setFormatter(
             structlog.stdlib.ProcessorFormatter(
                 foreign_pre_chain=STRUCTLOG_PRE_CHAIN_PROCESSORS,
@@ -189,6 +190,7 @@ class LoggingInstrument(Instrument[LoggingConfig]):
             )
         )
         root_logger.addHandler(stream_handler)
+        root_logger.setLevel(self.instrument_config.logging_log_level)
 
     def bootstrap(self) -> None:
         self._unset_handlers()
