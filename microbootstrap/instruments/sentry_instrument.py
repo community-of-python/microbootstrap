@@ -2,8 +2,10 @@ from __future__ import annotations
 import contextlib
 import typing
 
+import orjson
 import pydantic
 import sentry_sdk
+from sentry_sdk import _types as sentry_types
 from sentry_sdk.integrations import Integration  # noqa: TC002
 
 from microbootstrap.instruments.base import BaseInstrumentConfig, Instrument
@@ -21,6 +23,53 @@ class SentryConfig(BaseInstrumentConfig):
     sentry_integrations: list[Integration] = pydantic.Field(default_factory=list)
     sentry_additional_params: dict[str, typing.Any] = pydantic.Field(default_factory=dict)
     sentry_tags: dict[str, str] | None = None
+    sentry_before_send: typing.Callable[[typing.Any, typing.Any], typing.Any | None] | None = None
+
+
+IGNORED_STRUCTLOG_ATTRIBUTES: typing.Final = frozenset({"event", "level", "logger", "tracing", "timestamp"})
+
+
+def enrich_sentry_event_from_structlog_log(event: sentry_types.Event, _hint: sentry_types.Hint) -> sentry_types.Event:
+    if (
+        (logentry := event.get("logentry"))
+        and (formatted_message := logentry.get("formatted"))
+        and (isinstance(formatted_message, str))
+        and formatted_message.startswith("{")
+        and (isinstance(event.get("contexts"), dict))
+    ):
+        try:
+            loaded_formatted_log = orjson.loads(formatted_message)
+        except orjson.JSONDecodeError:
+            return event
+        if not isinstance(loaded_formatted_log, dict):
+            return event
+
+        if event_name := loaded_formatted_log.get("event"):
+            event["logentry"]["formatted"] = event_name  # type: ignore[index]
+        else:
+            return event
+
+        additional_extra = loaded_formatted_log
+        for one_attr in IGNORED_STRUCTLOG_ATTRIBUTES:
+            additional_extra.pop(one_attr, None)
+        if additional_extra:
+            event["contexts"]["structlog"] = additional_extra
+
+    return event
+
+
+def wrap_before_send_callbacks(*callbacks: sentry_types.EventProcessor | None) -> sentry_types.EventProcessor:
+    def run_before_send(event: sentry_types.Event, hint: sentry_types.Hint) -> sentry_types.Event | None:
+        for callback in callbacks:
+            if not callback:
+                continue
+            temp_event = callback(event, hint)
+            if temp_event is None:
+                return None
+            event = temp_event
+        return event
+
+    return run_before_send
 
 
 class SentryInstrument(Instrument[SentryConfig]):
@@ -39,6 +88,9 @@ class SentryInstrument(Instrument[SentryConfig]):
             max_breadcrumbs=self.instrument_config.sentry_max_breadcrumbs,
             max_value_length=self.instrument_config.sentry_max_value_length,
             attach_stacktrace=self.instrument_config.sentry_attach_stacktrace,
+            before_send=wrap_before_send_callbacks(
+                enrich_sentry_event_from_structlog_log, self.instrument_config.sentry_before_send
+            ),
             integrations=self.instrument_config.sentry_integrations,
             **self.instrument_config.sentry_additional_params,
         )

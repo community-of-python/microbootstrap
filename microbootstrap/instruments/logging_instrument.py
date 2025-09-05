@@ -73,7 +73,6 @@ def tracer_injection(_: WrappedLogger, __: str, event_dict: EventDict) -> EventD
 
 
 STRUCTLOG_PRE_CHAIN_PROCESSORS: typing.Final[list[typing.Any]] = [
-    structlog.stdlib.filter_by_level,
     structlog.stdlib.add_log_level,
     structlog.stdlib.add_logger_name,
     tracer_injection,
@@ -162,6 +161,7 @@ class LoggingInstrument(Instrument[LoggingConfig]):
     def _configure_structlog_loggers(self) -> None:
         structlog.configure(
             processors=[
+                structlog.stdlib.filter_by_level,
                 *STRUCTLOG_PRE_CHAIN_PROCESSORS,
                 *self.instrument_config.logging_extra_processors,
                 STRUCTLOG_FORMATTER_PROCESSOR,
