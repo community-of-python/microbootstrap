@@ -2,6 +2,7 @@ from __future__ import annotations
 import contextlib
 import typing
 
+import orjson
 import pydantic
 import sentry_sdk
 from sentry_sdk.integrations import Integration  # noqa: TC002
@@ -23,6 +24,43 @@ class SentryConfig(BaseInstrumentConfig):
     sentry_tags: dict[str, str] | None = None
 
 
+IGNORED_STRUCTLOG_ATTRIBUTES: typing.Final = frozenset({"event", "level", "logger", "tracing", "timestamp"})
+
+
+def before_send(event, _):
+    print("EHRJEHRJKEH")
+    print(logentry := event.get("logentry"), logentry.get("contexts"), logentry.get("formatted"))
+    if (
+        (logentry := event.get("logentry"))
+        and (formatted_log := logentry.get("formatted"))
+        and formatted_log.startswith("{")
+        and (event_extra := event.get("contexts"))
+    ):
+        try:
+            loaded_formatted_log = orjson.loads(formatted_log)
+        except orjson.JSONDecodeError:
+            print("NOT LOADED")
+            return event
+
+        if not isinstance(loaded_formatted_log, dict):
+            print("NOT DICT")
+            return event
+
+        if event_name := loaded_formatted_log.get("event"):
+            event["logentry"]["formatted"] = event_name
+
+        additional_extra = loaded_formatted_log
+        for one_attr in IGNORED_STRUCTLOG_ATTRIBUTES:
+            additional_extra.pop(one_attr, None)
+        print("add", additional_extra)
+        if additional_extra:
+            event["contexts"]["structlog"] = additional_extra
+        print("add2", event["contexts"])
+
+        print("JFDSKLJ")
+    return event
+
+
 class SentryInstrument(Instrument[SentryConfig]):
     instrument_name = "Sentry"
     ready_condition = "Provide sentry_dsn"
@@ -39,6 +77,7 @@ class SentryInstrument(Instrument[SentryConfig]):
             max_breadcrumbs=self.instrument_config.sentry_max_breadcrumbs,
             max_value_length=self.instrument_config.sentry_max_value_length,
             attach_stacktrace=self.instrument_config.sentry_attach_stacktrace,
+            before_send=before_send,
             integrations=self.instrument_config.sentry_integrations,
             **self.instrument_config.sentry_additional_params,
         )
