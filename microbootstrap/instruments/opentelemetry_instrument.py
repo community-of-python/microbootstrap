@@ -5,8 +5,10 @@ import threading
 import typing
 
 import pydantic
+import structlog
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
-from opentelemetry.instrumentation import auto_instrumentation
+from opentelemetry.instrumentation.dependencies import DependencyConflictError
+from opentelemetry.instrumentation.environment_variables import OTEL_PYTHON_DISABLED_INSTRUMENTATIONS
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor  # type: ignore[attr-defined] # noqa: TC002
 from opentelemetry.sdk import resources
 from opentelemetry.sdk.trace import ReadableSpan, Span, SpanProcessor
@@ -14,8 +16,12 @@ from opentelemetry.sdk.trace import TracerProvider as SdkTracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor, ConsoleSpanExporter, SimpleSpanProcessor
 from opentelemetry.semconv.resource import ResourceAttributes
 from opentelemetry.trace import format_span_id, set_tracer_provider
+from opentelemetry.util._importlib_metadata import entry_points
 
 from microbootstrap.instruments.base import BaseInstrumentConfig, Instrument
+
+
+LOGGER_OBJ: typing.Final = structlog.get_logger(__name__)
 
 
 try:
@@ -54,6 +60,13 @@ class OpentelemetryConfig(BaseInstrumentConfig):
     opentelemetry_insecure: bool = pydantic.Field(default=True)
     opentelemetry_instrumentors: list[OpenTelemetryInstrumentor] = pydantic.Field(default_factory=list)
     opentelemetry_exclude_urls: list[str] = pydantic.Field(default=["/metrics"])
+    opentelemetry_disabled_instrumentations: list[str] = pydantic.Field(
+        default=[
+            one_package_to_exclude.strip()
+            for one_package_to_exclude in os.environ.get(OTEL_PYTHON_DISABLED_INSTRUMENTATIONS, "").split(",")
+        ]
+    )
+    opentelemetry_log_traces: bool = False
 
 
 @typing.runtime_checkable
@@ -80,6 +93,28 @@ class BaseOpentelemetryInstrument(Instrument[OpentelemetryConfigT]):
     instrument_name = "Opentelemetry"
     ready_condition = "Provide all necessary config parameters"
 
+    def _load_instrumentors(self) -> None:
+        for entry_point in entry_points(group="opentelemetry_instrumentor"):
+            if entry_point.name in self.instrument_config.opentelemetry_disabled_instrumentations:
+                LOGGER_OBJ.debug("Instrumentation skipped for library", entry_point_name=entry_point.name)
+                continue
+
+            try:
+                entry_point.load()().instrument(tracer_provider=self.tracer_provider)
+                LOGGER_OBJ.debug("Instrumented", entry_point_name=entry_point.name)
+            except DependencyConflictError as exc:
+                LOGGER_OBJ.debug("Skipping instrumentation", entry_point_name=entry_point.name, reason=exc.conflict)
+                continue
+            except ModuleNotFoundError as exc:
+                LOGGER_OBJ.debug("Skipping instrumentation", entry_point_name=entry_point.name, reason=exc.msg)
+                continue
+            except ImportError:
+                LOGGER_OBJ.debug("Importing failed, skipping it", entry_point_name=entry_point.name)
+                continue
+            except Exception:
+                LOGGER_OBJ.debug("Instrumenting failed", entry_point_name=entry_point.name)
+                raise
+
     def is_ready(self) -> bool:
         return bool(self.instrument_config.opentelemetry_endpoint) or self.instrument_config.service_debug
 
@@ -88,8 +123,6 @@ class BaseOpentelemetryInstrument(Instrument[OpentelemetryConfigT]):
             instrumentor_with_params.instrumentor.uninstrument(**instrumentor_with_params.additional_params)
 
     def bootstrap(self) -> None:
-        auto_instrumentation.initialize()
-
         attributes = {
             ResourceAttributes.SERVICE_NAME: self.instrument_config.opentelemetry_service_name
             or self.instrument_config.service_name,
@@ -106,7 +139,7 @@ class BaseOpentelemetryInstrument(Instrument[OpentelemetryConfigT]):
         if self.instrument_config.pyroscope_endpoint and pyroscope:
             self.tracer_provider.add_span_processor(PyroscopeSpanProcessor())
 
-        if self.instrument_config.service_debug:
+        if self.instrument_config.opentelemetry_log_traces:
             self.tracer_provider.add_span_processor(SimpleSpanProcessor(ConsoleSpanExporter(formatter=_format_span)))
         if self.instrument_config.opentelemetry_endpoint:
             self.tracer_provider.add_span_processor(
@@ -122,6 +155,7 @@ class BaseOpentelemetryInstrument(Instrument[OpentelemetryConfigT]):
                 tracer_provider=self.tracer_provider,
                 **opentelemetry_instrumentor.additional_params,
             )
+        self._load_instrumentors()
         set_tracer_provider(self.tracer_provider)
 
 

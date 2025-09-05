@@ -2,7 +2,7 @@
 name = "microbootstrap"
 description = "Package for bootstrapping new micro-services"
 readme = "README.md"
-requires-python = ">=3.9,<4"
+requires-python = ">=3.10,<4"
 keywords = [
     "python",
     "microservice",
@@ -23,7 +23,6 @@ classifiers = [
     "Programming Language :: Python",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3 :: Only",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
@@ -53,23 +52,22 @@ dependencies = [
     "opentelemetry-instrumentation-psycopg>=0.54b1",
     "opentelemetry-instrumentation-sqlalchemy>=0.54b1",
     "opentelemetry-instrumentation-asyncio>=0.54b1",
+    "opentelemetry-instrumentation-asgi>=0.46b0",
     "orjson>=3.10.18",
 ]
-dynamic = ["version"]
+version = "0"
 authors = [{ name = "community-of-python" }]
 
 [project.optional-dependencies]
 fastapi = [
     "fastapi>=0.100",
     "fastapi-offline-docs>=1",
-    "opentelemetry-instrumentation-asgi>=0.46b0",
     "opentelemetry-instrumentation-fastapi>=0.46b0",
     "prometheus-fastapi-instrumentator>=6.1",
 ]
 litestar = [
     "litestar>=2.9",
     "litestar-offline-docs>=1",
-    "opentelemetry-instrumentation-asgi>=0.46b0",
     "prometheus-client>=0.20",
 ]
 granian = ["granian[reload]>=1"]
@@ -92,22 +90,23 @@ dev = [
 ]
 
 [build-system]
-requires = ["hatchling", "hatch-vcs"]
-build-backend = "hatchling.build"
+requires = ["uv_build"]
+build-backend = "uv_build"
 
-[tool.hatch.version]
-source = "vcs"
+[tool.uv.build-backend]
+module-name = "microbootstrap"
+module-root = ""
 
 [tool.mypy]
 plugins = ["pydantic.mypy"]
 files = ["microbootstrap", "tests"]
-python_version = "3.9"
+python_version = "3.10"
 strict = true
 pretty = true
 show_error_codes = true
 
 [tool.ruff]
-target-version = "py39"
+target-version = "py310"
 line-length = 120
 
 [tool.ruff.format]

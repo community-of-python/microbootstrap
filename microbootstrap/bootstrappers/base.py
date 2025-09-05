@@ -88,6 +88,8 @@ class ApplicationBootstrapper(abc.ABC, typing.Generic[SettingsT, ApplicationT, D
             **merge_dict_configs(resulting_application_config, self.bootstrap_before()),
         )
 
+        self.bootstrap_before_instruments_after_app_created(application)
+
         for instrument in self.instrument_box.instruments:
             if instrument.is_ready():
                 application = instrument.bootstrap_after(application)
@@ -97,6 +99,10 @@ class ApplicationBootstrapper(abc.ABC, typing.Generic[SettingsT, ApplicationT, D
     def bootstrap_before(self) -> dict[str, typing.Any]:
         """Add some framework-related parameters to final bootstrap result before application creation."""
         return {}
+
+    def bootstrap_before_instruments_after_app_created(self, application: ApplicationT) -> ApplicationT:
+        """Add some framework-related parameters to bootstrap result after application creation, but before instruments are applied."""  # noqa: E501
+        return application
 
     def bootstrap_after(self, application: ApplicationT) -> ApplicationT:
         """Add some framework-related parameters to final bootstrap result after application creation."""

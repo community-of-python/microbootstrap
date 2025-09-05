@@ -50,7 +50,6 @@ class TestPyroscopeInstrument:
         async def test_handler() -> None: ...
 
         FastAPITestClient(app=fastapi_application).get("/test-handler")
-
         assert (
             add_thread_tag_mock.mock_calls
             == remove_thread_tag_mock.mock_calls

@@ -138,6 +138,66 @@ application: litestar.Litestar = LitestarBootstrapper(settings).bootstrap()
 
 This approach will provide you with an application that has all the essential instruments already set up for you.
 
+### FastAPI
+
+```python
+import fastapi
+
+from microbootstrap import FastApiSettings
+from microbootstrap.bootstrappers.fastapi import FastApiBootstrapper
+
+
+class YourSettings(FastApiSettings):
+    # General settings
+    service_debug: bool = False
+    service_name: str = "my-awesome-service"
+
+    # Sentry settings
+    sentry_dsn: str = "your-sentry-dsn"
+
+    # Prometheus settings
+    prometheus_metrics_path: str = "/my-path"
+
+    # Opentelemetry settings
+    opentelemetry_container_name: str = "your-container"
+    opentelemetry_endpoint: str = "/opentelemetry-endpoint"
+
+
+settings = YourSettings()
+
+application: fastapi.FastAPI = FastApiBootstrapper(settings).bootstrap()
+```
+
+### FastStream
+
+```python
+from faststream.asgi import AsgiFastStream
+
+from microbootstrap import FastStreamSettings
+from microbootstrap.bootstrappers.faststream import FastStreamBootstrapper
+
+
+class YourSettings(FastStreamSettings):
+    # General settings
+    service_debug: bool = False
+    service_name: str = "my-awesome-service"
+
+    # Sentry settings
+    sentry_dsn: str = "your-sentry-dsn"
+
+    # Prometheus settings
+    prometheus_metrics_path: str = "/my-path"
+
+    # Opentelemetry settings
+    opentelemetry_container_name: str = "your-container"
+    opentelemetry_endpoint: str = "/opentelemetry-endpoint"
+
+
+settings = YourSettings()
+
+application: AsgiFastStream = FastStreamBootstrapper(settings).bootstrap()
+```
+
 ## Settings
 
 The settings object is the core of microbootstrap.
@@ -318,7 +378,7 @@ Parameters description:
 
 ### [OpenTelemetry](https://opentelemetry.io/)
 
-To bootstrap OpenTelemetry, you must provide `opentelemetry_endpoint` or set `service_debug` to `True`. In debug mode traces are sent to the console.
+To bootstrap OpenTelemetry, you must provide `opentelemetry_endpoint` or set `opentelemetry_log_traces` to `True`.
 
 However, additional parameters can also be supplied if needed.
 
@@ -353,6 +413,7 @@ Parameters description:
 - `opentelemetry_container_name` - will be passed to the `Resource`.
 - `opentelemetry_instrumentors` - a list of extra instrumentors.
 - `opentelemetry_exclude_urls` - list of ignored urls.
+- `opentelemetry_log_traces` - traces will be logged to stdout.
 
 These settings are subsequently passed to [opentelemetry](https://opentelemetry.io/), finalizing your Opentelemetry integration.
 

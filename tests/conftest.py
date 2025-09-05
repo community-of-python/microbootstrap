@@ -130,5 +130,5 @@ def reset_reloaded_settings_module() -> typing.Iterator[None]:
 
 
 @pytest.fixture(autouse=True)
-def disable_auto_instrumentation(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(opentelemetry_instrument, "auto_instrumentation", MagicMock())
+def patch_out_entry_points(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(opentelemetry_instrument, "entry_points", MagicMock(retrun_value=[]))

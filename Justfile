@@ -19,11 +19,6 @@ test *args:
 
 publish:
     rm -rf dist
+    uv version $GITHUB_REF_NAME
     uv build
     uv publish --token $PYPI_TOKEN
-
-hook:
-    uv run pre-commit install
-
-unhook:
-    uv run pre-commit uninstall
