@@ -23,7 +23,7 @@ class SentryConfig(BaseInstrumentConfig):
     sentry_integrations: list[Integration] = pydantic.Field(default_factory=list)
     sentry_additional_params: dict[str, typing.Any] = pydantic.Field(default_factory=dict)
     sentry_tags: dict[str, str] | None = None
-    sentry_before_send: sentry_types.EventProcessor | None = None
+    sentry_before_send: typing.Callable[[typing.Any, typing.Any], typing.Any | None] | None = None
 
 
 IGNORED_STRUCTLOG_ATTRIBUTES: typing.Final = frozenset({"event", "level", "logger", "tracing", "timestamp"})
@@ -35,7 +35,7 @@ def enrich_sentry_event_from_structlog_log(event: sentry_types.Event, _hint: sen
         and (formatted_message := logentry.get("formatted"))
         and (isinstance(formatted_message, str))
         and formatted_message.startswith("{")
-        and (event.get("contexts"))
+        and (isinstance(event.get("contexts"), dict))
     ):
         try:
             loaded_formatted_log = orjson.loads(formatted_message)
