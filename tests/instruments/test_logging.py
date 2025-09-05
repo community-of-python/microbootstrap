@@ -47,10 +47,10 @@ def test_logging_teardown(
 def test_litestar_logging_bootstrap(minimal_logging_config: LoggingConfig) -> None:
     logging_instrument: typing.Final = LitestarLoggingInstrument(minimal_logging_config)
     logging_instrument.bootstrap()
-    bootsrap_result: typing.Final = logging_instrument.bootstrap_before()
-    assert "middleware" in bootsrap_result
-    assert isinstance(bootsrap_result["middleware"], list)
-    assert len(bootsrap_result["middleware"]) == 1
+    bootstrap_result: typing.Final = logging_instrument.bootstrap_before()
+    assert "middleware" in bootstrap_result
+    assert isinstance(bootstrap_result["middleware"], list)
+    assert len(bootstrap_result["middleware"]) == 1
 
 
 def test_litestar_logging_bootstrap_working(
