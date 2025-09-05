@@ -116,7 +116,11 @@ class BaseOpentelemetryInstrument(Instrument[OpentelemetryConfigT]):
                 raise
 
     def is_ready(self) -> bool:
-        return bool(self.instrument_config.opentelemetry_endpoint) or self.instrument_config.service_debug
+        return (
+            bool(self.instrument_config.opentelemetry_endpoint)
+            or self.instrument_config.service_debug
+            or self.instrument_config.opentelemetry_log_traces
+        )
 
     def teardown(self) -> None:
         for instrumentor_with_params in self.instrument_config.opentelemetry_instrumentors:
