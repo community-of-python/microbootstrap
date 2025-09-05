@@ -13,7 +13,7 @@ import random
 class Settings(LitestarSettings): ...
 
 
-settings = Settings( service_debug=False, sentry_additional_params={"debug":True})
+settings = Settings( service_debug=False)
 
 @litestar.get("/")
 async def hello_world() -> dict[str, str]:

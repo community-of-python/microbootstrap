@@ -5,7 +5,7 @@ import typing
 import orjson
 import pydantic
 import sentry_sdk
-from sentry_sdk import types as sentry_types
+from sentry_sdk import _types as sentry_types
 from sentry_sdk.integrations import Integration  # noqa: TC002
 
 from microbootstrap.instruments.base import BaseInstrumentConfig, Instrument
@@ -23,12 +23,13 @@ class SentryConfig(BaseInstrumentConfig):
     sentry_integrations: list[Integration] = pydantic.Field(default_factory=list)
     sentry_additional_params: dict[str, typing.Any] = pydantic.Field(default_factory=dict)
     sentry_tags: dict[str, str] | None = None
+    sentry_before_send: sentry_types.EventProcessor | None = None
 
 
 IGNORED_STRUCTLOG_ATTRIBUTES: typing.Final = frozenset({"event", "level", "logger", "tracing", "timestamp"})
 
 
-def before_send(event: sentry_types.Event, _hint: sentry_types.Hint) -> sentry_types.Event:
+def enrich_sentry_event_from_structlog_log(event: sentry_types.Event, _hint: sentry_types.Hint) -> sentry_types.Event:
     if (
         (logentry := event.get("logentry"))
         and (formatted_message := logentry.get("formatted"))
@@ -57,6 +58,20 @@ def before_send(event: sentry_types.Event, _hint: sentry_types.Hint) -> sentry_t
     return event
 
 
+def wrap_before_send_callbacks(*callbacks: sentry_types.EventProcessor | None) -> sentry_types.EventProcessor:
+    def run_before_send(event: sentry_types.Event, hint: sentry_types.Hint) -> sentry_types.Event | None:
+        for callback in callbacks:
+            if not callback:
+                continue
+            temp_event = callback(event, hint)
+            if temp_event is None:
+                return None
+            event = temp_event
+        return event
+
+    return run_before_send
+
+
 class SentryInstrument(Instrument[SentryConfig]):
     instrument_name = "Sentry"
     ready_condition = "Provide sentry_dsn"
@@ -73,7 +88,9 @@ class SentryInstrument(Instrument[SentryConfig]):
             max_breadcrumbs=self.instrument_config.sentry_max_breadcrumbs,
             max_value_length=self.instrument_config.sentry_max_value_length,
             attach_stacktrace=self.instrument_config.sentry_attach_stacktrace,
-            before_send=before_send,
+            before_send=wrap_before_send_callbacks(
+                enrich_sentry_event_from_structlog_log, self.instrument_config.sentry_before_send
+            ),
             integrations=self.instrument_config.sentry_integrations,
             **self.instrument_config.sentry_additional_params,
         )
