@@ -188,3 +188,6 @@ def test_fastapi_logging_bootstrap_ignores_health(
         test_client.get("/health")
 
     assert fill_log_mock.call_count == 0
+
+class TestForeignLogs:
+    

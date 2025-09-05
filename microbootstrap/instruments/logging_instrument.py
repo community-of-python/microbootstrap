@@ -176,7 +176,7 @@ class LoggingInstrument(Instrument[LoggingConfig]):
             cache_logger_on_first_use=True,
         )
 
-    def _configure_third_party_loggers(self) -> None:
+    def _configure_foreign_loggers(self) -> None:
         root_logger: typing.Final = logging.getLogger()
         stream_handler: typing.Final = logging.StreamHandler(sys.stdout)
         stream_handler.setFormatter(
@@ -195,7 +195,7 @@ class LoggingInstrument(Instrument[LoggingConfig]):
     def bootstrap(self) -> None:
         self._unset_handlers()
         self._configure_structlog_loggers()
-        self._configure_third_party_loggers()
+        self._configure_foreign_loggers()
 
     @classmethod
     def get_config_type(cls) -> type[LoggingConfig]:
