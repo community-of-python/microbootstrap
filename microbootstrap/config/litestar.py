@@ -14,5 +14,8 @@ if typing.TYPE_CHECKING:
 class LitestarConfig(AppConfig):
     on_app_init: typing.Sequence[OnAppInitHandler] | None = None
     logging_config: LoggingConfig = dataclasses.field(
-        default_factory=lambda: LoggingConfig(configure_root_logger=False)
+        default_factory=lambda: LoggingConfig(
+            # required for foreign logs json formatting
+            configure_root_logger=False,
+        )
     )

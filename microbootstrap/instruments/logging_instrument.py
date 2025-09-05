@@ -89,7 +89,7 @@ def _serialize_log_with_orjson_to_string(value: typing.Any, **kwargs: typing.Any
     return orjson.dumps(value, **kwargs).decode()
 
 
-DEFAULT_STRUCTLOG_FORMATTER_PROCESSOR: typing.Final = structlog.processors.JSONRenderer(
+STRUCTLOG_FORMATTER_PROCESSOR: typing.Final = structlog.processors.JSONRenderer(
     serializer=_serialize_log_with_orjson_to_string
 )
 
@@ -164,7 +164,7 @@ class LoggingInstrument(Instrument[LoggingConfig]):
             processors=[
                 *STRUCTLOG_PRE_CHAIN_PROCESSORS,
                 *self.instrument_config.logging_extra_processors,
-                DEFAULT_STRUCTLOG_FORMATTER_PROCESSOR,
+                STRUCTLOG_FORMATTER_PROCESSOR,
             ],
             context_class=dict,
             logger_factory=MemoryLoggerFactory(
@@ -184,7 +184,7 @@ class LoggingInstrument(Instrument[LoggingConfig]):
                 foreign_pre_chain=STRUCTLOG_PRE_CHAIN_PROCESSORS,
                 processors=[
                     structlog.stdlib.ProcessorFormatter.remove_processors_meta,
-                    DEFAULT_STRUCTLOG_FORMATTER_PROCESSOR,
+                    STRUCTLOG_FORMATTER_PROCESSOR,
                 ],
                 logger=root_logger,
             )
