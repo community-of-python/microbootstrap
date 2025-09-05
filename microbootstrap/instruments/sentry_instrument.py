@@ -5,6 +5,7 @@ import typing
 import orjson
 import pydantic
 import sentry_sdk
+from sentry_sdk import types as sentry_types
 from sentry_sdk.integrations import Integration  # noqa: TC002
 
 from microbootstrap.instruments.base import BaseInstrumentConfig, Instrument
@@ -27,37 +28,32 @@ class SentryConfig(BaseInstrumentConfig):
 IGNORED_STRUCTLOG_ATTRIBUTES: typing.Final = frozenset({"event", "level", "logger", "tracing", "timestamp"})
 
 
-def before_send(event, _):
-    print("EHRJEHRJKEH")
-    print(logentry := event.get("logentry"), logentry.get("contexts"), logentry.get("formatted"))
+def before_send(event: sentry_types.Event, _hint: sentry_types.Hint) -> sentry_types.Event:
     if (
         (logentry := event.get("logentry"))
-        and (formatted_log := logentry.get("formatted"))
-        and formatted_log.startswith("{")
-        and (event_extra := event.get("contexts"))
+        and (formatted_message := logentry.get("formatted"))
+        and (isinstance(formatted_message, str))
+        and formatted_message.startswith("{")
+        and (event.get("contexts"))
     ):
         try:
-            loaded_formatted_log = orjson.loads(formatted_log)
+            loaded_formatted_log = orjson.loads(formatted_message)
         except orjson.JSONDecodeError:
-            print("NOT LOADED")
             return event
-
         if not isinstance(loaded_formatted_log, dict):
-            print("NOT DICT")
             return event
 
         if event_name := loaded_formatted_log.get("event"):
-            event["logentry"]["formatted"] = event_name
+            event["logentry"]["formatted"] = event_name  # type: ignore[index]
+        else:
+            return event
 
         additional_extra = loaded_formatted_log
         for one_attr in IGNORED_STRUCTLOG_ATTRIBUTES:
             additional_extra.pop(one_attr, None)
-        print("add", additional_extra)
         if additional_extra:
             event["contexts"]["structlog"] = additional_extra
-        print("add2", event["contexts"])
 
-        print("JFDSKLJ")
     return event
 
 
