@@ -103,7 +103,7 @@ class BaseOpentelemetryInstrument(Instrument[OpentelemetryConfigT]):
             except DependencyConflictError as exc:
                 LOGGER_OBJ.debug("Skipping instrumentation", entry_point_name=entry_point.name, reason=exc.conflict)
                 continue
-            except ModuleNotFoundError as exc:
+            except ModuleNotFoundError:
                 continue
             except ImportError:
                 LOGGER_OBJ.debug("Importing failed, skipping it", entry_point_name=entry_point.name)
