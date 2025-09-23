@@ -94,19 +94,16 @@ class BaseOpentelemetryInstrument(Instrument[OpentelemetryConfigT]):
     ready_condition = "Provide all necessary config parameters"
 
     def _load_instrumentors(self) -> None:
-        for entry_point in entry_points(group="opentelemetry_instrumentor"):
+        for entry_point in entry_points(group="opentelemetry_instrumentor"):  # type: ignore[no-untyped-call]
             if entry_point.name in self.instrument_config.opentelemetry_disabled_instrumentations:
-                LOGGER_OBJ.debug("Instrumentation skipped for library", entry_point_name=entry_point.name)
                 continue
 
             try:
                 entry_point.load()().instrument(tracer_provider=self.tracer_provider)
-                LOGGER_OBJ.debug("Instrumented", entry_point_name=entry_point.name)
             except DependencyConflictError as exc:
                 LOGGER_OBJ.debug("Skipping instrumentation", entry_point_name=entry_point.name, reason=exc.conflict)
                 continue
-            except ModuleNotFoundError as exc:
-                LOGGER_OBJ.debug("Skipping instrumentation", entry_point_name=entry_point.name, reason=exc.msg)
+            except ModuleNotFoundError:
                 continue
             except ImportError:
                 LOGGER_OBJ.debug("Importing failed, skipping it", entry_point_name=entry_point.name)
