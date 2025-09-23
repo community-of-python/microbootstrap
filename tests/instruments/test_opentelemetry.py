@@ -1,5 +1,6 @@
 import contextlib
 import typing
+from unittest import mock
 from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
 import fastapi
@@ -126,7 +127,7 @@ def test_fastapi_opentelemetry_bootstrap_working(
             [
                 MagicMock(),
                 MagicMock(load=MagicMock(side_effect=ImportError)),
-                MagicMock(load=MagicMock(side_effect=DependencyConflictError("Hello"))),
+                MagicMock(load=MagicMock(side_effect=DependencyConflictError(mock.Mock()))),
                 MagicMock(load=MagicMock(side_effect=ModuleNotFoundError)),
             ],
             "ok",
