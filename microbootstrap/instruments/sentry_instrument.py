@@ -1,10 +1,12 @@
 from __future__ import annotations
 import contextlib
+import functools
 import typing
 
 import orjson
 import pydantic
 import sentry_sdk
+from opentelemetry import trace
 from sentry_sdk import _types as sentry_types
 from sentry_sdk.integrations import Integration  # noqa: TC002
 
@@ -24,6 +26,7 @@ class SentryConfig(BaseInstrumentConfig):
     sentry_additional_params: dict[str, typing.Any] = pydantic.Field(default_factory=dict)
     sentry_tags: dict[str, str] | None = None
     sentry_before_send: typing.Callable[[typing.Any, typing.Any], typing.Any | None] | None = None
+    sentry_trace_url_template: str | None = None
 
 
 IGNORED_STRUCTLOG_ATTRIBUTES: typing.Final = frozenset({"event", "level", "logger", "tracing", "timestamp"})
@@ -58,6 +61,22 @@ def enrich_sentry_event_from_structlog_log(event: sentry_types.Event, _hint: sen
     return event
 
 
+def add_trace_url_to_event(
+    trace_link_template: str, event: sentry_types.Event, _hint: sentry_types.Hint
+) -> sentry_types.Event:
+    current_span = trace.get_current_span()
+    if not current_span.is_recording() or not trace_link_template:
+        return event
+
+    trace_id = trace.format_trace_id(current_span.get_span_context().trace_id)
+    trace_url = trace_link_template.replace("{trace_id}", trace_id)
+
+    if "contexts" not in event:
+        event["contexts"] = {}
+    event["contexts"]["tracing"] = {"trace_url": trace_url}
+    return event
+
+
 def wrap_before_send_callbacks(*callbacks: sentry_types.EventProcessor | None) -> sentry_types.EventProcessor:
     def run_before_send(event: sentry_types.Event, hint: sentry_types.Hint) -> sentry_types.Event | None:
         for callback in callbacks:
@@ -89,7 +108,11 @@ class SentryInstrument(Instrument[SentryConfig]):
             max_value_length=self.instrument_config.sentry_max_value_length,
             attach_stacktrace=self.instrument_config.sentry_attach_stacktrace,
             before_send=wrap_before_send_callbacks(
-                enrich_sentry_event_from_structlog_log, self.instrument_config.sentry_before_send
+                enrich_sentry_event_from_structlog_log,
+                functools.partial(add_trace_url_to_event, self.instrument_config.sentry_trace_url_template)
+                if self.instrument_config.sentry_trace_url_template
+                else None,
+                self.instrument_config.sentry_before_send,
             ),
             integrations=self.instrument_config.sentry_integrations,
             **self.instrument_config.sentry_additional_params,
