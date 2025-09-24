@@ -124,18 +124,18 @@ class TestSentryAddTraceUrlToEvent:
         result = add_trace_url_to_event(template, event, mock.Mock())
         assert result["contexts"]["tracing"]["trace_url"] == f"https://example.com/traces/{trace_id}"
 
-    def test_add_trace_url_without_trace_id(self) -> None:
+    @pytest.mark.parametrize(
+        "event",
+        [
+            {},
+            {"extra": {}},
+            {"extra": {"other_field": "value"}},
+            {"extra": {"otelTraceID": None}},
+            {"extra": {"otelTraceID": ""}},
+        ],
+    )
+    def test_add_trace_url_without_trace_id(self, event: sentry_types.Event) -> None:
         template = "https://example.com/traces/{trace_id}"
-
-        event: sentry_types.Event = {}
-        result = add_trace_url_to_event(template, event, mock.Mock())
-        assert "tracing" not in result.get("contexts", {})
-
-        event = {"extra": {"other_field": "value"}}
-        result = add_trace_url_to_event(template, event, mock.Mock())
-        assert "tracing" not in result.get("contexts", {})
-
-        event = {"extra": {"otelTraceID": None}}
         result = add_trace_url_to_event(template, event, mock.Mock())
         assert "tracing" not in result.get("contexts", {})
 
