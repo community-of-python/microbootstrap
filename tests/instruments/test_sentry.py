@@ -184,3 +184,23 @@ class TestSentryAddTraceUrlToEvent:
         assert "contexts" in result
         assert "tracing" in result["contexts"]
         assert "trace_url" in result["contexts"]["tracing"]
+
+    def test_add_trace_url_preserves_existing_contexts(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        template = "https://example.com/traces/{trace_id}"
+        trace_id = "1234567890abcdef1234567890abcdef"
+
+        mock_trace = mock.Mock()
+        mock_trace.get_current_span.return_value = MockSpan(True, trace_id)
+        mock_trace.format_trace_id.return_value = trace_id
+        monkeypatch.setattr("microbootstrap.instruments.sentry_instrument.trace", mock_trace)
+
+        event: sentry_types.Event = {"contexts": {"device": {"model": "iPhone"}, "os": {"name": "iOS"}}}
+        result = add_trace_url_to_event(template, event, mock.Mock())
+
+        assert "device" in result["contexts"]
+        assert "os" in result["contexts"]
+        assert result["contexts"]["device"]["model"] == "iPhone"
+        assert result["contexts"]["os"]["name"] == "iOS"
+
+        assert "tracing" in result["contexts"]
+        assert "trace_url" in result["contexts"]["tracing"]
