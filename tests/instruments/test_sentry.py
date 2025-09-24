@@ -3,7 +3,6 @@ import copy
 import typing
 from unittest import mock
 
-import faker
 import litestar
 import pytest
 from litestar.testing import TestClient as LitestarTestClient
@@ -19,6 +18,7 @@ from microbootstrap.instruments.sentry_instrument import (
 
 
 if typing.TYPE_CHECKING:
+    import faker
     from sentry_sdk import _types as sentry_types
 
     from microbootstrap import SentryConfig

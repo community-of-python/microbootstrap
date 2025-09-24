@@ -13,15 +13,14 @@ if typing.TYPE_CHECKING:
 class Settings(FastApiSettings): ...
 
 
-settings = Settings(opentelemetry_log_traces=True)
-print(settings.sentry_trace_url_template)
+settings = Settings()
+
 
 def create_app() -> fastapi.FastAPI:
     app = FastApiBootstrapper(settings).bootstrap()
 
     @app.get("/")
     async def hello_world() -> dict[str, str]:
-        1 / 0
         return {"hello": "world"}
 
     return app
