@@ -1,5 +1,6 @@
 from __future__ import annotations
 import contextlib
+import functools
 import typing
 
 import orjson
@@ -24,6 +25,7 @@ class SentryConfig(BaseInstrumentConfig):
     sentry_additional_params: dict[str, typing.Any] = pydantic.Field(default_factory=dict)
     sentry_tags: dict[str, str] | None = None
     sentry_before_send: typing.Callable[[typing.Any, typing.Any], typing.Any | None] | None = None
+    sentry_opentelemetry_trace_url_template: str | None = None
 
 
 IGNORED_STRUCTLOG_ATTRIBUTES: typing.Final = frozenset({"event", "level", "logger", "tracing", "timestamp"})
@@ -58,6 +60,18 @@ def enrich_sentry_event_from_structlog_log(event: sentry_types.Event, _hint: sen
     return event
 
 
+SENTRY_EXTRA_OTEL_TRACE_ID_KEY: typing.Final = "otelTraceID"
+SENTRY_EXTRA_OTEL_TRACE_URL_KEY: typing.Final = "otelTraceURL"
+
+
+def add_trace_url_to_event(
+    trace_link_template: str, event: sentry_types.Event, _hint: sentry_types.Hint
+) -> sentry_types.Event:
+    if trace_link_template and (trace_id := event.get("extra", {}).get(SENTRY_EXTRA_OTEL_TRACE_ID_KEY)):
+        event["extra"][SENTRY_EXTRA_OTEL_TRACE_URL_KEY] = trace_link_template.replace("{trace_id}", str(trace_id))
+    return event
+
+
 def wrap_before_send_callbacks(*callbacks: sentry_types.EventProcessor | None) -> sentry_types.EventProcessor:
     def run_before_send(event: sentry_types.Event, hint: sentry_types.Hint) -> sentry_types.Event | None:
         for callback in callbacks:
@@ -89,7 +103,13 @@ class SentryInstrument(Instrument[SentryConfig]):
             max_value_length=self.instrument_config.sentry_max_value_length,
             attach_stacktrace=self.instrument_config.sentry_attach_stacktrace,
             before_send=wrap_before_send_callbacks(
-                enrich_sentry_event_from_structlog_log, self.instrument_config.sentry_before_send
+                enrich_sentry_event_from_structlog_log,
+                functools.partial(
+                    add_trace_url_to_event, self.instrument_config.sentry_opentelemetry_trace_url_template
+                )
+                if self.instrument_config.sentry_opentelemetry_trace_url_template
+                else None,
+                self.instrument_config.sentry_before_send,
             ),
             integrations=self.instrument_config.sentry_integrations,
             **self.instrument_config.sentry_additional_params,
