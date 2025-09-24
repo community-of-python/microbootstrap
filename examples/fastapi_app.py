@@ -13,7 +13,7 @@ if typing.TYPE_CHECKING:
 class Settings(FastApiSettings): ...
 
 
-settings = Settings()
+settings = Settings(opentelemetry_log_traces=True)
 
 
 def create_app() -> fastapi.FastAPI:
@@ -21,6 +21,7 @@ def create_app() -> fastapi.FastAPI:
 
     @app.get("/")
     async def hello_world() -> dict[str, str]:
+        1 / 0
         return {"hello": "world"}
 
     return app

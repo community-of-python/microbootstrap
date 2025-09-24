@@ -6,7 +6,6 @@ import typing
 import orjson
 import pydantic
 import sentry_sdk
-from opentelemetry import trace
 from sentry_sdk import _types as sentry_types
 from sentry_sdk.integrations import Integration  # noqa: TC002
 
@@ -64,12 +63,12 @@ def enrich_sentry_event_from_structlog_log(event: sentry_types.Event, _hint: sen
 def add_trace_url_to_event(
     trace_link_template: str, event: sentry_types.Event, _hint: sentry_types.Hint
 ) -> sentry_types.Event:
-    current_span = trace.get_current_span()
-    if not current_span.is_recording() or not trace_link_template:
+    if not trace_link_template:
+        return event
+    if not (trace_id := event.get("extra", {}).get("otelTraceID")):
         return event
 
-    trace_id = trace.format_trace_id(current_span.get_span_context().trace_id)
-    trace_url = trace_link_template.replace("{trace_id}", trace_id)
+    trace_url = trace_link_template.replace("{trace_id}", str(trace_id))
 
     if "contexts" not in event:
         event["contexts"] = {}

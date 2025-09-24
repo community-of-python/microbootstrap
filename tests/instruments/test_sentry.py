@@ -115,86 +115,61 @@ class TestSentryEnrichEventFromStructlog:
         assert enrich_sentry_event_from_structlog_log(event_before, mock.Mock()) == event_after
 
 
-class MockSpanContext:
-    def __init__(self, trace_id_hex: str) -> None:
-        self.trace_id = int(trace_id_hex[:16], 16)  # Convert first 16 chars to int
-
-
-class MockSpan:
-    def __init__(self, is_recording: bool = True, trace_id_hex: str = "1234567890abcdef1234567890abcdef") -> None:
-        self._is_recording = is_recording
-        self._span_context = MockSpanContext(trace_id_hex)
-
-    def is_recording(self) -> bool:
-        return self._is_recording
-
-    def get_span_context(self) -> MockSpanContext:
-        return self._span_context
-
-
 class TestSentryAddTraceUrlToEvent:
-    def test_add_trace_url_with_trace_id(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_add_trace_url_with_trace_id(self) -> None:
         template = "https://example.com/traces/{trace_id}"
         trace_id = "1234567890abcdef1234567890abcdef"
 
-        mock_trace = mock.Mock()
-        mock_trace.get_current_span.return_value = MockSpan(True, trace_id)
-        mock_trace.format_trace_id.return_value = trace_id
-        monkeypatch.setattr("microbootstrap.instruments.sentry_instrument.trace", mock_trace)
-
-        event: sentry_types.Event = {}
+        event: sentry_types.Event = {"extra": {"otelTraceID": trace_id}}
         result = add_trace_url_to_event(template, event, mock.Mock())
         assert result["contexts"]["tracing"]["trace_url"] == f"https://example.com/traces/{trace_id}"
 
-    def test_add_trace_url_not_recording(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_add_trace_url_without_trace_id(self) -> None:
         template = "https://example.com/traces/{trace_id}"
-
-        mock_trace = mock.Mock()
-        mock_trace.get_current_span.return_value = MockSpan(False)
-        monkeypatch.setattr("microbootstrap.instruments.sentry_instrument.trace", mock_trace)
 
         event: sentry_types.Event = {}
         result = add_trace_url_to_event(template, event, mock.Mock())
         assert "tracing" not in result.get("contexts", {})
 
-    def test_add_trace_url_empty_template(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        event = {"extra": {"other_field": "value"}}
+        result = add_trace_url_to_event(template, event, mock.Mock())
+        assert "tracing" not in result.get("contexts", {})
+
+        event = {"extra": {"otelTraceID": None}}
+        result = add_trace_url_to_event(template, event, mock.Mock())
+        assert "tracing" not in result.get("contexts", {})
+
+    def test_add_trace_url_empty_template(self) -> None:
         template = ""
         trace_id = "1234567890abcdef1234567890abcdef"
 
-        mock_trace = mock.Mock()
-        mock_trace.get_current_span.return_value = MockSpan(True, trace_id)
-        mock_trace.format_trace_id.return_value = trace_id
-        monkeypatch.setattr("microbootstrap.instruments.sentry_instrument.trace", mock_trace)
-
-        event: sentry_types.Event = {}
+        event: sentry_types.Event = {"extra": {"otelTraceID": trace_id}}
         result = add_trace_url_to_event(template, event, mock.Mock())
         assert "tracing" not in result.get("contexts", {})
 
     @pytest.mark.parametrize("event", [{}, {"contexts": {}}])
-    def test_add_trace_url_creates_contexts(self, event: sentry_types.Event, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_add_trace_url_creates_contexts(self, event: sentry_types.Event) -> None:
         template = "https://example.com/traces/{trace_id}"
         trace_id = "1234567890abcdef1234567890abcdef"
 
-        mock_trace = mock.Mock()
-        mock_trace.get_current_span.return_value = MockSpan(True, trace_id)
-        mock_trace.format_trace_id.return_value = trace_id
-        monkeypatch.setattr("microbootstrap.instruments.sentry_instrument.trace", mock_trace)
+        # Merge the trace ID into the event
+        if "extra" not in event:
+            event["extra"] = {}
+        event["extra"]["otelTraceID"] = trace_id
 
         result = add_trace_url_to_event(template, event, mock.Mock())
         assert "contexts" in result
         assert "tracing" in result["contexts"]
         assert "trace_url" in result["contexts"]["tracing"]
 
-    def test_add_trace_url_preserves_existing_contexts(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_add_trace_url_preserves_existing_contexts(self) -> None:
         template = "https://example.com/traces/{trace_id}"
         trace_id = "1234567890abcdef1234567890abcdef"
 
-        mock_trace = mock.Mock()
-        mock_trace.get_current_span.return_value = MockSpan(True, trace_id)
-        mock_trace.format_trace_id.return_value = trace_id
-        monkeypatch.setattr("microbootstrap.instruments.sentry_instrument.trace", mock_trace)
-
-        event: sentry_types.Event = {"contexts": {"device": {"model": "iPhone"}, "os": {"name": "iOS"}}}
+        event: sentry_types.Event = {
+            "extra": {"otelTraceID": trace_id},
+            "contexts": {"device": {"model": "iPhone"}, "os": {"name": "iOS"}},
+        }
         result = add_trace_url_to_event(template, event, mock.Mock())
 
         assert "device" in result["contexts"]
