@@ -3,6 +3,7 @@ import copy
 import typing
 from unittest import mock
 
+import faker
 import litestar
 import pytest
 from litestar.testing import TestClient as LitestarTestClient
@@ -115,14 +116,17 @@ class TestSentryEnrichEventFromStructlog:
         assert enrich_sentry_event_from_structlog_log(event_before, mock.Mock()) == event_after
 
 
-class TestSentryAddTraceUrlToEvent:
-    def test_add_trace_url_with_trace_id(self) -> None:
-        template = "https://example.com/traces/{trace_id}"
-        trace_id = "1234567890abcdef1234567890abcdef"
+TRACE_URL_TEMPLATE = "https://example.com/traces/{trace_id}"
 
+
+class TestSentryAddTraceUrlToEvent:
+    def test_add_trace_url_with_trace_id(self, faker: faker.Faker) -> None:
+        trace_id = faker.pystr()
         event: sentry_types.Event = {"extra": {"otelTraceID": trace_id}}
-        result = add_trace_url_to_event(template, event, mock.Mock())
-        assert result["contexts"]["tracing"]["trace_url"] == f"https://example.com/traces/{trace_id}"
+
+        result = add_trace_url_to_event(TRACE_URL_TEMPLATE, event, mock.Mock())
+
+        assert result["extra"]["otelTraceURL"] == f"https://example.com/traces/{trace_id}"
 
     @pytest.mark.parametrize(
         "event",
@@ -135,24 +139,22 @@ class TestSentryAddTraceUrlToEvent:
         ],
     )
     def test_add_trace_url_without_trace_id(self, event: sentry_types.Event) -> None:
-        template = "https://example.com/traces/{trace_id}"
-        result = add_trace_url_to_event(template, event, mock.Mock())
+        result = add_trace_url_to_event(TRACE_URL_TEMPLATE, event, mock.Mock())
+
         assert "otelTraceURL" not in result.get("extra", {})
 
-    def test_add_trace_url_empty_template(self) -> None:
-        template = ""
-        trace_id = "1234567890abcdef1234567890abcdef"
+    def test_add_trace_url_empty_template(self, faker: faker.Faker) -> None:
+        event: sentry_types.Event = {"extra": {"otelTraceID": faker.pystr()}}
 
-        event: sentry_types.Event = {"extra": {"otelTraceID": trace_id}}
-        result = add_trace_url_to_event(template, event, mock.Mock())
+        result = add_trace_url_to_event("", event, mock.Mock())
+
         assert "otelTraceURL" not in result["extra"]
 
     @pytest.mark.parametrize("event", [{}, {"contexts": {}}])
-    def test_add_trace_url_creates_contexts(self, event: sentry_types.Event) -> None:
-        template = "https://example.com/traces/{trace_id}"
-        trace_id = "1234567890abcdef1234567890abcdef"
-        event["extra"]["otelTraceID"] = trace_id
-        result = add_trace_url_to_event(template, event, mock.Mock())
+    def test_add_trace_url_creates_contexts(self, faker: faker.Faker, event: sentry_types.Event) -> None:
+        event["extra"] = {"otelTraceID": faker.pystr()}
+
+        result = add_trace_url_to_event(TRACE_URL_TEMPLATE, event, mock.Mock())
 
         assert "otelTraceURL" in result["extra"]
         assert "otelTraceID" in result["extra"]

@@ -63,11 +63,8 @@ def enrich_sentry_event_from_structlog_log(event: sentry_types.Event, _hint: sen
 def add_trace_url_to_event(
     trace_link_template: str, event: sentry_types.Event, _hint: sentry_types.Hint
 ) -> sentry_types.Event:
-    if not trace_link_template:
-        return event
-    if not (trace_id := event.get("extra", {}).get("otelTraceID")):
-        return event
-    event["extra"]["otelTraceURL"] = trace_link_template.replace("{trace_id}", str(trace_id))
+    if trace_link_template and (trace_id := event.get("extra", {}).get("otelTraceID")):
+        event["extra"]["otelTraceURL"] = trace_link_template.replace("{trace_id}", str(trace_id))
     return event
 
 
