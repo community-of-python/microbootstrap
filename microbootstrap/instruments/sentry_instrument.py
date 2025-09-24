@@ -25,7 +25,7 @@ class SentryConfig(BaseInstrumentConfig):
     sentry_additional_params: dict[str, typing.Any] = pydantic.Field(default_factory=dict)
     sentry_tags: dict[str, str] | None = None
     sentry_before_send: typing.Callable[[typing.Any, typing.Any], typing.Any | None] | None = None
-    sentry_trace_url_template: str | None = None
+    sentry_opentelemetry_trace_url_template: str | None = None
 
 
 IGNORED_STRUCTLOG_ATTRIBUTES: typing.Final = frozenset({"event", "level", "logger", "tracing", "timestamp"})
@@ -104,8 +104,10 @@ class SentryInstrument(Instrument[SentryConfig]):
             attach_stacktrace=self.instrument_config.sentry_attach_stacktrace,
             before_send=wrap_before_send_callbacks(
                 enrich_sentry_event_from_structlog_log,
-                functools.partial(add_trace_url_to_event, self.instrument_config.sentry_trace_url_template)
-                if self.instrument_config.sentry_trace_url_template
+                functools.partial(
+                    add_trace_url_to_event, self.instrument_config.sentry_opentelemetry_trace_url_template
+                )
+                if self.instrument_config.sentry_opentelemetry_trace_url_template
                 else None,
                 self.instrument_config.sentry_before_send,
             ),

@@ -288,7 +288,7 @@ class YourSettings(BaseServiceSettings):
     sentry_integrations: list[Integration] = []
     sentry_additional_params: dict[str, typing.Any] = {}
     sentry_tags: dict[str, str] | None = None
-    sentry_trace_url_template: str | None = None
+    sentry_opentelemetry_trace_url_template: str | None = None
 
     ... # Other settings here
 ```
@@ -307,7 +307,7 @@ Parameter descriptions:
 - `sentry_integrations` - A list of Sentry integrations to enable.
 - `sentry_additional_params` - Additional parameters to pass to Sentry SDK.
 - `sentry_tags` - Tags to apply to all Sentry events.
-- `sentry_trace_url_template` - Template for OpenTelemetry trace URLs to add to Sentry events (example: `"https://example.com/traces/{trace_id}"`).
+- `sentry_opentelemetry_trace_url_template` - Template for OpenTelemetry trace URLs to add to Sentry events (example: `"https://example.com/traces/{trace_id}"`).
 
 ### [Prometheus](https://prometheus.io/)
 
