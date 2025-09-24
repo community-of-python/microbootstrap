@@ -67,9 +67,7 @@ def add_trace_url_to_event(
         return event
     if not (trace_id := event.get("extra", {}).get("otelTraceID")):
         return event
-    if "contexts" not in event:
-        event["contexts"] = {}
-    event["contexts"]["tracing"] = {"trace_url": trace_link_template.replace("{trace_id}", str(trace_id))}
+    event["extra"]["otelTraceURL"] = trace_link_template.replace("{trace_id}", str(trace_id))
     return event
 
 

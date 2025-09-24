@@ -137,7 +137,7 @@ class TestSentryAddTraceUrlToEvent:
     def test_add_trace_url_without_trace_id(self, event: sentry_types.Event) -> None:
         template = "https://example.com/traces/{trace_id}"
         result = add_trace_url_to_event(template, event, mock.Mock())
-        assert "tracing" not in result.get("contexts", {})
+        assert "otelTraceURL" not in result.get("extra", {})
 
     def test_add_trace_url_empty_template(self) -> None:
         template = ""
@@ -145,37 +145,14 @@ class TestSentryAddTraceUrlToEvent:
 
         event: sentry_types.Event = {"extra": {"otelTraceID": trace_id}}
         result = add_trace_url_to_event(template, event, mock.Mock())
-        assert "tracing" not in result.get("contexts", {})
+        assert "otelTraceURL" not in result["extra"]
 
     @pytest.mark.parametrize("event", [{}, {"contexts": {}}])
     def test_add_trace_url_creates_contexts(self, event: sentry_types.Event) -> None:
         template = "https://example.com/traces/{trace_id}"
         trace_id = "1234567890abcdef1234567890abcdef"
-
-        # Merge the trace ID into the event
-        if "extra" not in event:
-            event["extra"] = {}
         event["extra"]["otelTraceID"] = trace_id
-
-        result = add_trace_url_to_event(template, event, mock.Mock())
-        assert "contexts" in result
-        assert "tracing" in result["contexts"]
-        assert "trace_url" in result["contexts"]["tracing"]
-
-    def test_add_trace_url_preserves_existing_contexts(self) -> None:
-        template = "https://example.com/traces/{trace_id}"
-        trace_id = "1234567890abcdef1234567890abcdef"
-
-        event: sentry_types.Event = {
-            "extra": {"otelTraceID": trace_id},
-            "contexts": {"device": {"model": "iPhone"}, "os": {"name": "iOS"}},
-        }
         result = add_trace_url_to_event(template, event, mock.Mock())
 
-        assert "device" in result["contexts"]
-        assert "os" in result["contexts"]
-        assert result["contexts"]["device"]["model"] == "iPhone"
-        assert result["contexts"]["os"]["name"] == "iOS"
-
-        assert "tracing" in result["contexts"]
-        assert "trace_url" in result["contexts"]["tracing"]
+        assert "otelTraceURL" in result["extra"]
+        assert "otelTraceID" in result["extra"]
