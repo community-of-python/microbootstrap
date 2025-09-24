@@ -100,7 +100,7 @@ class MemoryLoggerFactory(structlog.stdlib.LoggerFactory):
         logging_buffer_capacity: int,
         logging_flush_level: int,
         logging_log_level: int,
-        log_stream: typing.Any = None,  # noqa: ANN401
+        log_stream: typing.Any = sys.stdout,  # noqa: ANN401
         **kwargs: typing.Any,  # noqa: ANN401
     ) -> None:
         super().__init__(*args, **kwargs)
