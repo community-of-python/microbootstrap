@@ -14,7 +14,7 @@ class Settings(FastApiSettings): ...
 
 
 settings = Settings(opentelemetry_log_traces=True)
-
+print(settings.sentry_trace_url_template)
 
 def create_app() -> fastapi.FastAPI:
     app = FastApiBootstrapper(settings).bootstrap()
