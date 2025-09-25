@@ -54,7 +54,7 @@ class OpentelemetryConfig(BaseInstrumentConfig):
     pyroscope_endpoint: pydantic.HttpUrl | None = None
 
     opentelemetry_service_name: str | None = None
-    opentelemetry_container_name: str | None = pydantic.Field(os.environ.get("HOSTNAME"))
+    opentelemetry_container_name: str | None = pydantic.Field(os.environ.get("HOSTNAME") or None)
     opentelemetry_endpoint: str | None = None
     opentelemetry_namespace: str | None = None
     opentelemetry_insecure: bool = pydantic.Field(default=True)
