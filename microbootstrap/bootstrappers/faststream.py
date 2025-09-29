@@ -76,12 +76,11 @@ class FastStreamPrometheusInstrument(PrometheusInstrument[FastStreamPrometheusCo
         return bool(self.instrument_config.prometheus_middleware_cls and super().is_ready())
 
     def bootstrap_before(self) -> dict[str, typing.Any]:
-        self.collector_registry = prometheus_client.CollectorRegistry()
         return {
             "asgi_routes": (
                 (
                     self.instrument_config.prometheus_metrics_path,
-                    prometheus_client.make_asgi_app(self.collector_registry),
+                    prometheus_client.make_asgi_app(prometheus_client.REGISTRY),
                 ),
             )
         }
@@ -89,7 +88,7 @@ class FastStreamPrometheusInstrument(PrometheusInstrument[FastStreamPrometheusCo
     def bootstrap_after(self, application: AsgiFastStream) -> AsgiFastStream:  # type: ignore[override]
         if self.instrument_config.prometheus_middleware_cls and application.broker:
             application.broker.add_middleware(
-                self.instrument_config.prometheus_middleware_cls(registry=self.collector_registry)
+                self.instrument_config.prometheus_middleware_cls(registry=prometheus_client.REGISTRY)
             )
         return application
 
