@@ -4,24 +4,28 @@ import typing
 
 
 if typing.TYPE_CHECKING:
-    import faststream.asyncapi.schema as asyncapi
-    from faststream.asgi.types import ASGIApp
-    from faststream.broker.core.usecase import BrokerUsecase
-    from faststream.types import AnyDict, AnyHttpUrl, Lifespan
+    from fast_depends import Provider
+    from fast_depends.library.serializer import SerializerProto
+    from faststream._internal.basic_types import (
+        AnyCallable,
+        Lifespan,
+        LoggerProto,
+    )
+    from faststream._internal.broker import BrokerUsecase
+    from faststream._internal.context import ContextRepo
+    from faststream.specification.base import SpecificationFactory
 
 
 @dataclasses.dataclass
 class FastStreamConfig:
     broker: BrokerUsecase[typing.Any, typing.Any] | None = None
-    asgi_routes: typing.Sequence[tuple[str, ASGIApp]] = ()
+    logger: LoggerProto | None = None
+    provider: Provider | None = None
+    serializer: SerializerProto | None = None
+    context: ContextRepo | None = None
     lifespan: Lifespan | None = None
-    terms_of_service: AnyHttpUrl | None = None
-    license: asyncapi.License | asyncapi.LicenseDict | AnyDict | None = None
-    contact: asyncapi.Contact | asyncapi.ContactDict | AnyDict | None = None
-    tags: typing.Sequence[asyncapi.Tag | asyncapi.TagDict | AnyDict] | None = None
-    external_docs: asyncapi.ExternalDocs | asyncapi.ExternalDocsDict | AnyDict | None = None
-    identifier: str | None = None
-    on_startup: typing.Sequence[typing.Callable[..., typing.Any]] = ()
-    after_startup: typing.Sequence[typing.Callable[..., typing.Any]] = ()
-    on_shutdown: typing.Sequence[typing.Callable[..., typing.Any]] = ()
-    after_shutdown: typing.Sequence[typing.Callable[..., typing.Any]] = ()
+    on_startup: typing.Sequence[AnyCallable] = ()
+    after_startup: typing.Sequence[AnyCallable] = ()
+    on_shutdown: typing.Sequence[AnyCallable] = ()
+    after_shutdown: typing.Sequence[AnyCallable] = ()
+    specification: SpecificationFactory | None = None

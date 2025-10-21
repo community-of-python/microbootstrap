@@ -2,13 +2,13 @@ from __future__ import annotations
 import typing
 
 import pydantic
+from faststream._internal.types import BrokerMiddleware
 
 from microbootstrap.helpers import is_valid_path
 from microbootstrap.instruments.base import BaseInstrumentConfig, Instrument
 
 
 if typing.TYPE_CHECKING:
-    import faststream
     import prometheus_client
 
 
@@ -33,7 +33,7 @@ class FastApiPrometheusConfig(BasePrometheusConfig):
 
 
 @typing.runtime_checkable
-class FastStreamPrometheusMiddlewareProtocol(typing.Protocol):
+class FastStreamPrometheusMiddlewareProtocol(BrokerMiddleware, typing.Protocol):
     def __init__(
         self,
         *,
@@ -42,7 +42,6 @@ class FastStreamPrometheusMiddlewareProtocol(typing.Protocol):
         metrics_prefix: str = "faststream",
         received_messages_size_buckets: typing.Sequence[float] | None = None,
     ) -> None: ...
-    def __call__(self, msg: typing.Any | None) -> faststream.BaseMiddleware: ...  # noqa: ANN401
 
 
 class FastStreamPrometheusConfig(BasePrometheusConfig):

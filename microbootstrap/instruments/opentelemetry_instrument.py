@@ -6,6 +6,7 @@ import typing
 
 import pydantic
 import structlog
+from faststream._internal.types import BrokerMiddleware
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
 from opentelemetry.instrumentation.dependencies import DependencyConflictError
 from opentelemetry.instrumentation.environment_variables import OTEL_PYTHON_DISABLED_INSTRUMENTATIONS
@@ -31,7 +32,6 @@ except ImportError:  # pragma: no cover
 
 
 if typing.TYPE_CHECKING:
-    import faststream
     from opentelemetry.context import Context
     from opentelemetry.metrics import Meter, MeterProvider
     from opentelemetry.trace import TracerProvider
@@ -64,13 +64,13 @@ class OpentelemetryConfig(BaseInstrumentConfig):
         default=[
             one_package_to_exclude.strip()
             for one_package_to_exclude in os.environ.get(OTEL_PYTHON_DISABLED_INSTRUMENTATIONS, "").split(",")
-        ]
+        ],
     )
     opentelemetry_log_traces: bool = False
 
 
 @typing.runtime_checkable
-class FastStreamTelemetryMiddlewareProtocol(typing.Protocol):
+class FastStreamTelemetryMiddlewareProtocol(BrokerMiddleware, typing.Protocol):
     def __init__(
         self,
         *,
@@ -78,7 +78,6 @@ class FastStreamTelemetryMiddlewareProtocol(typing.Protocol):
         meter_provider: MeterProvider | None = None,
         meter: Meter | None = None,
     ) -> None: ...
-    def __call__(self, msg: typing.Any | None) -> faststream.BaseMiddleware: ...  # noqa: ANN401
 
 
 class FastStreamOpentelemetryConfig(OpentelemetryConfig):
