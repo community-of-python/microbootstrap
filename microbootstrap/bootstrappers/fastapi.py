@@ -7,6 +7,7 @@ from fastapi_offline_docs import enable_offline_docs
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from prometheus_fastapi_instrumentator import Instrumentator
 
+from microbootstrap import exceptions
 from microbootstrap.bootstrappers.base import ApplicationBootstrapper
 from microbootstrap.config.fastapi import FastApiConfig
 from microbootstrap.instruments.cors_instrument import CorsInstrument
@@ -40,7 +41,8 @@ class FastApiBootstrapper(
 
     @contextlib.asynccontextmanager
     async def _wrapped_lifespan_manager(self, app: fastapi.FastAPI) -> typing.AsyncIterator[None]:
-        assert self.application_config.lifespan  # noqa: S101
+        if not self.application_config.lifespan:
+            raise exceptions.BootstrapperConfigurationError("FastAPI Lifespan is missing.")
         async with self._lifespan_manager(app), self.application_config.lifespan(app):
             yield None
 
