@@ -7,6 +7,7 @@ import structlog
 import typing_extensions
 from faststream.asgi import AsgiFastStream, AsgiResponse
 from faststream.asgi import get as handle_get
+from faststream.specification import AsyncAPI
 
 from microbootstrap.bootstrappers.base import ApplicationBootstrapper
 from microbootstrap.config.faststream import FastStreamConfig
@@ -34,9 +35,11 @@ class FastStreamBootstrapper(ApplicationBootstrapper[FastStreamSettings, AsgiFas
 
     def bootstrap_before(self: typing_extensions.Self) -> dict[str, typing.Any]:
         return {
-            "title": self.settings.service_name,
-            "version": self.settings.service_version,
-            "description": self.settings.service_description,
+            "specification": AsyncAPI(
+                title=self.settings.service_name,
+                version=self.settings.service_version,
+                description=self.settings.service_description,
+            ),
             "on_shutdown": [self.teardown],
             "on_startup": [self.console_writer.print_bootstrap_table],
             "asyncapi_path": self.settings.asyncapi_path,
@@ -55,7 +58,7 @@ class FastStreamOpentelemetryInstrument(BaseOpentelemetryInstrument[FastStreamOp
     def bootstrap_after(self, application: AsgiFastStream) -> AsgiFastStream:  # type: ignore[override]
         if self.instrument_config.opentelemetry_middleware_cls and application.broker:
             application.broker.add_middleware(
-                self.instrument_config.opentelemetry_middleware_cls(tracer_provider=self.tracer_provider)
+                self.instrument_config.opentelemetry_middleware_cls(tracer_provider=self.tracer_provider),
             )
         return application
 
@@ -82,13 +85,13 @@ class FastStreamPrometheusInstrument(PrometheusInstrument[FastStreamPrometheusCo
                     self.instrument_config.prometheus_metrics_path,
                     prometheus_client.make_asgi_app(prometheus_client.REGISTRY),
                 ),
-            )
+            ),
         }
 
     def bootstrap_after(self, application: AsgiFastStream) -> AsgiFastStream:  # type: ignore[override]
         if self.instrument_config.prometheus_middleware_cls and application.broker:
             application.broker.add_middleware(
-                self.instrument_config.prometheus_middleware_cls(registry=prometheus_client.REGISTRY)
+                self.instrument_config.prometheus_middleware_cls(registry=prometheus_client.REGISTRY),
             )
         return application
 
@@ -105,7 +108,9 @@ class FastStreamHealthChecksInstrument(HealthChecksInstrument):
         async def check_health(scope: typing.Any) -> AsgiResponse:  # noqa: ANN401, ARG001
             return (
                 AsgiResponse(
-                    json.dumps(self.render_health_check_data()).encode(), 200, headers={"content-type": "text/plain"}
+                    json.dumps(self.render_health_check_data()).encode(),
+                    200,
+                    headers={"content-type": "text/plain"},
                 )
                 if await self.define_health_status()
                 else AsgiResponse(b"Service is unhealthy", 500, headers={"content-type": "application/json"})
