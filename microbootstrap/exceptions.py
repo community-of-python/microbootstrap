@@ -8,7 +8,3 @@ class ConfigMergeError(MicroBootstrapBaseError):
 
 class MissingInstrumentError(MicroBootstrapBaseError):
     """Raises when attempting to configure instrument, that is not supported yet."""
-
-
-class BootstrapperConfigurationError(MicroBootstrapBaseError):
-    """Raises when there is something wrong with bootstrapper configuration."""
