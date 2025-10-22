@@ -30,6 +30,7 @@ class FastApiPrometheusConfig(BasePrometheusConfig):
     prometheus_instrumentator_params: dict[str, typing.Any] = pydantic.Field(default_factory=dict)
     prometheus_instrument_params: dict[str, typing.Any] = pydantic.Field(default_factory=dict)
     prometheus_expose_params: dict[str, typing.Any] = pydantic.Field(default_factory=dict)
+    prometheus_custom_labels: dict[str, typing.Any] = pydantic.Field(default_factory=dict)
 
 
 @typing.runtime_checkable
@@ -41,11 +42,13 @@ class FastStreamPrometheusMiddlewareProtocol(BrokerMiddleware, typing.Protocol):
         app_name: str = ...,
         metrics_prefix: str = "faststream",
         received_messages_size_buckets: typing.Sequence[float] | None = None,
+        custom_labels: dict[str, str | typing.Callable[[typing.Any], str]] | None = None,
     ) -> None: ...
 
 
 class FastStreamPrometheusConfig(BasePrometheusConfig):
     prometheus_middleware_cls: type[FastStreamPrometheusMiddlewareProtocol] | None = None
+    prometheus_custom_labels: dict[str, typing.Any] = pydantic.Field(default_factory=dict)
 
 
 class PrometheusInstrument(Instrument[PrometheusConfigT]):

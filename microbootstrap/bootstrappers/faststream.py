@@ -91,7 +91,10 @@ class FastStreamPrometheusInstrument(PrometheusInstrument[FastStreamPrometheusCo
     def bootstrap_after(self, application: AsgiFastStream) -> AsgiFastStream:  # type: ignore[override]
         if self.instrument_config.prometheus_middleware_cls and application.broker:
             application.broker.add_middleware(
-                self.instrument_config.prometheus_middleware_cls(registry=prometheus_client.REGISTRY),
+                self.instrument_config.prometheus_middleware_cls(
+                    registry=prometheus_client.REGISTRY,
+                    custom_labels=self.instrument_config.prometheus_custom_labels,
+                ),
             )
         return application
 
