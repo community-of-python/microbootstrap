@@ -5,11 +5,13 @@ from unittest.mock import AsyncMock, MagicMock
 
 import litestar
 import pytest
+from prometheus_client import REGISTRY
 from sentry_sdk.transport import Transport as SentryTransport
 
 import microbootstrap.settings
 from microbootstrap import (
     FastApiPrometheusConfig,
+    FastStreamPrometheusConfig,
     LitestarPrometheusConfig,
     LoggingConfig,
     OpentelemetryConfig,
@@ -75,6 +77,11 @@ def minimal_litestar_prometheus_config() -> LitestarPrometheusConfig:
 
 
 @pytest.fixture
+def minimal_faststream_prometheus_config() -> FastStreamPrometheusConfig:
+    return FastStreamPrometheusConfig()
+
+
+@pytest.fixture
 def minimal_swagger_config() -> SwaggerConfig:
     return SwaggerConfig()
 
@@ -132,3 +139,9 @@ def reset_reloaded_settings_module() -> typing.Iterator[None]:
 @pytest.fixture(autouse=True)
 def patch_out_entry_points(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(opentelemetry_instrument, "entry_points", MagicMock(retrun_value=[]))
+
+
+@pytest.fixture(autouse=True)
+def clean_prometheus_registry() -> None:
+    REGISTRY._names_to_collectors.clear()  # noqa: SLF001
+    REGISTRY._collector_to_names.clear()  # noqa: SLF001

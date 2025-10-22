@@ -5,7 +5,7 @@ import fastapi
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi_offline_docs import enable_offline_docs
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
-from prometheus_fastapi_instrumentator import Instrumentator
+from prometheus_fastapi_instrumentator import Instrumentator, metrics
 
 from microbootstrap.bootstrappers.base import ApplicationBootstrapper
 from microbootstrap.config.fastapi import FastApiConfig
@@ -113,7 +113,11 @@ class FastApiLoggingInstrument(LoggingInstrument):
 @FastApiBootstrapper.use_instrument()
 class FastApiPrometheusInstrument(PrometheusInstrument[FastApiPrometheusConfig]):
     def bootstrap_after(self, application: ApplicationT) -> ApplicationT:
-        Instrumentator(**self.instrument_config.prometheus_instrumentator_params).instrument(
+        Instrumentator(**self.instrument_config.prometheus_instrumentator_params).add(
+            metrics.default(
+                custom_labels=self.instrument_config.prometheus_custom_labels,
+            ),
+        ).instrument(
             application,
             **self.instrument_config.prometheus_instrument_params,
         ).expose(
