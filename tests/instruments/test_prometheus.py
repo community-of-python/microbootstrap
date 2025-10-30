@@ -145,7 +145,7 @@ async def test_faststream_prometheus_custom_labels(
     expected_label_keys: set[str],
 ) -> None:
     minimal_faststream_prometheus_config.prometheus_custom_labels = custom_labels
-    minimal_faststream_prometheus_config.prometheus_middleware_cls = RedisPrometheusMiddleware  # type: ignore[assignment]
+    minimal_faststream_prometheus_config.prometheus_middleware_cls = RedisPrometheusMiddleware
 
     broker: typing.Final = RedisBroker()
     (
