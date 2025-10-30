@@ -6,7 +6,6 @@ import typing
 
 import pydantic
 import structlog
-from faststream._internal.types import BrokerMiddleware
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
 from opentelemetry.instrumentation.dependencies import DependencyConflictError
 from opentelemetry.instrumentation.environment_variables import OTEL_PYTHON_DISABLED_INSTRUMENTATIONS
@@ -70,7 +69,7 @@ class OpentelemetryConfig(BaseInstrumentConfig):
 
 
 @typing.runtime_checkable
-class FastStreamTelemetryMiddlewareProtocol(BrokerMiddleware, typing.Protocol):
+class FastStreamTelemetryMiddlewareProtocol(typing.Protocol):
     def __init__(
         self,
         *,
@@ -78,6 +77,14 @@ class FastStreamTelemetryMiddlewareProtocol(BrokerMiddleware, typing.Protocol):
         meter_provider: MeterProvider | None = None,
         meter: Meter | None = None,
     ) -> None: ...
+
+    def __call__(
+        self,
+        msg: typing.Any,  # noqa: ANN401
+        /,
+        *,
+        context: typing.Any,  # noqa: ANN401
+    ) -> typing.Any: ...  # noqa: ANN401
 
 
 class FastStreamOpentelemetryConfig(OpentelemetryConfig):
