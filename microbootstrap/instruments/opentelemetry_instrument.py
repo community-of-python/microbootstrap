@@ -66,7 +66,7 @@ class OpentelemetryConfig(BaseInstrumentConfig):
         ],
     )
     opentelemetry_log_traces: bool = False
-    opentelemetry_generate_health_check_spans: bool = False
+    opentelemetry_generate_health_check_spans: bool = True
 
 
 @typing.runtime_checkable
