@@ -13,12 +13,14 @@ if typing.TYPE_CHECKING:
     )
     from faststream._internal.broker import BrokerUsecase
     from faststream._internal.context import ContextRepo
+    from faststream.asgi.types import ASGIApp
     from faststream.specification.base import SpecificationFactory
 
 
 @dataclasses.dataclass
 class FastStreamConfig:
     broker: BrokerUsecase[typing.Any, typing.Any] | None = None
+    asgi_routes: typing.Sequence[tuple[str, ASGIApp]] = ()
     logger: LoggerProto | None = None
     provider: Provider | None = None
     serializer: SerializerProto | None = None
