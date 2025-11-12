@@ -429,6 +429,7 @@ Parameters description:
 - `opentelemetry_instrumentors` - a list of extra instrumentors.
 - `opentelemetry_exclude_urls` - list of ignored urls.
 - `opentelemetry_log_traces` - traces will be logged to stdout.
+- `opentelemetry_generate_health_check_spans` - generate spans for health check handlers if `True`
 
 These settings are subsequently passed to [opentelemetry](https://opentelemetry.io/), finalizing your Opentelemetry integration.
 
