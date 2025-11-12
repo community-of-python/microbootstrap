@@ -102,6 +102,7 @@ def minimal_opentelemetry_config() -> OpentelemetryConfig:
         opentelemetry_endpoint="/my-engdpoint",
         opentelemetry_namespace="namespace",
         opentelemetry_container_name="container-name",
+        opentelemetry_generate_health_check_spans=False,
     )
 
 
