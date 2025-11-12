@@ -66,6 +66,7 @@ class OpentelemetryConfig(BaseInstrumentConfig):
         ],
     )
     opentelemetry_log_traces: bool = False
+    opentelemetry_generate_health_check_spans: bool = True
 
 
 @typing.runtime_checkable
@@ -169,7 +170,11 @@ class BaseOpentelemetryInstrument(Instrument[OpentelemetryConfigT]):
 class OpentelemetryInstrument(BaseOpentelemetryInstrument[OpentelemetryConfig]):
     def define_exclude_urls(self) -> list[str]:
         exclude_urls = [*self.instrument_config.opentelemetry_exclude_urls]
-        if self.instrument_config.health_checks_path and self.instrument_config.health_checks_path not in exclude_urls:
+        if (
+            not self.instrument_config.opentelemetry_generate_health_check_spans
+            and self.instrument_config.health_checks_path
+            and self.instrument_config.health_checks_path not in exclude_urls
+        ):
             exclude_urls.append(self.instrument_config.health_checks_path)
         return exclude_urls
 
