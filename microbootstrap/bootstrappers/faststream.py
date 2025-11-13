@@ -8,6 +8,7 @@ import typing_extensions
 from faststream.asgi import AsgiFastStream, AsgiResponse
 from faststream.asgi import get as handle_get
 from faststream.specification import AsyncAPI
+from opentelemetry import trace
 
 from microbootstrap.bootstrappers.base import ApplicationBootstrapper
 from microbootstrap.config.faststream import FastStreamConfig
@@ -21,6 +22,9 @@ from microbootstrap.instruments.prometheus_instrument import FastStreamPrometheu
 from microbootstrap.instruments.pyroscope_instrument import PyroscopeInstrument
 from microbootstrap.instruments.sentry_instrument import SentryInstrument
 from microbootstrap.settings import FastStreamSettings
+
+
+tracer: typing.Final = trace.get_tracer(__name__)
 
 
 class KwargsAsgiFastStream(AsgiFastStream):
@@ -107,6 +111,7 @@ class FastStreamPrometheusInstrument(PrometheusInstrument[FastStreamPrometheusCo
 class FastStreamHealthChecksInstrument(HealthChecksInstrument):
     def bootstrap(self) -> None: ...
     def bootstrap_before(self) -> dict[str, typing.Any]:
+        @tracer.start_as_current_span(f"GET {self.instrument_config.health_checks_path}")
         @handle_get
         async def check_health(scope: typing.Any) -> AsgiResponse:  # noqa: ANN401, ARG001
             return (
