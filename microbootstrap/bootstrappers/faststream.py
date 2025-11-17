@@ -8,6 +8,7 @@ import typing_extensions
 from faststream.asgi import AsgiFastStream, AsgiResponse
 from faststream.asgi import get as handle_get
 from faststream.specification import AsyncAPI
+from opentelemetry import trace
 
 from microbootstrap.bootstrappers.base import ApplicationBootstrapper
 from microbootstrap.config.faststream import FastStreamConfig
@@ -21,6 +22,9 @@ from microbootstrap.instruments.prometheus_instrument import FastStreamPrometheu
 from microbootstrap.instruments.pyroscope_instrument import PyroscopeInstrument
 from microbootstrap.instruments.sentry_instrument import SentryInstrument
 from microbootstrap.settings import FastStreamSettings
+
+
+tracer: typing.Final = trace.get_tracer(__name__)
 
 
 class KwargsAsgiFastStream(AsgiFastStream):
@@ -117,6 +121,11 @@ class FastStreamHealthChecksInstrument(HealthChecksInstrument):
                 )
                 if await self.define_health_status()
                 else AsgiResponse(b"Service is unhealthy", 500, headers={"content-type": "application/json"})
+            )
+
+        if self.instrument_config.opentelemetry_generate_health_check_spans:
+            check_health = tracer.start_as_current_span(f"GET {self.instrument_config.health_checks_path}")(
+                check_health,
             )
 
         return {"asgi_routes": ((self.instrument_config.health_checks_path, check_health),)}

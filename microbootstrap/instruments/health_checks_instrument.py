@@ -19,6 +19,9 @@ class HealthChecksConfig(BaseInstrumentConfig):
     health_checks_path: str = "/health/"
     health_checks_include_in_schema: bool = False
 
+    # Cross-instrument parameter, comes from opentelemetry
+    opentelemetry_generate_health_check_spans: bool = True
+
 
 class HealthChecksInstrument(Instrument[HealthChecksConfig]):
     instrument_name = "Health checks"
