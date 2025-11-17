@@ -111,7 +111,6 @@ class FastStreamPrometheusInstrument(PrometheusInstrument[FastStreamPrometheusCo
 class FastStreamHealthChecksInstrument(HealthChecksInstrument):
     def bootstrap(self) -> None: ...
     def bootstrap_before(self) -> dict[str, typing.Any]:
-        @tracer.start_as_current_span(f"GET {self.instrument_config.health_checks_path}")
         @handle_get
         async def check_health(scope: typing.Any) -> AsgiResponse:  # noqa: ANN401, ARG001
             return (
@@ -122,6 +121,11 @@ class FastStreamHealthChecksInstrument(HealthChecksInstrument):
                 )
                 if await self.define_health_status()
                 else AsgiResponse(b"Service is unhealthy", 500, headers={"content-type": "application/json"})
+            )
+
+        if self.instrument_config.opentelemetry_generate_health_check_spans:
+            check_health = tracer.start_as_current_span(f"GET {self.instrument_config.health_checks_path}")(
+                check_health,
             )
 
         return {"asgi_routes": ((self.instrument_config.health_checks_path, check_health),)}
