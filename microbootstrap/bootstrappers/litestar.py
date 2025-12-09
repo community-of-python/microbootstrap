@@ -4,7 +4,6 @@ import typing
 import litestar
 import litestar.exceptions
 import litestar.types
-import mypy_extensions
 import typing_extensions
 from litestar import openapi
 from litestar.config.cors import CORSConfig as LitestarCorsConfig
@@ -40,6 +39,7 @@ from microbootstrap.settings import LitestarSettings
 
 
 if typing.TYPE_CHECKING:
+    import mypy_extensions
     from litestar.contrib.opentelemetry import OpenTelemetryConfig
     from litestar.types import ASGIApp, Scope
 
@@ -158,9 +158,9 @@ class LitestarOpenTelemetryInstrumentationMiddleware(AbstractMiddleware):
         """ASGI callable.
 
         Args:
-            scope: The ASGI connection scope.
-            receive: The ASGI receive function.
-            send: The ASGI send function.
+            args: args of the call.
+            kwargs: kwargs of the call.
+            * Made it without strict params for future backward compatibility.
 
         Returns:
             None
