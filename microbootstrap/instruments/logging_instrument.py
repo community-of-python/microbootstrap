@@ -184,19 +184,19 @@ class LoggingInstrument(Instrument[LoggingConfig]):
         stream_handler: typing.Final = logging.StreamHandler(sys.stdout)
         stream_handler.setFormatter(
             structlog.stdlib.ProcessorFormatter(
-                foreign_pre_chain=STRUCTLOG_PRE_CHAIN_PROCESSORS,
-                processors=[
-                    structlog.stdlib.ProcessorFormatter.remove_processors_meta,
-                    STRUCTLOG_FORMATTER_PROCESSOR,
-                ],
-                logger=root_logger,
-            )
-            if not self.instrument_config.service_debug
-            else structlog.stdlib.ProcessorFormatter(
                 foreign_pre_chain=structlog.get_config()["processors"][:-1],
                 processors=[
                     structlog.stdlib.ProcessorFormatter.remove_processors_meta,
                     structlog.get_config()["processors"][-1],
+                ],
+                logger=root_logger,
+            )
+            if self.instrument_config.service_debug
+            else structlog.stdlib.ProcessorFormatter(
+                foreign_pre_chain=STRUCTLOG_PRE_CHAIN_PROCESSORS,
+                processors=[
+                    structlog.stdlib.ProcessorFormatter.remove_processors_meta,
+                    STRUCTLOG_FORMATTER_PROCESSOR,
                 ],
                 logger=root_logger,
             )
