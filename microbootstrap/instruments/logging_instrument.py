@@ -193,7 +193,12 @@ class LoggingInstrument(Instrument[LoggingConfig]):
             )
             if not self.instrument_config.service_debug
             else structlog.stdlib.ProcessorFormatter(
-                processors=structlog.get_config()["processors"], logger=root_logger
+                foreign_pre_chain=structlog.get_config()["processors"][:-1],
+                processors=[
+                    structlog.stdlib.ProcessorFormatter.remove_processors_meta,
+                    structlog.get_config()["processors"][-1],
+                ],
+                logger=root_logger,
             )
         )
         root_logger.addHandler(stream_handler)
