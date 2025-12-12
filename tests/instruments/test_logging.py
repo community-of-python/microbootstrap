@@ -7,7 +7,6 @@ import fastapi
 import litestar
 import pytest
 from fastapi.testclient import TestClient as FastAPITestClient
-from faststream import TestApp
 from faststream.redis import RedisBroker, TestRedisBroker
 from litestar.testing import TestClient as LitestarTestClient
 from opentelemetry import trace
@@ -241,15 +240,15 @@ class TestForeignLogs:
         async def greet() -> None:
             logger.info("said hi")
 
-        app = (
+        (
             FastStreamBootstrapper(FastStreamSettings(service_debug=False, logging_buffer_capacity=0))
             .configure_application(FastStreamConfig(broker=broker))
             .bootstrap()
         )
 
-        async with TestRedisBroker(broker), TestApp(app):
+        async with TestRedisBroker(broker):
             await broker.publish(message="hello", channel="greetings")
+
         stdout = capsys.readouterr().out
-        raise Exception(stdout)
         assert '{"event":"said hi","level":"info","logger":"root"' in stdout
         assert stdout.count("said hi") == 1
