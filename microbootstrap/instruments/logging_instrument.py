@@ -47,6 +47,7 @@ def fill_log_message(
     http_version: typing.Final = request.scope["http_version"]
     log_on_correct_level: typing.Final = getattr(access_logger, log_level)
     log_on_correct_level(
+        f"{http_method} {url_with_query}",
         http={
             "url": url_with_query,
             "status_code": status_code,
@@ -146,10 +147,10 @@ class LoggingConfig(BaseInstrumentConfig):
 
 class LoggingInstrument(Instrument[LoggingConfig]):
     instrument_name = "Logging"
-    ready_condition = "Works only in non-debug mode"
+    ready_condition = "Always ready"
 
     def is_ready(self) -> bool:
-        return not self.instrument_config.service_debug
+        return True
 
     def teardown(self) -> None:
         structlog.reset_defaults()
@@ -159,6 +160,8 @@ class LoggingInstrument(Instrument[LoggingConfig]):
             logging.getLogger(unset_handlers_logger).handlers = []
 
     def _configure_structlog_loggers(self) -> None:
+        if self.instrument_config.service_debug:
+            return
         structlog.configure(
             processors=[
                 structlog.stdlib.filter_by_level,
@@ -187,6 +190,10 @@ class LoggingInstrument(Instrument[LoggingConfig]):
                     STRUCTLOG_FORMATTER_PROCESSOR,
                 ],
                 logger=root_logger,
+            )
+            if not self.instrument_config.service_debug
+            else structlog.stdlib.ProcessorFormatter(
+                processors=structlog.get_config()["processors"], logger=root_logger
             )
         )
         root_logger.addHandler(stream_handler)
