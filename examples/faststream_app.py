@@ -32,10 +32,10 @@ def create_app() -> AsgiFastStream:
 
     app = (
         FastStreamBootstrapper(settings)
-        .configure_application(FastStreamConfig(broker=broker, logger=structlog.get_logger(__name__)))
+        .configure_application(FastStreamConfig(broker=broker))
         .bootstrap()
     )
-    broker.config.broker_config.logger.logger = RealLoggerObject(structlog.get_logger(__name__))
+    # broker.config.broker_config.logger.logger = RealLoggerObject(structlog.get_logger(__name__))
 
     @app.after_startup
     async def send_first_message() -> None:
