@@ -25,6 +25,6 @@ publish:
 
 run-faststream-example *args:
     #!/bin/bash
-    trap 'echo; docker rm microbootstrap-redis' EXIT
+    trap 'echo; docker rm -f microbootstrap-redis' EXIT
     docker run --name microbootstrap-redis -p 6379:6379 -d redis
     uv run examples/faststream_app.py

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import structlog
+from faststream._internal.logger.logger_proxy import RealLoggerObject
 from faststream.asgi import AsgiFastStream
 from faststream.redis import RedisBroker
 
@@ -28,7 +30,12 @@ def create_app() -> AsgiFastStream:
     def _(message: str) -> None:
         print(message)  # noqa: T201
 
-    app = FastStreamBootstrapper(settings).configure_application(FastStreamConfig(broker=broker)).bootstrap()
+    app = (
+        FastStreamBootstrapper(settings)
+        .configure_application(FastStreamConfig(broker=broker, logger=structlog.get_logger(__name__)))
+        .bootstrap()
+    )
+    broker.config.broker_config.logger.logger = RealLoggerObject(structlog.get_logger(__name__))
 
     @app.after_startup
     async def send_first_message() -> None:
