@@ -1,14 +1,16 @@
 from __future__ import annotations
+from typing import TYPE_CHECKING
 
-import structlog
-from faststream._internal.logger.logger_proxy import RealLoggerObject
-from faststream.asgi import AsgiFastStream
 from faststream.redis import RedisBroker
 
 from microbootstrap.bootstrappers.faststream import FastStreamBootstrapper
 from microbootstrap.config.faststream import FastStreamConfig
 from microbootstrap.granian_server import create_granian_server
 from microbootstrap.settings import FastStreamSettings
+
+
+if TYPE_CHECKING:
+    from faststream.asgi import AsgiFastStream
 
 
 class Settings(FastStreamSettings): ...
@@ -30,12 +32,7 @@ def create_app() -> AsgiFastStream:
     def _(message: str) -> None:
         print(message)  # noqa: T201
 
-    app = (
-        FastStreamBootstrapper(settings)
-        .configure_application(FastStreamConfig(broker=broker))
-        .bootstrap()
-    )
-    # broker.config.broker_config.logger.logger = RealLoggerObject(structlog.get_logger(__name__))
+    app = FastStreamBootstrapper(settings).configure_application(FastStreamConfig(broker=broker)).bootstrap()
 
     @app.after_startup
     async def send_first_message() -> None:
