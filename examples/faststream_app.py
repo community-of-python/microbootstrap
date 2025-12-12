@@ -1,4 +1,5 @@
 from __future__ import annotations
+import typing
 from typing import TYPE_CHECKING
 
 from faststream.redis import RedisBroker
@@ -16,7 +17,7 @@ if TYPE_CHECKING:
 class Settings(FastStreamSettings): ...
 
 
-settings = Settings()
+settings: typing.Final = Settings()
 
 
 def create_app() -> AsgiFastStream:
@@ -32,14 +33,16 @@ def create_app() -> AsgiFastStream:
     def _(message: str) -> None:
         print(message)  # noqa: T201
 
-    app = FastStreamBootstrapper(settings).configure_application(FastStreamConfig(broker=broker)).bootstrap()
+    application: typing.Final = (
+        FastStreamBootstrapper(settings).configure_application(FastStreamConfig(broker=broker)).bootstrap()
+    )
 
-    @app.after_startup
+    @application.after_startup
     async def send_first_message() -> None:
         await broker.connect()
         await broker.publish("Hi from startup!", "first")
 
-    return app
+    return application
 
 
 if __name__ == "__main__":
