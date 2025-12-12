@@ -5,6 +5,7 @@ import typing
 import prometheus_client
 import structlog
 import typing_extensions
+from faststream._internal.logger.logger_proxy import RealLoggerObject
 from faststream.asgi import AsgiFastStream, AsgiResponse
 from faststream.asgi import get as handle_get
 from faststream.specification import AsyncAPI
@@ -71,10 +72,19 @@ class FastStreamOpentelemetryInstrument(BaseOpentelemetryInstrument[FastStreamOp
         return FastStreamOpentelemetryConfig
 
 
+faststream_app_logger: typing.Final = structlog.get_logger("microbootstrap.faststream.app")
+faststream_broker_logger: typing.Final = structlog.get_logger("microbootstrap.faststream.broker")
+
+
 @FastStreamBootstrapper.use_instrument()
 class FastStreamLoggingInstrument(LoggingInstrument):
     def bootstrap_before(self) -> dict[str, typing.Any]:
-        return {"logger": structlog.get_logger("microbootstrap-faststream")}
+        return {"logger": faststream_app_logger}
+
+    def bootstrap_after(self, application: AsgiFastStream) -> AsgiFastStream:  # type: ignore[override]
+        for one_broker in application.brokers:
+            one_broker.config.broker_config.logger.logger = RealLoggerObject(faststream_broker_logger)
+        return application
 
 
 @FastStreamBootstrapper.use_instrument()
