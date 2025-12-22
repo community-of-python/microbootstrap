@@ -99,7 +99,7 @@ def minimal_health_checks_config() -> HealthChecksConfig:
 @pytest.fixture
 def minimal_opentelemetry_config() -> OpentelemetryConfig:
     return OpentelemetryConfig(
-        opentelemetry_endpoint="/my-engdpoint",
+        opentelemetry_endpoint="/my-endpoint",
         opentelemetry_namespace="namespace",
         opentelemetry_container_name="container-name",
         opentelemetry_generate_health_check_spans=False,

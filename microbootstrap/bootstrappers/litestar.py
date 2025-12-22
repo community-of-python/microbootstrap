@@ -10,8 +10,10 @@ from litestar.config.cors import CORSConfig as LitestarCorsConfig
 from litestar.contrib.opentelemetry.config import (
     OpenTelemetryConfig as LitestarOpentelemetryConfig,
 )
+from litestar.contrib.opentelemetry.middleware import (
+    OpenTelemetryInstrumentationMiddleware,
+)
 from litestar.contrib.prometheus import PrometheusConfig, PrometheusController
-from litestar.middleware.base import AbstractMiddleware
 from litestar.openapi.plugins import SwaggerRenderPlugin
 from litestar_offline_docs import generate_static_files_config
 from opentelemetry.instrumentation.asgi import OpenTelemetryMiddleware
@@ -39,7 +41,6 @@ from microbootstrap.settings import LitestarSettings
 
 
 if typing.TYPE_CHECKING:
-    import mypy_extensions
     from litestar.contrib.opentelemetry import OpenTelemetryConfig
     from litestar.types import ASGIApp, Scope
 
@@ -151,36 +152,11 @@ def get_litestar_route_details_from_scope(
     return path, {"http.route": path}
 
 
-class LitestarOpenTelemetryInstrumentationMiddleware(AbstractMiddleware):
-    """OpenTelemetry Middleware."""
-
-    async def __call__(self, *args: mypy_extensions.Arg[typing.Any], **kwargs: mypy_extensions.KwArg) -> None:
-        """ASGI callable.
-
-        Args:
-            args: args of the call.
-            kwargs: kwargs of the call.
-            * Made it without strict params for future backward compatibility.
-
-        Returns:
-            None
-
-        """
-        await self.open_telemetry_middleware(*args, **kwargs)
-
+class LitestarOpenTelemetryInstrumentationMiddleware(OpenTelemetryInstrumentationMiddleware):
     def __init__(self, app: ASGIApp, config: OpenTelemetryConfig) -> None:
-        """Middleware that adds OpenTelemetry instrumentation to the application.
-
-        Args:
-            app: The ``next`` ASGI app to call.
-            config: An instance of :class:`OpenTelemetryConfig <.contrib.opentelemetry.OpenTelemetryConfig>`
-
-        """
         super().__init__(
             app=app,
-            scopes=config.scopes,
-            exclude=config.exclude,
-            exclude_opt_key=config.exclude_opt_key,
+            config=config,
         )
         self.open_telemetry_middleware = OpenTelemetryMiddleware(
             app=app,
