@@ -124,7 +124,13 @@ class LitestarCorsInstrument(CorsInstrument):
 LitestarBootstrapper.use_instrument()(PyroscopeInstrument)
 
 
-def get_litestar_route_details_from_scope(
+def build_span_name(method: str, route: str) -> str:
+    if not route:
+        return method
+    return f"{method} {route}"
+
+
+def build_litestar_route_details_from_scope(
     scope: Scope,
 ) -> tuple[str, dict[str, str]]:
     """Retrieve the span name and attributes from the ASGI scope for Litestar routes.
@@ -136,20 +142,17 @@ def get_litestar_route_details_from_scope(
         A tuple of the span name and a dict of attrs.
 
     """
-    # Try to get the route pattern from Litestar
-    path_template = scope.get("path_template")
-    if path_template:
-        method = str(scope.get("method", "")).strip()
-        if method and path_template:
-            return f"{method} {path_template}", {"http.route": path_template}
+    path_template: typing.Final = scope.get("path_template")
+    method: typing.Final = str(scope.get("method", "HTTP")).strip()
+    if path_template is not None:
+        path_template_stripped: typing.Final = path_template.strip()
+        return build_span_name(method, path_template_stripped), {"http.route": path_template_stripped}
 
-    # Fallback to default behavior
-    path = scope.get("path", "").strip()
-    method = str(scope.get("method", "")).strip()
-    if method and path:
-        return f"{method} {path}", {"http.route": path}
-
-    return path, {"http.route": path}
+    path: typing.Final = scope.get("path")
+    if path is not None:
+        path_stripped: typing.Final = path.strip()
+        return build_span_name(method, path_stripped), {"http.route": path_stripped}
+    return method, {}
 
 
 class LitestarOpenTelemetryInstrumentationMiddleware(OpenTelemetryInstrumentationMiddleware):
@@ -162,7 +165,7 @@ class LitestarOpenTelemetryInstrumentationMiddleware(OpenTelemetryInstrumentatio
             app=app,
             client_request_hook=config.client_request_hook_handler,  # type: ignore[arg-type]
             client_response_hook=config.client_response_hook_handler,  # type: ignore[arg-type]
-            default_span_details=get_litestar_route_details_from_scope,
+            default_span_details=build_litestar_route_details_from_scope,
             excluded_urls=get_excluded_urls(config.exclude_urls_env_key),
             meter=config.meter,
             meter_provider=config.meter_provider,

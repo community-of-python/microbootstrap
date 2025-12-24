@@ -12,7 +12,7 @@ from microbootstrap.bootstrappers.litestar import (
     LitestarBootstrapper,
     LitestarOpentelemetryInstrument,
     LitestarOpenTelemetryInstrumentationMiddleware,
-    get_litestar_route_details_from_scope,
+    build_litestar_route_details_from_scope,
 )
 from microbootstrap.config.litestar import LitestarConfig
 from microbootstrap.instruments.opentelemetry_instrument import OpentelemetryConfig
@@ -42,17 +42,63 @@ from microbootstrap.instruments.opentelemetry_instrument import OpentelemetryCon
             {
                 "path": "/test",
             },
-            "/test",
+            "HTTP /test",
             {"http.route": "/test"},
+        ),
+        (
+            {
+                "path": "",
+            },
+            "HTTP",
+            {"http.route": ""},
+        ),
+        (
+            {
+                "path": " ",
+            },
+            "HTTP",
+            {"http.route": ""},
+        ),
+        (
+            {
+                "path_template": "",
+            },
+            "HTTP",
+            {"http.route": ""},
+        ),
+        (
+            {
+                "path_template": " ",
+            },
+            "HTTP",
+            {"http.route": ""},
+        ),
+        (
+            {},
+            "HTTP",
+            {},
+        ),
+        (
+            {"method": "GET"},
+            "GET",
+            {},
+        ),
+        (
+            {
+                "path": "/users/123",
+                "path_template": "/users/{user_id}",
+            },
+            "HTTP /users/{user_id}",
+            {"http.route": "/users/{user_id}"},
         ),
     ],
 )
-def test_get_litestar_route_details_from_scope(
+def test_build_litestar_route_details_from_scope(
     scope: dict[str, str],
     expected_span_name: str,
     expected_attributes: dict[str, str],
 ) -> None:
-    span_name, attributes = get_litestar_route_details_from_scope(scope)  # type: ignore[arg-type]
+    span_name, attributes = build_litestar_route_details_from_scope(scope)  # type: ignore[arg-type]
 
     assert span_name == expected_span_name
     assert attributes == expected_attributes
@@ -98,7 +144,7 @@ def test_litestar_opentelemetry_integration_with_path_templates(
     async def root() -> dict[str, str]:
         return {"message": "root"}
 
-    with patch("microbootstrap.bootstrappers.litestar.get_litestar_route_details_from_scope") as mock_function:
+    with patch("microbootstrap.bootstrappers.litestar.build_litestar_route_details_from_scope") as mock_function:
         mock_function.return_value = (expected_span_name, {"http.route": path})
 
         application: typing.Final = (
