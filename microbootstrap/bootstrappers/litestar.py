@@ -7,24 +7,42 @@ import litestar.types
 import typing_extensions
 from litestar import openapi
 from litestar.config.cors import CORSConfig as LitestarCorsConfig
-from litestar.contrib.opentelemetry.config import OpenTelemetryConfig as LitestarOpentelemetryConfig
+from litestar.contrib.opentelemetry.config import (
+    OpenTelemetryConfig as LitestarOpentelemetryConfig,
+)
+from litestar.contrib.opentelemetry.middleware import (
+    OpenTelemetryInstrumentationMiddleware,
+)
 from litestar.contrib.prometheus import PrometheusConfig, PrometheusController
 from litestar.openapi.plugins import SwaggerRenderPlugin
 from litestar_offline_docs import generate_static_files_config
+from opentelemetry.instrumentation.asgi import OpenTelemetryMiddleware
+from opentelemetry.util.http import get_excluded_urls
 from sentry_sdk.integrations.litestar import LitestarIntegration
 
 from microbootstrap.bootstrappers.base import ApplicationBootstrapper
 from microbootstrap.config.litestar import LitestarConfig
 from microbootstrap.instruments.cors_instrument import CorsInstrument
-from microbootstrap.instruments.health_checks_instrument import HealthChecksInstrument, HealthCheckTypedDict
+from microbootstrap.instruments.health_checks_instrument import (
+    HealthChecksInstrument,
+    HealthCheckTypedDict,
+)
 from microbootstrap.instruments.logging_instrument import LoggingInstrument
 from microbootstrap.instruments.opentelemetry_instrument import OpentelemetryInstrument
-from microbootstrap.instruments.prometheus_instrument import LitestarPrometheusConfig, PrometheusInstrument
+from microbootstrap.instruments.prometheus_instrument import (
+    LitestarPrometheusConfig,
+    PrometheusInstrument,
+)
 from microbootstrap.instruments.pyroscope_instrument import PyroscopeInstrument
 from microbootstrap.instruments.sentry_instrument import SentryInstrument
 from microbootstrap.instruments.swagger_instrument import SwaggerInstrument
 from microbootstrap.middlewares.litestar import build_litestar_logging_middleware
 from microbootstrap.settings import LitestarSettings
+
+
+if typing.TYPE_CHECKING:
+    from litestar.contrib.opentelemetry import OpenTelemetryConfig
+    from litestar.types import ASGIApp, Scope
 
 
 class LitestarBootstrapper(
@@ -106,6 +124,56 @@ class LitestarCorsInstrument(CorsInstrument):
 LitestarBootstrapper.use_instrument()(PyroscopeInstrument)
 
 
+def build_span_name(method: str, route: str) -> str:
+    if not route:
+        return method
+    return f"{method} {route}"
+
+
+def build_litestar_route_details_from_scope(
+    scope: Scope,
+) -> tuple[str, dict[str, str]]:
+    """Retrieve the span name and attributes from the ASGI scope for Litestar routes.
+
+    Args:
+        scope: The ASGI scope instance.
+
+    Returns:
+        A tuple of the span name and a dict of attrs.
+
+    """
+    path_template: typing.Final = scope.get("path_template")
+    method: typing.Final = str(scope.get("method", "HTTP")).strip()
+    if path_template is not None:
+        path_template_stripped: typing.Final = path_template.strip()
+        return build_span_name(method, path_template_stripped), {"http.route": path_template_stripped}
+
+    path: typing.Final = scope.get("path")
+    if path is not None:
+        path_stripped: typing.Final = path.strip()
+        return build_span_name(method, path_stripped), {"http.route": path_stripped}
+    return method, {}
+
+
+class LitestarOpenTelemetryInstrumentationMiddleware(OpenTelemetryInstrumentationMiddleware):
+    def __init__(self, app: ASGIApp, config: OpenTelemetryConfig) -> None:
+        super().__init__(
+            app=app,
+            config=config,
+        )
+        self.open_telemetry_middleware = OpenTelemetryMiddleware(
+            app=app,
+            client_request_hook=config.client_request_hook_handler,  # type: ignore[arg-type]
+            client_response_hook=config.client_response_hook_handler,  # type: ignore[arg-type]
+            default_span_details=build_litestar_route_details_from_scope,
+            excluded_urls=get_excluded_urls(config.exclude_urls_env_key),
+            meter=config.meter,
+            meter_provider=config.meter_provider,
+            server_request_hook=config.server_request_hook_handler,
+            tracer_provider=config.tracer_provider,
+        )
+
+
 @LitestarBootstrapper.use_instrument()
 class LitestarOpentelemetryInstrument(OpentelemetryInstrument):
     def bootstrap_before(self) -> dict[str, typing.Any]:
@@ -113,9 +181,9 @@ class LitestarOpentelemetryInstrument(OpentelemetryInstrument):
             "middleware": [
                 LitestarOpentelemetryConfig(
                     tracer_provider=self.tracer_provider,
-                    exclude=self.define_exclude_urls(),
+                    middleware_class=LitestarOpenTelemetryInstrumentationMiddleware,
                 ).middleware,
-            ],
+            ]
         }
 
 
@@ -141,7 +209,10 @@ class LitestarPrometheusInstrument(PrometheusInstrument[LitestarPrometheusConfig
             **self.instrument_config.prometheus_additional_params,
         )
 
-        return {"route_handlers": [LitestarPrometheusController], "middleware": [litestar_prometheus_config.middleware]}
+        return {
+            "route_handlers": [LitestarPrometheusController],
+            "middleware": [litestar_prometheus_config.middleware],
+        }
 
     @classmethod
     def get_config_type(cls) -> type[LitestarPrometheusConfig]:
