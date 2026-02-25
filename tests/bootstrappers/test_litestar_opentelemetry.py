@@ -120,16 +120,17 @@ def test_litestar_opentelemetry_instrument_uses_custom_middleware(
 
 
 @pytest.mark.parametrize(
-    ("path", "expected_span_name"),
+    ("path", "expected_span_name", "expected_path_template"),
     [
-        ("/users/123", "GET /users/{user_id}"),
-        ("/users/", "GET /users/"),
-        ("/", "GET /"),
+        ("/users/123", "GET /users/{user_id}", "/users/{user_id}"),
+        ("/users/", "GET /users/", "/users"),
+        ("/", "GET /", "/"),
     ],
 )
 def test_litestar_opentelemetry_integration_with_path_templates(
     path: str,
     expected_span_name: str,
+    expected_path_template: str,
     minimal_opentelemetry_config: OpentelemetryConfig,
 ) -> None:
     @litestar.get("/users/{user_id:int}")
@@ -158,6 +159,7 @@ def test_litestar_opentelemetry_integration_with_path_templates(
             response: typing.Final = client.get(path)
         assert response.status_code == HTTP_200_OK
         assert mock_function.called
+        assert mock_function.call_args_list[0].args[0].get("path_template") == expected_path_template
 
 
 def test_litestar_opentelemetry_middleware_initialization() -> None:
