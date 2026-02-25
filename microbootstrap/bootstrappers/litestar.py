@@ -156,22 +156,19 @@ def build_litestar_route_details_from_scope(
 class LitestarOpenTelemetryInstrumentationMiddleware(ASGIMiddleware):
     def __init__(self, config: OpenTelemetryConfig) -> None:
         self.config = config
-        self.open_telemetry_middleware = None
 
     def create_open_telemetry_middleware(self, app: ASGIApp) -> OpenTelemetryMiddleware:
-        if not self.open_telemetry_middleware:
-            self.open_telemetry_middleware = OpenTelemetryMiddleware(
-                app=app,
-                client_request_hook=self.config.client_request_hook_handler,  # type: ignore[arg-type]
-                client_response_hook=self.config.client_response_hook_handler,  # type: ignore[arg-type]
-                default_span_details=build_litestar_route_details_from_scope,
-                excluded_urls=get_excluded_urls(self.config.exclude_urls_env_key),
-                meter=self.config.meter,
-                meter_provider=self.config.meter_provider,
-                server_request_hook=self.config.server_request_hook_handler,
-                tracer_provider=self.config.tracer_provider,
-            )
-        return self.open_telemetry_middleware
+        return OpenTelemetryMiddleware(
+            app=app,
+            client_request_hook=self.config.client_request_hook_handler,  # type: ignore[arg-type]
+            client_response_hook=self.config.client_response_hook_handler,  # type: ignore[arg-type]
+            default_span_details=build_litestar_route_details_from_scope,
+            excluded_urls=get_excluded_urls(self.config.exclude_urls_env_key),
+            meter=self.config.meter,
+            meter_provider=self.config.meter_provider,
+            server_request_hook=self.config.server_request_hook_handler,
+            tracer_provider=self.config.tracer_provider,
+        )
 
     async def handle(self, scope: Scope, receive: Receive, send: Send, next_app: ASGIApp) -> None:
         await self.create_open_telemetry_middleware(next_app)(scope, receive, send)
