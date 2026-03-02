@@ -7,13 +7,15 @@ import fastapi
 import litestar
 import pytest
 from fastapi.testclient import TestClient as FastAPITestClient
-from litestar.middleware.base import DefineMiddleware
 from litestar.testing import TestClient as LitestarTestClient
 from opentelemetry.instrumentation.dependencies import DependencyConflictError
 
 from microbootstrap import OpentelemetryConfig
 from microbootstrap.bootstrappers.fastapi import FastApiOpentelemetryInstrument
-from microbootstrap.bootstrappers.litestar import LitestarOpentelemetryInstrument
+from microbootstrap.bootstrappers.litestar import (
+    LitestarOpentelemetryInstrument,
+    LitestarOpenTelemetryInstrumentationMiddleware,
+)
 from microbootstrap.instruments import opentelemetry_instrument
 from microbootstrap.instruments.opentelemetry_instrument import OpentelemetryInstrument
 
@@ -61,7 +63,7 @@ def test_litestar_opentelemetry_bootstrap(
     assert "middleware" in opentelemetry_bootstrap_result
     assert isinstance(opentelemetry_bootstrap_result["middleware"], list)
     assert len(opentelemetry_bootstrap_result["middleware"]) == 1
-    assert isinstance(opentelemetry_bootstrap_result["middleware"][0], DefineMiddleware)
+    assert isinstance(opentelemetry_bootstrap_result["middleware"][0], LitestarOpenTelemetryInstrumentationMiddleware)
 
 
 def test_litestar_opentelemetry_teardown(
@@ -83,9 +85,9 @@ def test_litestar_opentelemetry_bootstrap_working(
     opentelemetry_bootstrap_result: typing.Final = test_opentelemetry_instrument.bootstrap_before()
 
     opentelemetry_middleware = opentelemetry_bootstrap_result["middleware"][0]
-    assert isinstance(opentelemetry_middleware, DefineMiddleware)
+    assert isinstance(opentelemetry_middleware, LitestarOpenTelemetryInstrumentationMiddleware)
     async_mock.__name__ = "test-name"
-    opentelemetry_middleware.middleware.__call__ = async_mock  # type: ignore[operator]
+    opentelemetry_middleware.handle = async_mock  # type: ignore[method-assign]
 
     @litestar.get("/test-handler")
     async def test_handler() -> None:

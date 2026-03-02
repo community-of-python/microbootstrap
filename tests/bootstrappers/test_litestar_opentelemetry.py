@@ -115,8 +115,8 @@ def test_litestar_opentelemetry_instrument_uses_custom_middleware(
     assert "middleware" in bootstrap_result
     assert len(bootstrap_result["middleware"]) == 1
 
-    middleware_config: typing.Final = bootstrap_result["middleware"][0]
-    assert middleware_config.middleware == LitestarOpenTelemetryInstrumentationMiddleware
+    middleware_config: typing.Final = bootstrap_result["middleware"][0].config
+    assert middleware_config.middleware.middleware == LitestarOpenTelemetryInstrumentationMiddleware
 
 
 @pytest.mark.parametrize(
@@ -177,8 +177,8 @@ def test_litestar_opentelemetry_middleware_initialization() -> None:
     mock_config.server_request_hook_handler = None
     mock_config.tracer_provider = None
 
-    middleware: typing.Final = LitestarOpenTelemetryInstrumentationMiddleware(app=mock_app, config=mock_config)
+    middleware: typing.Final = LitestarOpenTelemetryInstrumentationMiddleware(config=mock_config)
 
-    assert middleware.app == mock_app
-    assert hasattr(middleware, "open_telemetry_middleware")
-    assert middleware.open_telemetry_middleware is not None
+    assert middleware.config == mock_config
+    otel_middleware = middleware.create_open_telemetry_middleware(mock_app)
+    assert otel_middleware is not None

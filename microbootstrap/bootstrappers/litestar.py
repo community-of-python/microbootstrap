@@ -171,7 +171,7 @@ class LitestarOpenTelemetryInstrumentationMiddleware(ASGIMiddleware):
         )
 
     async def handle(self, scope: Scope, receive: Receive, send: Send, next_app: ASGIApp) -> None:
-        await self.create_open_telemetry_middleware(next_app)(scope, receive, send)
+        await self.create_open_telemetry_middleware(next_app)(scope, receive, send)  # type: ignore[arg-type]
 
 
 @LitestarBootstrapper.use_instrument()
@@ -182,7 +182,7 @@ class LitestarOpentelemetryInstrument(OpentelemetryInstrument):
                 LitestarOpenTelemetryInstrumentationMiddleware(
                     LitestarOpentelemetryConfig(
                         tracer_provider=self.tracer_provider,
-                        middleware_class=LitestarOpenTelemetryInstrumentationMiddleware,
+                        middleware_class=LitestarOpenTelemetryInstrumentationMiddleware,  # type: ignore[arg-type]
                     )
                 )
             ]
