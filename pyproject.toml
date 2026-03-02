@@ -41,7 +41,7 @@ dependencies = [
     "rich>=13",
     "sentry-sdk>=2.7",
     "structlog>=24",
-    "pyroscope-io; platform_system != 'Windows'",
+    "pyroscope-io<=1.0.0; platform_system != 'Windows'",
     "opentelemetry-distro[otlp]>=0.54b1",
     "opentelemetry-instrumentation-aio-pika>=0.54b1",
     "opentelemetry-instrumentation-aiohttp-client>=0.54b1",
@@ -94,9 +94,16 @@ dev = [
 requires = ["uv_build"]
 build-backend = "uv_build"
 
+[[tool.uv.index]]
+url = "https://artifactory.raiffeisen.ru/artifactory/api/pypi/remote-pypi/simple"
+
 [tool.uv.build-backend]
 module-name = "microbootstrap"
 module-root = ""
+
+[[tool.uv.index]]
+url = "https://pypi.org/simple"
+default = true
 
 [tool.mypy]
 plugins = ["pydantic.mypy"]
