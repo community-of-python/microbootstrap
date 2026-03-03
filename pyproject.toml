@@ -94,16 +94,9 @@ dev = [
 requires = ["uv_build"]
 build-backend = "uv_build"
 
-[[tool.uv.index]]
-url = "https://artifactory.raiffeisen.ru/artifactory/api/pypi/remote-pypi/simple"
-
 [tool.uv.build-backend]
 module-name = "microbootstrap"
 module-root = ""
-
-[[tool.uv.index]]
-url = "https://pypi.org/simple"
-default = true
 
 [tool.mypy]
 plugins = ["pydantic.mypy"]
