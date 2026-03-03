@@ -2,19 +2,16 @@ from __future__ import annotations
 import typing
 
 import litestar
-import litestar.exceptions
-import litestar.types
 import typing_extensions
 from litestar import openapi
 from litestar.config.cors import CORSConfig as LitestarCorsConfig
 from litestar.contrib.opentelemetry.config import (
     OpenTelemetryConfig as LitestarOpentelemetryConfig,
 )
-from litestar.contrib.opentelemetry.middleware import (
-    OpenTelemetryInstrumentationMiddleware,
-)
 from litestar.contrib.prometheus import PrometheusConfig, PrometheusController
+from litestar.middleware import ASGIMiddleware
 from litestar.openapi.plugins import SwaggerRenderPlugin
+from litestar.types.asgi_types import ASGIApp, Scope
 from litestar_offline_docs import generate_static_files_config
 from opentelemetry.instrumentation.asgi import OpenTelemetryMiddleware
 from opentelemetry.util.http import get_excluded_urls
@@ -43,6 +40,7 @@ from microbootstrap.settings import LitestarSettings
 if typing.TYPE_CHECKING:
     from litestar.contrib.opentelemetry import OpenTelemetryConfig
     from litestar.types import ASGIApp, Scope
+    from litestar.types.asgi_types import Receive, Send
 
 
 class LitestarBootstrapper(
@@ -155,23 +153,25 @@ def build_litestar_route_details_from_scope(
     return method, {}
 
 
-class LitestarOpenTelemetryInstrumentationMiddleware(OpenTelemetryInstrumentationMiddleware):
-    def __init__(self, app: ASGIApp, config: OpenTelemetryConfig) -> None:
-        super().__init__(
+class LitestarOpenTelemetryInstrumentationMiddleware(ASGIMiddleware):
+    def __init__(self, config: OpenTelemetryConfig) -> None:
+        self.config = config
+
+    def create_open_telemetry_middleware(self, app: ASGIApp) -> OpenTelemetryMiddleware:
+        return OpenTelemetryMiddleware(
             app=app,
-            config=config,
-        )
-        self.open_telemetry_middleware = OpenTelemetryMiddleware(
-            app=app,
-            client_request_hook=config.client_request_hook_handler,  # type: ignore[arg-type]
-            client_response_hook=config.client_response_hook_handler,  # type: ignore[arg-type]
+            client_request_hook=self.config.client_request_hook_handler,  # type: ignore[arg-type]
+            client_response_hook=self.config.client_response_hook_handler,  # type: ignore[arg-type]
             default_span_details=build_litestar_route_details_from_scope,
-            excluded_urls=get_excluded_urls(config.exclude_urls_env_key),
-            meter=config.meter,
-            meter_provider=config.meter_provider,
-            server_request_hook=config.server_request_hook_handler,
-            tracer_provider=config.tracer_provider,
+            excluded_urls=get_excluded_urls(self.config.exclude_urls_env_key),
+            meter=self.config.meter,
+            meter_provider=self.config.meter_provider,
+            server_request_hook=self.config.server_request_hook_handler,
+            tracer_provider=self.config.tracer_provider,
         )
+
+    async def handle(self, scope: Scope, receive: Receive, send: Send, next_app: ASGIApp) -> None:
+        await self.create_open_telemetry_middleware(next_app)(scope, receive, send)  # type: ignore[arg-type]
 
 
 @LitestarBootstrapper.use_instrument()
@@ -179,10 +179,12 @@ class LitestarOpentelemetryInstrument(OpentelemetryInstrument):
     def bootstrap_before(self) -> dict[str, typing.Any]:
         return {
             "middleware": [
-                LitestarOpentelemetryConfig(
-                    tracer_provider=self.tracer_provider,
-                    middleware_class=LitestarOpenTelemetryInstrumentationMiddleware,
-                ).middleware,
+                LitestarOpenTelemetryInstrumentationMiddleware(
+                    LitestarOpentelemetryConfig(
+                        tracer_provider=self.tracer_provider,
+                        middleware_class=LitestarOpenTelemetryInstrumentationMiddleware,  # type: ignore[arg-type]
+                    )
+                )
             ]
         }
 
