@@ -101,7 +101,7 @@ class BaseOpentelemetryInstrument(Instrument[OpentelemetryConfigT]):
     ready_condition = "Provide all necessary config parameters"
 
     def _load_instrumentors(self) -> None:
-        for entry_point in entry_points(group="opentelemetry_instrumentor"):  # type: ignore[no-untyped-call]
+        for entry_point in entry_points(group="opentelemetry_instrumentor"):
             if entry_point.name in self.instrument_config.opentelemetry_disabled_instrumentations:
                 continue
 
