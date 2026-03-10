@@ -1,5 +1,6 @@
 from __future__ import annotations
 import dataclasses
+import logging
 import os
 import threading
 import typing
@@ -34,7 +35,6 @@ if typing.TYPE_CHECKING:
     from opentelemetry.context import Context
     from opentelemetry.metrics import Meter, MeterProvider
     from opentelemetry.trace import TracerProvider
-
 
 OpentelemetryConfigT = typing.TypeVar("OpentelemetryConfigT", bound="OpentelemetryConfig")
 
@@ -101,7 +101,7 @@ class BaseOpentelemetryInstrument(Instrument[OpentelemetryConfigT]):
     ready_condition = "Provide all necessary config parameters"
 
     def _load_instrumentors(self) -> None:
-        for entry_point in entry_points(group="opentelemetry_instrumentor"):  # type: ignore[no-untyped-call]
+        for entry_point in entry_points(group="opentelemetry_instrumentor"):
             if entry_point.name in self.instrument_config.opentelemetry_disabled_instrumentations:
                 continue
 
@@ -131,7 +131,9 @@ class BaseOpentelemetryInstrument(Instrument[OpentelemetryConfigT]):
             instrumentor_with_params.instrumentor.uninstrument(**instrumentor_with_params.additional_params)
 
     def bootstrap(self) -> None:
-        attributes = {
+        logging.getLogger("opentelemetry.instrumentation.instrumentor").disabled = True
+        logging.getLogger("opentelemetry.trace").disabled = True
+        attributes: typing.Final = {
             ResourceAttributes.SERVICE_NAME: self.instrument_config.opentelemetry_service_name
             or self.instrument_config.service_name,
             ResourceAttributes.TELEMETRY_SDK_LANGUAGE: "python",
@@ -169,7 +171,7 @@ class BaseOpentelemetryInstrument(Instrument[OpentelemetryConfigT]):
 
 class OpentelemetryInstrument(BaseOpentelemetryInstrument[OpentelemetryConfig]):
     def define_exclude_urls(self) -> list[str]:
-        exclude_urls = [*self.instrument_config.opentelemetry_exclude_urls]
+        exclude_urls: typing.Final = [*self.instrument_config.opentelemetry_exclude_urls]
         if (
             not self.instrument_config.opentelemetry_generate_health_check_spans
             and self.instrument_config.health_checks_path
@@ -197,8 +199,8 @@ def _is_root_span(span: ReadableSpan) -> bool:
 class PyroscopeSpanProcessor(SpanProcessor):
     def on_start(self, span: Span, parent_context: Context | None = None) -> None:  # noqa: ARG002
         if _is_root_span(span):
-            formatted_span_id = format_span_id(span.context.span_id)
-            thread_id = threading.get_ident()
+            formatted_span_id: typing.Final = format_span_id(span.context.span_id)
+            thread_id: typing.Final = threading.get_ident()
 
             span.set_attribute(OTEL_PROFILE_ID_KEY, formatted_span_id)
             pyroscope.add_thread_tag(thread_id, PYROSCOPE_SPAN_ID_KEY, formatted_span_id)
@@ -206,7 +208,7 @@ class PyroscopeSpanProcessor(SpanProcessor):
 
     def on_end(self, span: ReadableSpan) -> None:
         if _is_root_span(span):
-            thread_id = threading.get_ident()
+            thread_id: typing.Final = threading.get_ident()
             pyroscope.remove_thread_tag(thread_id, PYROSCOPE_SPAN_ID_KEY, format_span_id(span.context.span_id))
             pyroscope.remove_thread_tag(thread_id, PYROSCOPE_SPAN_NAME_KEY, span.name)
 
