@@ -41,7 +41,7 @@ dependencies = [
     "rich>=13",
     "sentry-sdk>=2.7",
     "structlog>=24",
-    "pyroscope-io<=1.0.0; platform_system != 'Windows'",
+    "pyroscope-io>=1.0.0; platform_system != 'Windows'",
     "opentelemetry-distro[otlp]>=0.54b1",
     "opentelemetry-instrumentation-aio-pika>=0.54b1",
     "opentelemetry-instrumentation-aiohttp-client>=0.54b1",

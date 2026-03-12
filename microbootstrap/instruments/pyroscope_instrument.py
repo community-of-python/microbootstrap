@@ -19,7 +19,6 @@ class PyroscopeConfig(BaseInstrumentConfig):
 
     pyroscope_endpoint: pydantic.HttpUrl | None = None
     pyroscope_sample_rate: int = 100
-    pyroscope_auth_token: str | None = None
     pyroscope_tags: dict[str, str] = pydantic.Field(default_factory=dict)
     pyroscope_additional_params: dict[str, typing.Any] = pydantic.Field(default_factory=dict)
 
@@ -38,7 +37,6 @@ class PyroscopeInstrument(Instrument[PyroscopeConfig]):
         pyroscope.configure(
             application_name=self.instrument_config.opentelemetry_service_name or self.instrument_config.service_name,
             server_address=str(self.instrument_config.pyroscope_endpoint),
-            auth_token=self.instrument_config.pyroscope_auth_token or "",
             sample_rate=self.instrument_config.pyroscope_sample_rate,
             tags=(
                 {"service_namespace": self.instrument_config.opentelemetry_namespace}
