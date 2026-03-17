@@ -95,8 +95,6 @@ STRUCTLOG_FORMATTER_PROCESSOR: typing.Final = structlog.processors.JSONRenderer(
 
 _FAKER_STDLIB_LOGGER = logging.getLogger("microbootstrap.structlog")
 _FAKER_STDLIB_LOGGER.propagate = False
-_FAKER_STDLIB_LOGGER.handlers = []
-_FAKER_STDLIB_LOGGER.filters = []
 _FAKER_STDLIB_LOGGER.addHandler(logging.NullHandler())
 
 
