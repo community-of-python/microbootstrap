@@ -5,9 +5,11 @@ from unittest import mock
 
 import litestar
 import pytest
+import structlog
 from litestar.testing import TestClient as LitestarTestClient
 
 from microbootstrap.bootstrappers.litestar import LitestarSentryInstrument
+from microbootstrap.instruments.logging_instrument import LoggingConfig, LoggingInstrument
 from microbootstrap.instruments.sentry_instrument import (
     SENTRY_EXTRA_OTEL_TRACE_ID_KEY,
     SENTRY_EXTRA_OTEL_TRACE_URL_KEY,
@@ -160,3 +162,29 @@ class TestSentryAddTraceUrlToEvent:
 
         assert SENTRY_EXTRA_OTEL_TRACE_URL_KEY in result["extra"]
         assert SENTRY_EXTRA_OTEL_TRACE_ID_KEY in result["extra"]
+
+
+@pytest.mark.parametrize("is_exception", [True, False])
+@pytest.mark.parametrize("service_debug", [True, False])
+def test_sentry_captures_structlog_logs(
+    minimal_sentry_config: SentryConfig,
+    faker: faker.Faker,
+    monkeypatch: pytest.MonkeyPatch,
+    is_exception: bool,
+    service_debug: bool,
+) -> None:
+    monkeypatch.setattr("sentry_sdk.Scope.capture_event", capture_mock := mock.Mock())
+    SentryInstrument(minimal_sentry_config).bootstrap()
+    LoggingInstrument(LoggingConfig(service_debug=service_debug)).bootstrap()
+
+    if is_exception:
+        try:
+            _ = 1 / 0
+        except ZeroDivisionError:
+            structlog.get_logger(__name__).exception("in exception")
+    else:
+        structlog.get_logger(__name__).error(faker.pystr())
+
+    assert capture_mock.mock_calls
+    if is_exception:
+        assert capture_mock.mock_calls[0].get("exception")
