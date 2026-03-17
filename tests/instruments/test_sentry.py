@@ -1,5 +1,6 @@
 from __future__ import annotations
 import copy
+import logging
 import typing
 from unittest import mock
 
@@ -164,14 +165,16 @@ class TestSentryAddTraceUrlToEvent:
         assert SENTRY_EXTRA_OTEL_TRACE_ID_KEY in result["extra"]
 
 
+@pytest.mark.parametrize("logger_instance", [structlog.get_logger(__name__), logging.getLogger(__name__)])
 @pytest.mark.parametrize("is_exception", [True, False])
 @pytest.mark.parametrize("service_debug", [True, False])
-def test_sentry_captures_structlog_logs(
-    minimal_sentry_config: SentryConfig,
-    faker: faker.Faker,
-    monkeypatch: pytest.MonkeyPatch,
+def test_sentry_captures_structlog_logs(  # noqa: PLR0913
+    logger_instance: logging.Logger,
     is_exception: bool,
     service_debug: bool,
+    monkeypatch: pytest.MonkeyPatch,
+    faker: faker.Faker,
+    minimal_sentry_config: SentryConfig,
 ) -> None:
     monkeypatch.setattr("sentry_sdk.Scope.capture_event", capture_mock := mock.Mock())
     SentryInstrument(minimal_sentry_config).bootstrap()
@@ -181,10 +184,9 @@ def test_sentry_captures_structlog_logs(
         try:
             _ = 1 / 0
         except ZeroDivisionError:
-            structlog.get_logger(__name__).exception("in exception")
+            logger_instance.exception("in exception")
     else:
-        structlog.get_logger(__name__).error(faker.pystr())
+        logger_instance.error(faker.pystr())
 
     assert capture_mock.mock_calls
-    if is_exception:
-        assert capture_mock.mock_calls[0].get("exception")
+    assert bool(capture_mock.mock_calls[0].args[0].get("exception")) == is_exception
