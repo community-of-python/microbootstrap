@@ -8,7 +8,7 @@ from microbootstrap.instruments_setupper import InstrumentsSetupper
 from sentry_sdk.integrations.logging import LoggingIntegration
 
 # Change this to test both modes
-SERVICE_DEBUG = False  # Set to False to test production mode
+SERVICE_DEBUG = True  # Set to False to test production mode
 
 settings = InstrumentsSetupperSettings(
     service_debug=SERVICE_DEBUG,
