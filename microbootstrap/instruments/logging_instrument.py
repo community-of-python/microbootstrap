@@ -93,6 +93,19 @@ STRUCTLOG_FORMATTER_PROCESSOR: typing.Final = structlog.processors.JSONRenderer(
     serializer=_serialize_log_with_orjson_to_string
 )
 
+_FAKER_STDLIB_LOGGER = logging.getLogger("microbootstrap.structlog")
+_FAKER_STDLIB_LOGGER.propagate = False
+_FAKER_STDLIB_LOGGER.addHandler(logging.NullHandler())
+
+
+def redirect_json_log_to_stdlib(_: WrappedLogger, __: str, event_dict: EventDict) -> EventDict:
+    __tracebackhide__ = True
+    getattr(_FAKER_STDLIB_LOGGER, event_dict["level"])(
+        STRUCTLOG_FORMATTER_PROCESSOR(_, __, event_dict),
+        exc_info=event_dict.get("exc_info", bool(event_dict.get("exception", False))),
+    )
+    return event_dict
+
 
 class MemoryLoggerFactory(structlog.stdlib.LoggerFactory):
     def __init__(
@@ -161,6 +174,13 @@ class LoggingInstrument(Instrument[LoggingConfig]):
 
     def _configure_structlog_loggers(self) -> None:
         if self.instrument_config.service_debug:
+            structlog.configure(
+                processors=[
+                    *structlog.get_config()["processors"][:-1],
+                    redirect_json_log_to_stdlib,  # ensure log is sent to Sentry
+                    structlog.get_config()["processors"][-1],
+                ]
+            )
             return
         structlog.configure(
             processors=[
