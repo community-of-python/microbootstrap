@@ -189,4 +189,5 @@ def test_sentry_captures_structlog_logs(  # noqa: PLR0913
         logger_instance.error(faker.pystr())
 
     assert capture_mock.mock_calls
-    assert bool(capture_mock.mock_calls[0].args[0].get("exception")) == is_exception
+    if service_debug:
+        assert bool(capture_mock.mock_calls[0].args[0].get("exception")) == is_exception

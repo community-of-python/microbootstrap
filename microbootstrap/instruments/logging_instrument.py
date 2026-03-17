@@ -101,7 +101,8 @@ _FAKER_STDLIB_LOGGER.addHandler(logging.NullHandler())
 def redirect_json_log_to_stdlib(_: WrappedLogger, __: str, event_dict: EventDict) -> EventDict:
     __tracebackhide__ = True
     getattr(_FAKER_STDLIB_LOGGER, event_dict["level"])(
-        STRUCTLOG_FORMATTER_PROCESSOR(_, __, event_dict), exc_info=event_dict.get("exc_info", False)
+        STRUCTLOG_FORMATTER_PROCESSOR(_, __, event_dict),
+        exc_info=event_dict.get("exc_info", bool(event_dict.get("exception", False))),
     )
     return event_dict
 
