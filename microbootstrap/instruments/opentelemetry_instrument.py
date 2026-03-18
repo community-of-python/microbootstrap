@@ -2,7 +2,6 @@ from __future__ import annotations
 import dataclasses
 import logging
 import os
-import threading
 import typing
 
 import pydantic
@@ -200,17 +199,14 @@ class PyroscopeSpanProcessor(SpanProcessor):
     def on_start(self, span: Span, parent_context: Context | None = None) -> None:  # noqa: ARG002
         if _is_root_span(span):
             formatted_span_id: typing.Final = format_span_id(span.context.span_id)
-            thread_id: typing.Final = threading.get_ident()
-
             span.set_attribute(OTEL_PROFILE_ID_KEY, formatted_span_id)
-            pyroscope.add_thread_tag(thread_id, PYROSCOPE_SPAN_ID_KEY, formatted_span_id)
-            pyroscope.add_thread_tag(thread_id, PYROSCOPE_SPAN_NAME_KEY, span.name)
+            pyroscope.add_thread_tag(PYROSCOPE_SPAN_ID_KEY, formatted_span_id)
+            pyroscope.add_thread_tag(PYROSCOPE_SPAN_NAME_KEY, span.name)
 
     def on_end(self, span: ReadableSpan) -> None:
         if _is_root_span(span):
-            thread_id: typing.Final = threading.get_ident()
-            pyroscope.remove_thread_tag(thread_id, PYROSCOPE_SPAN_ID_KEY, format_span_id(span.context.span_id))
-            pyroscope.remove_thread_tag(thread_id, PYROSCOPE_SPAN_NAME_KEY, span.name)
+            pyroscope.remove_thread_tag(PYROSCOPE_SPAN_ID_KEY, format_span_id(span.context.span_id))
+            pyroscope.remove_thread_tag(PYROSCOPE_SPAN_NAME_KEY, span.name)
 
     def force_flush(self, timeout_millis: int = 30000) -> bool:  # noqa: ARG002  # pragma: no cover
         return True
