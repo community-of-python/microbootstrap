@@ -78,7 +78,6 @@ STRUCTLOG_PRE_CHAIN_PROCESSORS: typing.Final[list[typing.Any]] = [
     structlog.stdlib.add_logger_name,
     tracer_injection,
     structlog.stdlib.PositionalArgumentsFormatter(),
-    structlog.processors.TimeStamper(fmt="%Y-%m-%d %H:%M:%S"),
     structlog.processors.StackInfoRenderer(),
     structlog.processors.format_exc_info,
     structlog.processors.UnicodeDecoder(),
@@ -149,6 +148,9 @@ class LoggingConfig(BaseInstrumentConfig):
     )
     logging_exclude_endpoints: list[str] = pydantic.Field(default_factory=lambda: ["/health/", "/metrics"])
     logging_turn_off_middleware: bool = False
+    logging_timestamper_exra_params: dict[str, typing.Any] = pydantic.Field(
+        default_factory=lambda: {"fmt": "%Y-%m-%d %H:%M:%S"}
+    )
 
     @pydantic.model_validator(mode="after")
     def remove_trailing_slashes_from_logging_exclude_endpoints(self) -> typing_extensions.Self:
@@ -172,6 +174,10 @@ class LoggingInstrument(Instrument[LoggingConfig]):
         for unset_handlers_logger in self.instrument_config.logging_unset_handlers:
             logging.getLogger(unset_handlers_logger).handlers = []
 
+    @property
+    def _timestamper_processor(self) -> structlog.processors.TimeStamper:
+        return structlog.processors.TimeStamper(**self.instrument_config.logging_timestamper_exra_params)
+
     def _configure_structlog_loggers(self) -> None:
         if self.instrument_config.service_debug:
             structlog.configure(
@@ -186,6 +192,7 @@ class LoggingInstrument(Instrument[LoggingConfig]):
             processors=[
                 structlog.stdlib.filter_by_level,
                 *STRUCTLOG_PRE_CHAIN_PROCESSORS,
+                self._timestamper_processor,
                 *self.instrument_config.logging_extra_processors,
                 STRUCTLOG_FORMATTER_PROCESSOR,
             ],
@@ -213,7 +220,7 @@ class LoggingInstrument(Instrument[LoggingConfig]):
             )
             if self.instrument_config.service_debug
             else structlog.stdlib.ProcessorFormatter(
-                foreign_pre_chain=STRUCTLOG_PRE_CHAIN_PROCESSORS,
+                foreign_pre_chain=[*STRUCTLOG_PRE_CHAIN_PROCESSORS, self._timestamper_processor],
                 processors=[
                     structlog.stdlib.ProcessorFormatter.remove_processors_meta,
                     STRUCTLOG_FORMATTER_PROCESSOR,
