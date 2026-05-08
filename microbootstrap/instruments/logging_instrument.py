@@ -148,7 +148,7 @@ class LoggingConfig(BaseInstrumentConfig):
     )
     logging_exclude_endpoints: list[str] = pydantic.Field(default_factory=lambda: ["/health/", "/metrics"])
     logging_turn_off_middleware: bool = False
-    logging_timestamper_exra_params: dict[str, typing.Any] = pydantic.Field(
+    logging_timestamper_extra_params: dict[str, typing.Any] = pydantic.Field(
         default_factory=lambda: {"fmt": "%Y-%m-%d %H:%M:%S"}
     )
 
@@ -176,7 +176,7 @@ class LoggingInstrument(Instrument[LoggingConfig]):
 
     @property
     def _timestamper_processor(self) -> structlog.processors.TimeStamper:
-        return structlog.processors.TimeStamper(**self.instrument_config.logging_timestamper_exra_params)
+        return structlog.processors.TimeStamper(**self.instrument_config.logging_timestamper_extra_params)
 
     def _configure_structlog_loggers(self) -> None:
         if self.instrument_config.service_debug:
