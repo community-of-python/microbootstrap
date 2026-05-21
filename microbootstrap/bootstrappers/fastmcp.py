@@ -8,11 +8,7 @@ from starlette.responses import JSONResponse, Response
 
 from microbootstrap.bootstrappers.base import ApplicationBootstrapper
 from microbootstrap.config.fastmcp import FastMcpConfig
-from microbootstrap.instruments.health_checks_instrument import (
-    FastMcpHealthChecksConfig,
-    HealthChecksInstrument,
-    HealthCheckTypedDict,
-)
+from microbootstrap.instruments.health_checks_instrument import HealthChecksInstrument, HealthCheckTypedDict
 from microbootstrap.instruments.logging_instrument import LoggingInstrument
 from microbootstrap.instruments.prometheus_instrument import FastMcpPrometheusConfig, PrometheusInstrument
 from microbootstrap.instruments.pyroscope_instrument import PyroscopeInstrument
@@ -77,10 +73,6 @@ class FastMcpHealthChecksInstrument(HealthChecksInstrument):
             return JSONResponse(response_data)
 
         return application
-
-    @classmethod
-    def get_config_type(cls) -> type[FastMcpHealthChecksConfig]:
-        return FastMcpHealthChecksConfig
 
 
 @FastMcpBootstrapper.use_instrument()

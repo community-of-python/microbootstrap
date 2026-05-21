@@ -7,7 +7,7 @@ from starlette.testclient import TestClient
 
 from microbootstrap.bootstrappers.fastmcp import FastMcpBootstrapper
 from microbootstrap.config.fastmcp import FastMcpConfig
-from microbootstrap.instruments.health_checks_instrument import FastMcpHealthChecksConfig
+from microbootstrap.instruments.health_checks_instrument import HealthChecksConfig
 from microbootstrap.instruments.logging_instrument import LoggingConfig
 from microbootstrap.instruments.prometheus_instrument import FastMcpPrometheusConfig
 from microbootstrap.middlewares.fastmcp import FastMcpLoggingMiddleware
@@ -79,7 +79,7 @@ def test_fastmcp_health_checks() -> None:
     test_health_path: typing.Final = "/test-health/"
     application: typing.Final = (
         FastMcpBootstrapper(FastMcpSettings())
-        .configure_instrument(FastMcpHealthChecksConfig(health_checks_path=test_health_path))
+        .configure_instrument(HealthChecksConfig(health_checks_path=test_health_path))
         .bootstrap()
     )
 
@@ -88,6 +88,26 @@ def test_fastmcp_health_checks() -> None:
     assert response.status_code == status.HTTP_200_OK
     assert response.json()["health_status"] is True
 
+
+def test_fastmcp_health_checks_route_can_be_disabled_with_existing_enabled_flag() -> None:
+    test_health_path: typing.Final = "/test-health/"
+    application: typing.Final = (
+        FastMcpBootstrapper(FastMcpSettings())
+        .configure_instrument(
+            HealthChecksConfig(
+                health_checks_path=test_health_path,
+                health_checks_enabled=False,
+            ),
+        )
+        .bootstrap()
+    )
+
+    response: typing.Final = TestClient(application.http_app()).get(test_health_path)
+
+    assert response.status_code == status.HTTP_404_NOT_FOUND
+
+
+def test_fastmcp_prometheus() -> None:
     test_metrics_path: typing.Final = "/test-metrics"
     metrics_registry: typing.Final = prometheus_client.CollectorRegistry()
     prometheus_client.Counter(
@@ -110,3 +130,21 @@ def test_fastmcp_health_checks() -> None:
 
     assert response.status_code == status.HTTP_200_OK
     assert b"fastmcp_test_requests_total 1.0" in response.content
+
+
+def test_fastmcp_prometheus_route_can_be_disabled() -> None:
+    test_metrics_path: typing.Final = "/test-metrics"
+    application: typing.Final = (
+        FastMcpBootstrapper(FastMcpSettings())
+        .configure_instrument(
+            FastMcpPrometheusConfig(
+                prometheus_metrics_path=test_metrics_path,
+                prometheus_register_route=False,
+            ),
+        )
+        .bootstrap()
+    )
+
+    response: typing.Final = TestClient(application.http_app()).get(test_metrics_path)
+
+    assert response.status_code == status.HTTP_404_NOT_FOUND

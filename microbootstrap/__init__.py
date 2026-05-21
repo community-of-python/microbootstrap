@@ -1,5 +1,5 @@
 from microbootstrap.instruments.cors_instrument import CorsConfig
-from microbootstrap.instruments.health_checks_instrument import FastMcpHealthChecksConfig, HealthChecksConfig
+from microbootstrap.instruments.health_checks_instrument import HealthChecksConfig
 from microbootstrap.instruments.logging_instrument import LoggingConfig
 from microbootstrap.instruments.opentelemetry_instrument import (
     FastStreamOpentelemetryConfig,
@@ -29,7 +29,6 @@ __all__ = (
     "CorsConfig",
     "FastApiPrometheusConfig",
     "FastApiSettings",
-    "FastMcpHealthChecksConfig",
     "FastMcpPrometheusConfig",
     "FastMcpSettings",
     "FastStreamOpentelemetryConfig",
