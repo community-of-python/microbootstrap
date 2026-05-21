@@ -23,6 +23,10 @@ class HealthChecksConfig(BaseInstrumentConfig):
     opentelemetry_generate_health_check_spans: bool = True
 
 
+class FastMcpHealthChecksConfig(HealthChecksConfig):
+    health_checks_register_route: bool = True
+
+
 class HealthChecksInstrument(Instrument[HealthChecksConfig]):
     instrument_name = "Health checks"
     ready_condition = "Set health_checks_enabled to True"
