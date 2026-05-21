@@ -88,8 +88,6 @@ def test_fastmcp_health_checks() -> None:
     assert response.status_code == status.HTTP_200_OK
     assert response.json()["health_status"] is True
 
-
-def test_fastmcp_prometheus() -> None:
     test_metrics_path: typing.Final = "/test-metrics"
     metrics_registry: typing.Final = prometheus_client.CollectorRegistry()
     prometheus_client.Counter(
