@@ -12,6 +12,8 @@ keywords = [
     "error-tracing",
     "litestar",
     "fastapi",
+    "fastmcp",
+    "mcp",
 ]
 classifiers = [
     "Typing :: Typed",
