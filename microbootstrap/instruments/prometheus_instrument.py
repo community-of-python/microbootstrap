@@ -32,6 +32,11 @@ class FastApiPrometheusConfig(BasePrometheusConfig):
     prometheus_custom_labels: dict[str, typing.Any] = pydantic.Field(default_factory=dict)
 
 
+class FastMcpPrometheusConfig(BasePrometheusConfig):
+    prometheus_registry: typing.Any | None = None
+    prometheus_register_route: bool = True
+
+
 @typing.runtime_checkable
 class FastStreamPrometheusMiddlewareProtocol(typing.Protocol):
     def __init__(

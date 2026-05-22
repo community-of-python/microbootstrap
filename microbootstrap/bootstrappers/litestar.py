@@ -160,8 +160,8 @@ class LitestarOpenTelemetryInstrumentationMiddleware(ASGIMiddleware):
     def create_open_telemetry_middleware(self, app: ASGIApp) -> OpenTelemetryMiddleware:
         return OpenTelemetryMiddleware(
             app=app,
-            client_request_hook=self.config.client_request_hook_handler,  # type: ignore[arg-type]
-            client_response_hook=self.config.client_response_hook_handler,  # type: ignore[arg-type]
+            client_request_hook=self.config.client_request_hook_handler,
+            client_response_hook=self.config.client_response_hook_handler,
             default_span_details=build_litestar_route_details_from_scope,
             excluded_urls=get_excluded_urls(self.config.exclude_urls_env_key),
             meter=self.config.meter,

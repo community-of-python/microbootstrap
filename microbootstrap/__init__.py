@@ -8,6 +8,7 @@ from microbootstrap.instruments.opentelemetry_instrument import (
 )
 from microbootstrap.instruments.prometheus_instrument import (
     FastApiPrometheusConfig,
+    FastMcpPrometheusConfig,
     FastStreamPrometheusConfig,
     FastStreamPrometheusMiddlewareProtocol,
     LitestarPrometheusConfig,
@@ -17,6 +18,7 @@ from microbootstrap.instruments.sentry_instrument import SentryConfig
 from microbootstrap.instruments.swagger_instrument import SwaggerConfig
 from microbootstrap.settings import (
     FastApiSettings,
+    FastMcpSettings,
     FastStreamSettings,
     InstrumentsSetupperSettings,
     LitestarSettings,
@@ -27,6 +29,8 @@ __all__ = (
     "CorsConfig",
     "FastApiPrometheusConfig",
     "FastApiSettings",
+    "FastMcpPrometheusConfig",
+    "FastMcpSettings",
     "FastStreamOpentelemetryConfig",
     "FastStreamPrometheusConfig",
     "FastStreamPrometheusMiddlewareProtocol",

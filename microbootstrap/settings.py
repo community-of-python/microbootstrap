@@ -8,6 +8,7 @@ import pydantic_settings
 from microbootstrap import (
     CorsConfig,
     FastApiPrometheusConfig,
+    FastMcpPrometheusConfig,
     FastStreamOpentelemetryConfig,
     FastStreamPrometheusConfig,
     HealthChecksConfig,
@@ -100,6 +101,18 @@ class FastStreamSettings(  # type: ignore[misc]
     """Settings for a faststream bootstrap."""
 
     asyncapi_path: str | None = "/asyncapi"
+
+
+class FastMcpSettings(  # type: ignore[misc]
+    BaseServiceSettings,
+    ServerConfig,
+    LoggingConfig,
+    SentryConfig,
+    FastMcpPrometheusConfig,
+    HealthChecksConfig,
+    PyroscopeConfig,
+):
+    """Settings for a fastmcp bootstrap."""
 
 
 class InstrumentsSetupperSettings(  # type: ignore[misc]

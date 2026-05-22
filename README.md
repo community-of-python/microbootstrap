@@ -48,6 +48,7 @@ Those instruments can be bootstrapped for:
 - `fastapi`,
 - `litestar`,
 - or `faststream` service,
+- or `fastmcp` service,
 - or even a service that doesn't use one of these frameworks.
 
 Interested? Let's dive right in ⚡
@@ -78,6 +79,7 @@ Also, you can specify extras during installation for concrete framework:
 - `fastapi`
 - `litestar`
 - `faststream` (ASGI app)
+- `fastmcp`
 
 Also we have `granian` extra that is requires for `create_granian_server`.
 
@@ -196,6 +198,28 @@ class YourSettings(FastStreamSettings):
 settings = YourSettings()
 
 application: AsgiFastStream = FastStreamBootstrapper(settings).bootstrap()
+```
+
+### FastMCP
+
+```python
+from fastmcp import FastMCP
+
+from microbootstrap import FastMcpSettings
+from microbootstrap.bootstrappers.fastmcp import FastMcpBootstrapper
+
+
+class YourSettings(FastMcpSettings):
+    service_debug: bool = False
+    service_name: str = "my-awesome-mcp-service"
+    service_description: str = "MCP server for internal tools"
+
+    sentry_dsn: str = "your-sentry-dsn"
+
+
+settings = YourSettings()
+
+application: FastMCP = FastMcpBootstrapper(settings).bootstrap()
 ```
 
 ## Settings
