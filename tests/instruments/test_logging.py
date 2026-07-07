@@ -12,6 +12,7 @@ from litestar.testing import TestClient as LitestarTestClient
 from opentelemetry import trace
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import ConsoleSpanExporter, SimpleSpanProcessor
+from structlog.typing import EventDict, WrappedLogger
 
 from microbootstrap import LoggingConfig
 from microbootstrap.bootstrappers.fastapi import FastApiBootstrapper, FastApiLoggingInstrument
@@ -196,6 +197,36 @@ def test_fastapi_logging_bootstrap_ignores_health(
 
 
 class TestForeignLogs:
+    def test_extra_processors_apply_to_foreign_loggers_in_non_debug_mode(
+        self,
+        capsys: pytest.CaptureFixture[str],
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        def add_extra_field(_: WrappedLogger, __: str, event_dict: EventDict) -> EventDict:
+            event_dict["processor_marker"] = "from-extra-processor"
+            return event_dict
+
+        root_logger = logging.getLogger()
+        monkeypatch.setattr(root_logger, "handlers", [])
+        foreign_logger = logging.getLogger("foreign-extra-processors")
+        monkeypatch.setattr(foreign_logger, "handlers", [])
+        monkeypatch.setattr(foreign_logger, "propagate", True)
+
+        logging_instrument = LoggingInstrument(
+            LoggingConfig(
+                service_debug=False,
+                logging_buffer_capacity=0,
+                logging_extra_processors=[add_extra_field],
+            )
+        )
+        logging_instrument.bootstrap()
+
+        foreign_logger.info("said hi")
+
+        stdout = capsys.readouterr().out
+        assert '"event":"said hi"' in stdout
+        assert '"processor_marker":"from-extra-processor"' in stdout
+
     def test_litestar(self, capsys: pytest.CaptureFixture[str]) -> None:
         logger = logging.getLogger()
 

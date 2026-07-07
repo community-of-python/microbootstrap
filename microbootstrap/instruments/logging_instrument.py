@@ -220,7 +220,11 @@ class LoggingInstrument(Instrument[LoggingConfig]):
             )
             if self.instrument_config.service_debug
             else structlog.stdlib.ProcessorFormatter(
-                foreign_pre_chain=[*STRUCTLOG_PRE_CHAIN_PROCESSORS, self._timestamper_processor],
+                foreign_pre_chain=[
+                    *STRUCTLOG_PRE_CHAIN_PROCESSORS,
+                    self._timestamper_processor,
+                    *self.instrument_config.logging_extra_processors,
+                ],
                 processors=[
                     structlog.stdlib.ProcessorFormatter.remove_processors_meta,
                     STRUCTLOG_FORMATTER_PROCESSOR,
