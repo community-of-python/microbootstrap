@@ -120,6 +120,7 @@ docstring-code-format = true
 [tool.ruff.lint]
 select = ["ALL"]
 ignore = [
+    "CPY001",
     "EM",
     "FBT",
     "TRY003",
@@ -133,6 +134,7 @@ ignore = [
     "FA",
     "COM812",
     "ISC001",
+    "PLR0917",
 ]
 
 [tool.ruff.lint.isort]
