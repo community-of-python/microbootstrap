@@ -313,6 +313,8 @@ class YourSettings(BaseServiceSettings):
     sentry_additional_params: dict[str, typing.Any] = {}
     sentry_tags: dict[str, str] | None = None
     sentry_opentelemetry_trace_url_template: str | None = None
+    sentry_opentelemetry_baggage_keys: set[str] = set()
+    sentry_opentelemetry_baggage_url_templates: dict[str, str] = {}
 
     ... # Other settings here
 ```
@@ -332,6 +334,8 @@ Parameter descriptions:
 - `sentry_additional_params` - Additional parameters to pass to Sentry SDK.
 - `sentry_tags` - Tags to apply to all Sentry events.
 - `sentry_opentelemetry_trace_url_template` - Template for OpenTelemetry trace URLs to add to Sentry events (example: `"https://example.com/traces/{trace_id}"`).
+- `sentry_opentelemetry_baggage_keys` - Baggage keys to copy into searchable Sentry tags.
+- `sentry_opentelemetry_baggage_url_templates` - Maps baggage keys to URL templates added to Sentry event extra data as `<key>_url`. The placeholder must match the baggage key and its value is URL-encoded (example: `{"conversation_id": "https://example.com/logs/{conversation_id}"}`).
 
 ### [Prometheus](https://prometheus.io/)
 
@@ -437,6 +441,7 @@ class YourSettings(BaseServiceSettings):
     opentelemetry_insecure: bool = True
     opentelemetry_instrumentors: list[OpenTelemetryInstrumentor] = []
     opentelemetry_exclude_urls: list[str] = []
+    opentelemetry_baggage_span_attributes: dict[str, str] = {}
 
     ... # Other settings here
 ```
@@ -454,6 +459,7 @@ Parameters description:
 - `opentelemetry_exclude_urls` - list of ignored urls.
 - `opentelemetry_log_traces` - traces will be logged to stdout.
 - `opentelemetry_generate_health_check_spans` - generate spans for health check handlers if `True`
+- `opentelemetry_baggage_span_attributes` - maps allowed baggage keys to attributes added to local server and consumer spans.
 
 These settings are subsequently passed to [opentelemetry](https://opentelemetry.io/), finalizing your Opentelemetry integration.
 

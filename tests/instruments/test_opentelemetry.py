@@ -8,7 +8,11 @@ import litestar
 import pytest
 from fastapi.testclient import TestClient as FastAPITestClient
 from litestar.testing import TestClient as LitestarTestClient
+from opentelemetry import baggage
+from opentelemetry.context import Context
 from opentelemetry.instrumentation.dependencies import DependencyConflictError
+from opentelemetry.sdk.trace import Span
+from opentelemetry.trace import SpanKind
 
 from microbootstrap import OpentelemetryConfig
 from microbootstrap.bootstrappers.fastapi import FastApiOpentelemetryInstrument
@@ -17,7 +21,52 @@ from microbootstrap.bootstrappers.litestar import (
     LitestarOpenTelemetryInstrumentationMiddleware,
 )
 from microbootstrap.instruments import opentelemetry_instrument
-from microbootstrap.instruments.opentelemetry_instrument import OpentelemetryInstrument
+from microbootstrap.instruments.opentelemetry_instrument import BaggageSpanProcessor, OpentelemetryInstrument
+
+
+@pytest.mark.parametrize(
+    ("span_kind", "expected_attribute"),
+    [
+        (SpanKind.SERVER, True),
+        (SpanKind.CONSUMER, True),
+        (SpanKind.CLIENT, False),
+        (SpanKind.PRODUCER, False),
+        (SpanKind.INTERNAL, False),
+    ],
+)
+def test_baggage_span_processor_materializes_allowed_server_and_consumer_attributes(
+    span_kind: SpanKind,
+    expected_attribute: bool,
+) -> None:
+    parent_context = baggage.set_baggage("conversation_id", "conversation-1", context=Context())
+    parent_context = baggage.set_baggage("not_allowed", "secret", context=parent_context)
+    span = MagicMock(spec=Span)
+    span.kind = span_kind
+
+    BaggageSpanProcessor({"conversation_id": "messaging.message.conversation_id"}).on_start(
+        span,
+        parent_context,
+    )
+
+    if expected_attribute:
+        span.set_attribute.assert_called_once_with("messaging.message.conversation_id", "conversation-1")
+    else:
+        span.set_attribute.assert_not_called()
+
+
+def test_baggage_span_processor_keeps_parent_contexts_isolated() -> None:
+    processor = BaggageSpanProcessor({"conversation_id": "messaging.message.conversation_id"})
+    first_context = baggage.set_baggage("conversation_id", "first", context=Context())
+    second_context = baggage.set_baggage("conversation_id", "second", context=Context())
+    first_span = MagicMock(spec=Span)
+    second_span = MagicMock(spec=Span)
+    first_span.kind = second_span.kind = SpanKind.CONSUMER
+
+    processor.on_start(first_span, first_context)
+    processor.on_start(second_span, second_context)
+
+    first_span.set_attribute.assert_called_once_with("messaging.message.conversation_id", "first")
+    second_span.set_attribute.assert_called_once_with("messaging.message.conversation_id", "second")
 
 
 def test_opentelemetry_is_ready(

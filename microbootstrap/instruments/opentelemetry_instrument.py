@@ -6,6 +6,7 @@ import typing
 
 import pydantic
 import structlog
+from opentelemetry import baggage
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
 from opentelemetry.instrumentation.dependencies import DependencyConflictError
 from opentelemetry.instrumentation.environment_variables import OTEL_PYTHON_DISABLED_INSTRUMENTATIONS
@@ -15,7 +16,7 @@ from opentelemetry.sdk.trace import ReadableSpan, Span, SpanProcessor
 from opentelemetry.sdk.trace import TracerProvider as SdkTracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor, ConsoleSpanExporter, SimpleSpanProcessor
 from opentelemetry.semconv.resource import ResourceAttributes
-from opentelemetry.trace import format_span_id, set_tracer_provider
+from opentelemetry.trace import SpanKind, format_span_id, set_tracer_provider
 from opentelemetry.util._importlib_metadata import entry_points
 
 from microbootstrap.instruments.base import BaseInstrumentConfig, Instrument
@@ -66,6 +67,7 @@ class OpentelemetryConfig(BaseInstrumentConfig):
     )
     opentelemetry_log_traces: bool = False
     opentelemetry_generate_health_check_spans: bool = True
+    opentelemetry_baggage_span_attributes: dict[str, str] = pydantic.Field(default_factory=dict)
 
 
 @typing.runtime_checkable
@@ -93,6 +95,22 @@ class FastStreamOpentelemetryConfig(OpentelemetryConfig):
 
 def _format_span(readable_span: ReadableSpan) -> str:
     return typing.cast("str", readable_span.to_json(indent=None)) + os.linesep
+
+
+class BaggageSpanProcessor(SpanProcessor):
+    def __init__(self, baggage_span_attributes: dict[str, str]) -> None:
+        self.baggage_span_attributes = baggage_span_attributes
+
+    def on_start(self, span: Span, parent_context: Context | None = None) -> None:
+        if span.kind not in {SpanKind.SERVER, SpanKind.CONSUMER}:
+            return
+
+        for baggage_key, span_attribute in self.baggage_span_attributes.items():
+            if (value := baggage.get_baggage(baggage_key, context=parent_context)) is not None:
+                span.set_attribute(span_attribute, str(value))
+
+    def on_end(self, span: ReadableSpan) -> None:
+        pass
 
 
 class BaseOpentelemetryInstrument(Instrument[OpentelemetryConfigT]):
@@ -145,6 +163,10 @@ class BaseOpentelemetryInstrument(Instrument[OpentelemetryConfigT]):
         resource: typing.Final = resources.Resource.create(attributes=attributes)
 
         self.tracer_provider = SdkTracerProvider(resource=resource)
+        if self.instrument_config.opentelemetry_baggage_span_attributes:
+            self.tracer_provider.add_span_processor(
+                BaggageSpanProcessor(self.instrument_config.opentelemetry_baggage_span_attributes),
+            )
         if self.instrument_config.pyroscope_endpoint and pyroscope:
             self.tracer_provider.add_span_processor(PyroscopeSpanProcessor())
 

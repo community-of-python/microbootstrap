@@ -2,10 +2,12 @@ from __future__ import annotations
 import contextlib
 import functools
 import typing
+import urllib.parse
 
 import orjson
 import pydantic
 import sentry_sdk
+from opentelemetry import baggage
 from sentry_sdk import _types as sentry_types
 from sentry_sdk.integrations import Integration  # noqa: TC002
 
@@ -26,6 +28,8 @@ class SentryConfig(BaseInstrumentConfig):
     sentry_tags: dict[str, str] | None = None
     sentry_before_send: typing.Callable[[typing.Any, typing.Any], typing.Any | None] | None = None
     sentry_opentelemetry_trace_url_template: str | None = None
+    sentry_opentelemetry_baggage_keys: set[str] = pydantic.Field(default_factory=set)
+    sentry_opentelemetry_baggage_url_templates: dict[str, str] = pydantic.Field(default_factory=dict)
 
 
 IGNORED_STRUCTLOG_ATTRIBUTES: typing.Final = frozenset({"event", "level", "logger", "tracing", "timestamp"})
@@ -72,6 +76,34 @@ def add_trace_url_to_event(
     return event
 
 
+def enrich_sentry_event_from_opentelemetry_baggage(
+    baggage_keys: set[str],
+    baggage_url_templates: dict[str, str],
+    event: sentry_types.Event,
+    _hint: sentry_types.Hint,
+) -> sentry_types.Event:
+    baggage_values = {
+        key: value
+        for key in baggage_keys.union(baggage_url_templates)
+        if (value := baggage.get_baggage(key)) is not None
+    }
+    if not baggage_values:
+        return event
+
+    if tag_values := {key: str(baggage_values[key]) for key in baggage_keys if key in baggage_values}:
+        event.setdefault("tags", {}).update(tag_values)
+
+    for key, url_template in baggage_url_templates.items():
+        placeholder = f"{{{key}}}"
+        if key not in baggage_values or placeholder not in url_template:
+            continue
+        event.setdefault("extra", {})[f"{key}_url"] = url_template.replace(
+            placeholder,
+            urllib.parse.quote(str(baggage_values[key]), safe=""),
+        )
+    return event
+
+
 def wrap_before_send_callbacks(*callbacks: sentry_types.EventProcessor | None) -> sentry_types.EventProcessor:
     def run_before_send(event: sentry_types.Event, hint: sentry_types.Hint) -> sentry_types.Event | None:
         for callback in callbacks:
@@ -108,6 +140,16 @@ class SentryInstrument(Instrument[SentryConfig]):
                     add_trace_url_to_event, self.instrument_config.sentry_opentelemetry_trace_url_template
                 )
                 if self.instrument_config.sentry_opentelemetry_trace_url_template
+                else None,
+                functools.partial(
+                    enrich_sentry_event_from_opentelemetry_baggage,
+                    self.instrument_config.sentry_opentelemetry_baggage_keys,
+                    self.instrument_config.sentry_opentelemetry_baggage_url_templates,
+                )
+                if (
+                    self.instrument_config.sentry_opentelemetry_baggage_keys
+                    or self.instrument_config.sentry_opentelemetry_baggage_url_templates
+                )
                 else None,
                 self.instrument_config.sentry_before_send,
             ),
