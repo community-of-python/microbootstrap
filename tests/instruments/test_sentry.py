@@ -8,6 +8,8 @@ import litestar
 import pytest
 import structlog
 from litestar.testing import TestClient as LitestarTestClient
+from opentelemetry import baggage
+from opentelemetry.context import Context, attach, detach
 
 from microbootstrap.bootstrappers.litestar import LitestarSentryInstrument
 from microbootstrap.instruments.logging_instrument import LoggingConfig, LoggingInstrument
@@ -16,6 +18,7 @@ from microbootstrap.instruments.sentry_instrument import (
     SENTRY_EXTRA_OTEL_TRACE_URL_KEY,
     SentryInstrument,
     add_trace_url_to_event,
+    enrich_sentry_event_from_opentelemetry_baggage,
     enrich_sentry_event_from_structlog_log,
 )
 
@@ -163,6 +166,97 @@ class TestSentryAddTraceUrlToEvent:
 
         assert SENTRY_EXTRA_OTEL_TRACE_URL_KEY in result["extra"]
         assert SENTRY_EXTRA_OTEL_TRACE_ID_KEY in result["extra"]
+
+
+class TestSentryEnrichEventFromOpentelemetryBaggage:
+    def test_returns_event_unchanged_without_configured_baggage(self) -> None:
+        event: sentry_types.Event = {}
+
+        result = enrich_sentry_event_from_opentelemetry_baggage(
+            {"conversation_id"},
+            {"conversation_id": "https://example.com/logs/{conversation_id}"},
+            event,
+            mock.Mock(),
+        )
+
+        assert result is event
+
+    def test_adds_allowed_tag_and_encoded_url(self) -> None:
+        context = baggage.set_baggage("conversation_id", "conversation/id +", context=Context())
+        context = baggage.set_baggage("not_allowed", "secret", context=context)
+        token = attach(context)
+        event: sentry_types.Event = {"tags": {"existing": "tag"}, "extra": {"existing": "extra"}}
+
+        try:
+            result = enrich_sentry_event_from_opentelemetry_baggage(
+                {"conversation_id"},
+                {"conversation_id": "https://example.com/logs/{conversation_id}"},
+                event,
+                mock.Mock(),
+            )
+        finally:
+            detach(token)
+
+        assert result["tags"] == {"existing": "tag", "conversation_id": "conversation/id +"}
+        assert result["extra"] == {
+            "existing": "extra",
+            "conversation_id_url": "https://example.com/logs/conversation%2Fid%20%2B",
+        }
+
+    def test_ignores_missing_denied_and_invalid_url_template(self) -> None:
+        context = baggage.set_baggage("not_allowed", "secret", context=Context())
+        token = attach(context)
+        event: sentry_types.Event = {}
+
+        try:
+            result = enrich_sentry_event_from_opentelemetry_baggage(
+                {"conversation_id"},
+                {"not_allowed": "https://example.com/logs/without-placeholder"},
+                event,
+                mock.Mock(),
+            )
+        finally:
+            detach(token)
+
+        assert result == {}
+
+    def test_keeps_attached_contexts_isolated(self) -> None:
+        results = []
+        for conversation_id in ("first", "second"):
+            token = attach(baggage.set_baggage("conversation_id", conversation_id, context=Context()))
+            try:
+                result = enrich_sentry_event_from_opentelemetry_baggage(
+                    {"conversation_id"},
+                    {},
+                    {},
+                    mock.Mock(),
+                )
+            finally:
+                detach(token)
+            results.append(result)
+
+        assert [result["tags"]["conversation_id"] for result in results] == ["first", "second"]
+
+
+def test_sentry_bootstrap_composes_baggage_enrichment_before_custom_callback(
+    minimal_sentry_config: SentryConfig,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    custom_before_send = mock.Mock(side_effect=lambda event, _hint: event)
+    minimal_sentry_config.sentry_opentelemetry_baggage_keys = {"conversation_id"}
+    minimal_sentry_config.sentry_before_send = custom_before_send
+    init = mock.Mock()
+    monkeypatch.setattr("sentry_sdk.init", init)
+    token = attach(baggage.set_baggage("conversation_id", "conversation-1", context=Context()))
+
+    try:
+        SentryInstrument(minimal_sentry_config).bootstrap()
+        result = init.call_args.kwargs["before_send"]({}, mock.Mock())
+    finally:
+        detach(token)
+
+    assert result["tags"]["conversation_id"] == "conversation-1"
+    assert custom_before_send.call_args.args[0]["tags"]["conversation_id"] == "conversation-1"
 
 
 @pytest.mark.parametrize("logger_instance", [structlog.get_logger(__name__), logging.getLogger(__name__)])
