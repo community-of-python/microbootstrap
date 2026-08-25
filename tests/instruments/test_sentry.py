@@ -169,6 +169,18 @@ class TestSentryAddTraceUrlToEvent:
 
 
 class TestSentryEnrichEventFromOpentelemetryBaggage:
+    def test_returns_event_unchanged_without_configured_baggage(self) -> None:
+        event: sentry_types.Event = {}
+
+        result = enrich_sentry_event_from_opentelemetry_baggage(
+            {"conversation_id"},
+            {"conversation_id": "https://example.com/logs/{conversation_id}"},
+            event,
+            mock.Mock(),
+        )
+
+        assert result is event
+
     def test_adds_allowed_tag_and_encoded_url(self) -> None:
         context = baggage.set_baggage("conversation_id", "conversation/id +", context=Context())
         context = baggage.set_baggage("not_allowed", "secret", context=context)

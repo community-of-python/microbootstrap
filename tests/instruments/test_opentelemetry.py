@@ -11,7 +11,7 @@ from litestar.testing import TestClient as LitestarTestClient
 from opentelemetry import baggage
 from opentelemetry.context import Context
 from opentelemetry.instrumentation.dependencies import DependencyConflictError
-from opentelemetry.sdk.trace import Span
+from opentelemetry.sdk.trace import ReadableSpan, Span, TracerProvider
 from opentelemetry.trace import SpanKind
 
 from microbootstrap import OpentelemetryConfig
@@ -67,6 +67,30 @@ def test_baggage_span_processor_keeps_parent_contexts_isolated() -> None:
 
     first_span.set_attribute.assert_called_once_with("messaging.message.conversation_id", "first")
     second_span.set_attribute.assert_called_once_with("messaging.message.conversation_id", "second")
+
+    assert processor.on_end(MagicMock(spec=ReadableSpan)) is None
+
+
+def test_opentelemetry_bootstrap_registers_baggage_span_processor(
+    minimal_opentelemetry_config: OpentelemetryConfig,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    tracer_provider = MagicMock(spec=TracerProvider)
+    monkeypatch.setattr(opentelemetry_instrument, "SdkTracerProvider", Mock(return_value=tracer_provider))
+    monkeypatch.setattr(opentelemetry_instrument, "set_tracer_provider", Mock())
+    monkeypatch.setattr(opentelemetry_instrument, "entry_points", Mock(return_value=[]))
+    minimal_opentelemetry_config.opentelemetry_endpoint = None
+    minimal_opentelemetry_config.opentelemetry_baggage_span_attributes = {
+        "conversation_id": "messaging.message.conversation_id",
+    }
+
+    OpentelemetryInstrument(minimal_opentelemetry_config).bootstrap()
+
+    span_processor = tracer_provider.add_span_processor.call_args.args[0]
+    assert isinstance(span_processor, BaggageSpanProcessor)
+    assert span_processor.baggage_span_attributes == {
+        "conversation_id": "messaging.message.conversation_id",
+    }
 
 
 def test_opentelemetry_is_ready(
