@@ -1,4 +1,5 @@
 from __future__ import annotations
+import contextlib
 import dataclasses
 import logging
 import os
@@ -6,7 +7,7 @@ import typing
 
 import pydantic
 import structlog
-from opentelemetry import baggage
+from opentelemetry import baggage, context
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
 from opentelemetry.instrumentation.dependencies import DependencyConflictError
 from opentelemetry.instrumentation.environment_variables import OTEL_PYTHON_DISABLED_INSTRUMENTATIONS
@@ -37,6 +38,25 @@ if typing.TYPE_CHECKING:
     from opentelemetry.trace import TracerProvider
 
 OpentelemetryConfigT = typing.TypeVar("OpentelemetryConfigT", bound="OpentelemetryConfig")
+
+
+@contextlib.contextmanager
+def opentelemetry_baggage_scope(
+    baggage_values: typing.Mapping[str, object | None],
+) -> typing.Iterator[None]:
+    baggage_context = context.get_current()
+    for key, value in baggage_values.items():
+        baggage_context = (
+            baggage.set_baggage(key, value, context=baggage_context)
+            if value is not None
+            else baggage.remove_baggage(key, context=baggage_context)
+        )
+
+    token: typing.Final = context.attach(baggage_context)
+    try:
+        yield
+    finally:
+        context.detach(token)
 
 
 @dataclasses.dataclass()

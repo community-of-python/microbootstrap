@@ -8,13 +8,13 @@ import litestar
 import pytest
 from fastapi.testclient import TestClient as FastAPITestClient
 from litestar.testing import TestClient as LitestarTestClient
-from opentelemetry import baggage
+from opentelemetry import baggage, context
 from opentelemetry.context import Context
 from opentelemetry.instrumentation.dependencies import DependencyConflictError
 from opentelemetry.sdk.trace import ReadableSpan, Span, TracerProvider
 from opentelemetry.trace import SpanKind
 
-from microbootstrap import OpentelemetryConfig
+from microbootstrap import OpentelemetryConfig, opentelemetry_baggage_scope
 from microbootstrap.bootstrappers.fastapi import FastApiOpentelemetryInstrument
 from microbootstrap.bootstrappers.litestar import (
     LitestarOpentelemetryInstrument,
@@ -22,6 +22,30 @@ from microbootstrap.bootstrappers.litestar import (
 )
 from microbootstrap.instruments import opentelemetry_instrument
 from microbootstrap.instruments.opentelemetry_instrument import BaggageSpanProcessor, OpentelemetryInstrument
+
+
+def test_opentelemetry_baggage_scope_overrides_removes_and_restores_values() -> None:
+    outer_context = baggage.set_baggage("conversation_id", "outer-conversation", context=Context())
+    outer_context = baggage.set_baggage("remove_me", "outer-value", context=outer_context)
+    outer_token = context.attach(outer_context)
+
+    try:
+        with opentelemetry_baggage_scope(
+            {
+                "conversation_id": "inner-conversation",
+                "existing_key": "existing-value",
+                "remove_me": None,
+            }
+        ):
+            assert baggage.get_baggage("conversation_id") == "inner-conversation"
+            assert baggage.get_baggage("existing_key") == "existing-value"
+            assert baggage.get_baggage("remove_me") is None
+
+        assert baggage.get_baggage("conversation_id") == "outer-conversation"
+        assert baggage.get_baggage("existing_key") is None
+        assert baggage.get_baggage("remove_me") == "outer-value"
+    finally:
+        context.detach(outer_token)
 
 
 @pytest.mark.parametrize(
@@ -43,19 +67,19 @@ def test_baggage_span_processor_materializes_allowed_server_and_consumer_attribu
     span = MagicMock(spec=Span)
     span.kind = span_kind
 
-    BaggageSpanProcessor({"conversation_id": "messaging.message.conversation_id"}).on_start(
+    BaggageSpanProcessor({"conversation_id": "conversation_id"}).on_start(
         span,
         parent_context,
     )
 
     if expected_attribute:
-        span.set_attribute.assert_called_once_with("messaging.message.conversation_id", "conversation-1")
+        span.set_attribute.assert_called_once_with("conversation_id", "conversation-1")
     else:
         span.set_attribute.assert_not_called()
 
 
 def test_baggage_span_processor_keeps_parent_contexts_isolated() -> None:
-    processor = BaggageSpanProcessor({"conversation_id": "messaging.message.conversation_id"})
+    processor = BaggageSpanProcessor({"conversation_id": "conversation_id"})
     first_context = baggage.set_baggage("conversation_id", "first", context=Context())
     second_context = baggage.set_baggage("conversation_id", "second", context=Context())
     first_span = MagicMock(spec=Span)
@@ -65,8 +89,8 @@ def test_baggage_span_processor_keeps_parent_contexts_isolated() -> None:
     processor.on_start(first_span, first_context)
     processor.on_start(second_span, second_context)
 
-    first_span.set_attribute.assert_called_once_with("messaging.message.conversation_id", "first")
-    second_span.set_attribute.assert_called_once_with("messaging.message.conversation_id", "second")
+    first_span.set_attribute.assert_called_once_with("conversation_id", "first")
+    second_span.set_attribute.assert_called_once_with("conversation_id", "second")
 
     processor.on_end(MagicMock(spec=ReadableSpan))
 
@@ -81,7 +105,7 @@ def test_opentelemetry_bootstrap_registers_baggage_span_processor(
     monkeypatch.setattr(opentelemetry_instrument, "entry_points", Mock(return_value=[]))
     minimal_opentelemetry_config.opentelemetry_endpoint = None
     minimal_opentelemetry_config.opentelemetry_baggage_span_attributes = {
-        "conversation_id": "messaging.message.conversation_id",
+        "conversation_id": "conversation_id",
     }
 
     OpentelemetryInstrument(minimal_opentelemetry_config).bootstrap()
@@ -89,7 +113,7 @@ def test_opentelemetry_bootstrap_registers_baggage_span_processor(
     span_processor = tracer_provider.add_span_processor.call_args.args[0]
     assert isinstance(span_processor, BaggageSpanProcessor)
     assert span_processor.baggage_span_attributes == {
-        "conversation_id": "messaging.message.conversation_id",
+        "conversation_id": "conversation_id",
     }
 
 
