@@ -68,7 +68,7 @@ def test_baggage_span_processor_keeps_parent_contexts_isolated() -> None:
     first_span.set_attribute.assert_called_once_with("messaging.message.conversation_id", "first")
     second_span.set_attribute.assert_called_once_with("messaging.message.conversation_id", "second")
 
-    assert processor.on_end(MagicMock(spec=ReadableSpan)) is None
+    processor.on_end(MagicMock(spec=ReadableSpan))
 
 
 def test_opentelemetry_bootstrap_registers_baggage_span_processor(
