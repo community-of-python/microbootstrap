@@ -5,6 +5,7 @@ from microbootstrap.instruments.opentelemetry_instrument import (
     FastStreamOpentelemetryConfig,
     FastStreamTelemetryMiddlewareProtocol,
     OpentelemetryConfig,
+    opentelemetry_baggage_scope,
 )
 from microbootstrap.instruments.prometheus_instrument import (
     FastApiPrometheusConfig,
@@ -45,4 +46,5 @@ __all__ = (
     "PyroscopeConfig",
     "SentryConfig",
     "SwaggerConfig",
+    "opentelemetry_baggage_scope",
 )
