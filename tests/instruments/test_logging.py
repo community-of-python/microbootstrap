@@ -206,12 +206,7 @@ def test_fastapi_logging_bootstrap_propagates_unhandled_exception(
 
     assert response.status_code == 418  # noqa: PLR2004
     assert response.json() == {"detail": "test error"}
-    fill_log_mock.assert_called_once_with(
-        "exception",
-        mock.ANY,
-        fastapi.status.HTTP_500_INTERNAL_SERVER_ERROR,
-        mock.ANY,
-    )
+    fill_log_mock.assert_not_called()
 
 
 def test_fastapi_logging_bootstrap_ignores_health(

@@ -105,7 +105,9 @@ def test_fastapi_sentry_captures_unhandled_exception_with_traceback(
 
     assert response.status_code == fastapi.status.HTTP_500_INTERNAL_SERVER_ERROR
     captured_events: typing.Final = [call.args[0] for call in capture_event.mock_calls]
-    exception_event: typing.Final = next(event for event in captured_events if event.get("exception"))
+    exception_events: typing.Final = [event for event in captured_events if event.get("exception")]
+    assert len(exception_events) == 1
+    exception_event: typing.Final = exception_events[0]
     exception_value: typing.Final = exception_event["exception"]["values"][-1]
     assert exception_value["type"] == "RuntimeError"
     assert exception_value["value"] == "test error"
