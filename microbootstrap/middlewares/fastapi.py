@@ -26,10 +26,7 @@ def build_fastapi_logging_middleware(
                 return await call_next(request)
 
             start_time: typing.Final = time.perf_counter_ns()
-            try:
-                response = await call_next(request)
-            except Exception:  # noqa: BLE001
-                response = fastapi.Response(status_code=500)
+            response = await call_next(request)
 
             fill_log_message(
                 "exception" if response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR else "info",

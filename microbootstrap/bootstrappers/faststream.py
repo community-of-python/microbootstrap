@@ -1,8 +1,10 @@
 from __future__ import annotations
+import functools
 import json
 import typing
 
 import prometheus_client
+import sentry_sdk
 import structlog
 import typing_extensions
 from faststream._internal.logger.logger_proxy import RealLoggerObject
@@ -26,6 +28,29 @@ from microbootstrap.settings import FastStreamSettings
 
 
 tracer: typing.Final = trace.get_tracer(__name__)
+MessageT = typing.TypeVar("MessageT")
+ResponseT = typing.TypeVar("ResponseT")
+
+
+def _with_sentry_isolation_scope(
+    process_message: typing.Callable[[MessageT], typing.Awaitable[ResponseT]],
+) -> typing.Callable[[MessageT], typing.Awaitable[ResponseT]]:
+    @functools.wraps(process_message)
+    async def isolated_process_message(message: MessageT) -> ResponseT:
+        with sentry_sdk.isolation_scope():
+            return await process_message(message)
+
+    return isolated_process_message
+
+
+def _isolate_faststream_subscribers(application: AsgiFastStream) -> None:
+    for broker in application.brokers:
+        for subscriber in broker.subscribers:
+            object.__setattr__(
+                subscriber,
+                "process_message",
+                _with_sentry_isolation_scope(subscriber.process_message),
+            )
 
 
 class KwargsAsgiFastStream(AsgiFastStream):
@@ -51,7 +76,18 @@ class FastStreamBootstrapper(ApplicationBootstrapper[FastStreamSettings, AsgiFas
         }
 
 
-FastStreamBootstrapper.use_instrument()(SentryInstrument)
+@FastStreamBootstrapper.use_instrument()
+class FastStreamSentryInstrument(SentryInstrument):
+    def bootstrap_after(self, application: AsgiFastStream) -> AsgiFastStream:  # type: ignore[override]
+        # FastStream logs handler errors after custom broker middlewares exit, so the isolation scope
+        # must enclose the subscriber's complete processing lifecycle.
+        if application.brokers:
+            _isolate_faststream_subscribers(application)
+        else:
+            application.on_startup(functools.partial(_isolate_faststream_subscribers, application))
+        return application
+
+
 FastStreamBootstrapper.use_instrument()(PyroscopeInstrument)
 
 
