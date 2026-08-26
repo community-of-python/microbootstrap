@@ -28,8 +28,14 @@ def build_fastapi_logging_middleware(
             start_time: typing.Final = time.perf_counter_ns()
             try:
                 response = await call_next(request)
-            except Exception:  # noqa: BLE001
-                response = fastapi.Response(status_code=500)
+            except Exception:
+                fill_log_message(
+                    "exception",
+                    request,
+                    status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    start_time,
+                )
+                raise
 
             fill_log_message(
                 "exception" if response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR else "info",

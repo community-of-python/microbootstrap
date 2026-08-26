@@ -4,13 +4,16 @@ import logging
 import typing
 from unittest import mock
 
+import fastapi
 import litestar
 import pytest
 import structlog
+from fastapi.testclient import TestClient as FastAPITestClient
 from litestar.testing import TestClient as LitestarTestClient
 from opentelemetry import baggage
 from opentelemetry.context import Context, attach, detach
 
+from microbootstrap.bootstrappers.fastapi import FastApiLoggingInstrument
 from microbootstrap.bootstrappers.litestar import LitestarSentryInstrument
 from microbootstrap.instruments.logging_instrument import LoggingConfig, LoggingInstrument
 from microbootstrap.instruments.sentry_instrument import (
@@ -78,6 +81,35 @@ def test_litestar_sentry_bootstrap_catch_exception(
             test_client.get("/test-error-handler")
 
         assert mock_capture_event.called
+
+
+def test_fastapi_sentry_captures_unhandled_exception_with_traceback(
+    minimal_logging_config: LoggingConfig,
+    minimal_sentry_config: SentryConfig,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr("sentry_sdk.Scope.capture_event", capture_event := mock.Mock())
+    SentryInstrument(minimal_sentry_config).bootstrap()
+    fastapi_application: typing.Final = fastapi.FastAPI()
+
+    @fastapi_application.get("/test-error-handler")
+    async def error_handler() -> None:
+        raise RuntimeError("test error")
+
+    logging_instrument: typing.Final = FastApiLoggingInstrument(minimal_logging_config)
+    logging_instrument.bootstrap()
+    logging_instrument.bootstrap_after(fastapi_application)
+
+    with FastAPITestClient(app=fastapi_application, raise_server_exceptions=False) as test_client:
+        response: typing.Final = test_client.get("/test-error-handler")
+
+    assert response.status_code == fastapi.status.HTTP_500_INTERNAL_SERVER_ERROR
+    captured_events: typing.Final = [call.args[0] for call in capture_event.mock_calls]
+    exception_event: typing.Final = next(event for event in captured_events if event.get("exception"))
+    exception_value: typing.Final = exception_event["exception"]["values"][-1]
+    assert exception_value["type"] == "RuntimeError"
+    assert exception_value["value"] == "test error"
+    assert exception_value["stacktrace"]["frames"]
 
 
 class TestSentryEnrichEventFromStructlog:

@@ -6,6 +6,7 @@ from unittest import mock
 import fastapi
 import litestar
 import pytest
+from fastapi.responses import JSONResponse
 from fastapi.testclient import TestClient as FastAPITestClient
 from faststream.redis import RedisBroker, TestRedisBroker
 from litestar.testing import TestClient as LitestarTestClient
@@ -179,6 +180,38 @@ def test_fastapi_logging_bootstrap_working(
         test_client.get("/test-handler")
 
     assert fill_log_mock.call_count == 2  # noqa: PLR2004
+
+
+def test_fastapi_logging_bootstrap_propagates_unhandled_exception(
+    monkeypatch: pytest.MonkeyPatch,
+    minimal_logging_config: LoggingConfig,
+) -> None:
+    fastapi_application: typing.Final = fastapi.FastAPI()
+
+    @fastapi_application.get("/test-error-handler")
+    async def test_error_handler() -> None:
+        raise RuntimeError("test error")
+
+    @fastapi_application.exception_handler(Exception)
+    async def handle_exception(_request: fastapi.Request, exception: Exception) -> JSONResponse:
+        return JSONResponse(status_code=418, content={"detail": str(exception)})
+
+    logging_instrument: typing.Final = FastApiLoggingInstrument(minimal_logging_config)
+    logging_instrument.bootstrap()
+    logging_instrument.bootstrap_after(fastapi_application)
+    monkeypatch.setattr("microbootstrap.middlewares.fastapi.fill_log_message", fill_log_mock := mock.Mock())
+
+    with FastAPITestClient(app=fastapi_application, raise_server_exceptions=False) as test_client:
+        response: typing.Final = test_client.get("/test-error-handler")
+
+    assert response.status_code == 418  # noqa: PLR2004
+    assert response.json() == {"detail": "test error"}
+    fill_log_mock.assert_called_once_with(
+        "exception",
+        mock.ANY,
+        fastapi.status.HTTP_500_INTERNAL_SERVER_ERROR,
+        mock.ANY,
+    )
 
 
 def test_fastapi_logging_bootstrap_ignores_health(
