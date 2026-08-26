@@ -3,13 +3,14 @@ import contextlib
 import functools
 import typing
 import urllib.parse
+from collections.abc import Mapping
 
 import orjson
 import pydantic
 import sentry_sdk
 from opentelemetry import baggage
 from sentry_sdk import _types as sentry_types
-from sentry_sdk.integrations import Integration  # noqa: TC002
+from sentry_sdk.integrations import Integration
 
 from microbootstrap.instruments.base import BaseInstrumentConfig, Instrument
 
@@ -66,6 +67,59 @@ def enrich_sentry_event_from_structlog_log(event: sentry_types.Event, _hint: sen
 
 SENTRY_EXTRA_OTEL_TRACE_ID_KEY: typing.Final = "otelTraceID"
 SENTRY_EXTRA_OTEL_TRACE_URL_KEY: typing.Final = "otelTraceURL"
+SENTRY_OTEL_BAGGAGE_SNAPSHOT_ATTRIBUTE: typing.Final = "__microbootstrap_sentry_opentelemetry_baggage__"
+
+
+@typing.final
+class SentryOpentelemetryBaggageIntegration(Integration):
+    identifier = "microbootstrap_opentelemetry_baggage"
+
+    def __init__(self, baggage_keys: set[str], baggage_url_templates: dict[str, str]) -> None:
+        self.baggage_keys: typing.Final = frozenset(baggage_keys)
+        self.baggage_url_templates: typing.Final = dict(baggage_url_templates)
+
+    @staticmethod
+    def setup_once() -> None:
+        pass
+
+
+def snapshot_sentry_opentelemetry_baggage(exception: BaseException) -> None:
+    integration = sentry_sdk.get_client().get_integration(SentryOpentelemetryBaggageIntegration)
+    if not isinstance(integration, SentryOpentelemetryBaggageIntegration) or hasattr(
+        exception,
+        SENTRY_OTEL_BAGGAGE_SNAPSHOT_ATTRIBUTE,
+    ):
+        return
+
+    configured_keys: typing.Final = integration.baggage_keys.union(integration.baggage_url_templates)
+    snapshot: typing.Final = {key: baggage.get_baggage(key) for key in configured_keys}
+    with contextlib.suppress(AttributeError, TypeError):
+        setattr(exception, SENTRY_OTEL_BAGGAGE_SNAPSHOT_ATTRIBUTE, snapshot)
+
+
+def _find_sentry_opentelemetry_baggage_snapshot(hint: sentry_types.Hint) -> Mapping[str, object | None] | None:
+    if not isinstance(hint, Mapping):
+        return None
+
+    exc_info: typing.Final = hint.get("exc_info")
+    if not isinstance(exc_info, tuple):
+        return None
+    try:
+        _, exception_value, _ = exc_info
+    except ValueError:
+        return None
+    if not isinstance(exception_value, BaseException):
+        return None
+
+    exception: BaseException | None = exception_value
+    visited_exceptions: set[int] = set()
+    while exception is not None and id(exception) not in visited_exceptions:
+        visited_exceptions.add(id(exception))
+        exception_snapshot = getattr(exception, SENTRY_OTEL_BAGGAGE_SNAPSHOT_ATTRIBUTE, None)
+        if isinstance(exception_snapshot, Mapping):
+            return exception_snapshot
+        exception = exception.__cause__ or (None if exception.__suppress_context__ else exception.__context__)
+    return None
 
 
 def add_trace_url_to_event(
@@ -80,27 +134,30 @@ def enrich_sentry_event_from_opentelemetry_baggage(
     baggage_keys: set[str],
     baggage_url_templates: dict[str, str],
     event: sentry_types.Event,
-    _hint: sentry_types.Hint,
+    hint: sentry_types.Hint,
 ) -> sentry_types.Event:
-    baggage_values = {
-        key: value
-        for key in baggage_keys.union(baggage_url_templates)
-        if (value := baggage.get_baggage(key)) is not None
-    }
-    if not baggage_values:
-        return event
+    configured_keys: typing.Final = baggage_keys.union(baggage_url_templates)
+    snapshot: typing.Final = _find_sentry_opentelemetry_baggage_snapshot(hint)
+    baggage_values: typing.Final = (
+        snapshot if snapshot is not None else {key: baggage.get_baggage(key) for key in configured_keys}
+    )
 
-    if tag_values := {key: str(baggage_values[key]) for key in baggage_keys if key in baggage_values}:
-        event.setdefault("tags", {}).update(tag_values)
+    for key in baggage_keys:
+        if (value := baggage_values.get(key)) is not None:
+            event.setdefault("tags", {})[key] = str(value)
+        elif tags := event.get("tags"):
+            tags.pop(key, None)
 
     for key, url_template in baggage_url_templates.items():
         placeholder = f"{{{key}}}"
-        if key not in baggage_values or placeholder not in url_template:
-            continue
-        event.setdefault("extra", {})[f"{key}_url"] = url_template.replace(
-            placeholder,
-            urllib.parse.quote(str(baggage_values[key]), safe=""),
-        )
+        extra_key = f"{key}_url"
+        if (value := baggage_values.get(key)) is not None and placeholder in url_template:
+            event.setdefault("extra", {})[extra_key] = url_template.replace(
+                placeholder,
+                urllib.parse.quote(str(value), safe=""),
+            )
+        elif extra := event.get("extra"):
+            extra.pop(extra_key, None)
     return event
 
 
@@ -126,6 +183,17 @@ class SentryInstrument(Instrument[SentryConfig]):
         return bool(self.instrument_config.sentry_dsn)
 
     def bootstrap(self) -> None:
+        baggage_integration: typing.Final = (
+            SentryOpentelemetryBaggageIntegration(
+                self.instrument_config.sentry_opentelemetry_baggage_keys,
+                self.instrument_config.sentry_opentelemetry_baggage_url_templates,
+            )
+            if (
+                self.instrument_config.sentry_opentelemetry_baggage_keys
+                or self.instrument_config.sentry_opentelemetry_baggage_url_templates
+            )
+            else None
+        )
         sentry_sdk.init(
             dsn=self.instrument_config.sentry_dsn,
             sample_rate=self.instrument_config.sentry_sample_rate,
@@ -153,7 +221,10 @@ class SentryInstrument(Instrument[SentryConfig]):
                 else None,
                 self.instrument_config.sentry_before_send,
             ),
-            integrations=self.instrument_config.sentry_integrations,
+            integrations=[
+                *self.instrument_config.sentry_integrations,
+                *([baggage_integration] if baggage_integration else []),
+            ],
             **self.instrument_config.sentry_additional_params,
         )
         if self.instrument_config.sentry_tags:

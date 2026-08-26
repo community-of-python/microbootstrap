@@ -21,6 +21,7 @@ from opentelemetry.trace import SpanKind, format_span_id, set_tracer_provider
 from opentelemetry.util._importlib_metadata import entry_points
 
 from microbootstrap.instruments.base import BaseInstrumentConfig, Instrument
+from microbootstrap.instruments.sentry_instrument import snapshot_sentry_opentelemetry_baggage
 
 
 LOGGER_OBJ: typing.Final = structlog.get_logger(__name__)
@@ -55,6 +56,10 @@ def opentelemetry_baggage_scope(
     token: typing.Final = context.attach(baggage_context)
     try:
         yield
+    except Exception as exc:
+        with contextlib.suppress(Exception):
+            snapshot_sentry_opentelemetry_baggage(exc)
+        raise
     finally:
         context.detach(token)
 

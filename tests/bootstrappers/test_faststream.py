@@ -13,6 +13,7 @@ from faststream.redis import RedisBroker, TestRedisBroker
 from faststream.redis.opentelemetry import RedisTelemetryMiddleware
 from faststream.redis.prometheus import RedisPrometheusMiddleware
 
+from microbootstrap import opentelemetry_baggage_scope
 from microbootstrap.bootstrappers.faststream import FastStreamBootstrapper
 from microbootstrap.config.faststream import FastStreamConfig
 from microbootstrap.instruments.health_checks_instrument import HealthChecksConfig
@@ -190,6 +191,81 @@ async def test_faststream_sentry_isolates_concurrent_messages(
         "ValueError: second": "second",
     }
     assert conversation_id_tag not in sentry_sdk.get_isolation_scope()._tags  # noqa: SLF001
+
+
+async def test_faststream_sentry_automatic_errors_use_concurrent_baggage_snapshots(
+    broker: RedisBroker,
+    minimal_sentry_config: SentryConfig,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    channel: typing.Final = "test-channel"
+    conversation_id_tag: typing.Final = "conversation_id"
+    first_started = asyncio.Event()
+    second_started = asyncio.Event()
+    second_captured = asyncio.Event()
+    captured_tags: dict[str, str | None] = {}
+
+    init = mock.Mock()
+    monkeypatch.setattr(sentry_sdk, "init", init)
+    minimal_sentry_config.sentry_tags = None
+    minimal_sentry_config.sentry_opentelemetry_baggage_keys = {conversation_id_tag}
+
+    @broker.subscriber(channel)
+    async def handler(conversation_id: str) -> None:
+        with opentelemetry_baggage_scope({conversation_id_tag: conversation_id}):
+            if conversation_id == "first":
+                first_started.set()
+                await second_started.wait()
+                await second_captured.wait()
+            else:
+                second_started.set()
+                await first_started.wait()
+            raise ValueError(conversation_id)
+
+    FastStreamBootstrapper(FastStreamSettings()).configure_application(
+        FastStreamConfig(broker=broker)
+    ).configure_instruments(minimal_sentry_config).bootstrap()
+
+    baggage_integration: typing.Final = next(
+        integration
+        for integration in init.call_args.kwargs["integrations"]
+        if integration.identifier == "microbootstrap_opentelemetry_baggage"
+    )
+    client = mock.Mock()
+    client.get_integration.return_value = baggage_integration
+    monkeypatch.setattr(sentry_sdk, "get_client", mock.Mock(return_value=client))
+    before_send: typing.Final = init.call_args.kwargs["before_send"]
+    original_log = broker.config.logger.log
+
+    def record_automatic_error(*args: typing.Any, **kwargs: typing.Any) -> None:  # noqa: ANN401
+        if kwargs.get("log_level") == logging.ERROR:
+            exception = typing.cast("ValueError", kwargs["exc_info"])
+            event = before_send(
+                {},
+                {"exc_info": (type(exception), exception, exception.__traceback__)},
+            )
+            captured_tags[str(exception)] = event.get("tags", {}).get(conversation_id_tag)
+            if str(exception) == "second":
+                second_captured.set()
+        original_log(*args, **kwargs)
+
+    monkeypatch.setattr(broker.config.logger, "log", record_automatic_error)
+
+    event_loop = asyncio.get_running_loop()
+    previous_exception_handler = event_loop.get_exception_handler()
+    event_loop.set_exception_handler(lambda *_: None)
+    try:
+        async with TestRedisBroker(broker):
+            errors: typing.Final = await asyncio.gather(
+                broker.publish("first", channel),
+                broker.publish("second", channel),
+                return_exceptions=True,
+            )
+    finally:
+        event_loop.set_exception_handler(previous_exception_handler)
+
+    assert all(isinstance(error, ValueError) for error in errors)
+    assert captured_tags == {"first": "first", "second": "second"}
 
 
 async def test_faststream_sentry_isolates_broker_configured_on_startup(
