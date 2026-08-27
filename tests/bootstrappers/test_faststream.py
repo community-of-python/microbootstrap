@@ -12,6 +12,7 @@ from fastapi.testclient import TestClient
 from faststream.redis import RedisBroker, TestRedisBroker
 from faststream.redis.opentelemetry import RedisTelemetryMiddleware
 from faststream.redis.prometheus import RedisPrometheusMiddleware
+from opentelemetry import baggage, trace
 
 from microbootstrap import opentelemetry_baggage_scope
 from microbootstrap.bootstrappers.faststream import FastStreamBootstrapper
@@ -103,26 +104,57 @@ class TestFastStreamHealthCheck:
         assert response.status_code == status.HTTP_200_OK
 
 
+@pytest.mark.parametrize("conversation_id", ["authoritative-value", None])
 async def test_faststream_opentelemetry(
     monkeypatch: pytest.MonkeyPatch,
     faker: faker.Faker,
     broker: RedisBroker,
     minimal_opentelemetry_config: OpentelemetryConfig,
+    conversation_id: str | None,
 ) -> None:
     monkeypatch.setattr("opentelemetry.sdk.trace.TracerProvider.shutdown", mock.Mock())
+    input_channel: typing.Final = faker.pystr()
+    output_channel: typing.Final = faker.pystr()
+    conversation_id_span_attribute: typing.Final = "conversation.id"
+    observed_context: list[tuple[object | None, object | None, object | None]] = []
+    minimal_opentelemetry_config.opentelemetry_baggage_span_attributes = {
+        "conversation_id": conversation_id_span_attribute
+    }
+
+    @broker.subscriber(input_channel)
+    async def handler(_: str) -> None:
+        with opentelemetry_baggage_scope(
+            {"conversation_id": conversation_id},
+            current_span_attributes={"conversation_id": conversation_id_span_attribute},
+        ):
+            await broker.publish(faker.pystr(), channel=output_channel)
+
+    @broker.subscriber(output_channel)
+    async def capture_context(_: str) -> None:
+        current_span: typing.Final = trace.get_current_span()
+        observed_context.append(
+            (
+                baggage.get_baggage("conversation_id"),
+                baggage.get_baggage("existing_key"),
+                current_span.attributes.get(conversation_id_span_attribute),  # type: ignore[attr-defined]
+            )
+        )
 
     FastStreamBootstrapper(FastStreamSettings()).configure_application(
         FastStreamConfig(broker=broker)
     ).configure_instruments(
         FastStreamOpentelemetryConfig(
-            opentelemetry_middleware_cls=RedisTelemetryMiddleware, **minimal_opentelemetry_config.model_dump()
+            opentelemetry_middleware_cls=RedisTelemetryMiddleware,
+            **minimal_opentelemetry_config.model_dump(),
         )
     ).bootstrap()
 
     async with TestRedisBroker(broker):
-        with mock.patch("opentelemetry.trace.use_span") as mock_capture_event:
-            await broker.publish(faker.pystr(), channel=faker.pystr())
-            assert mock_capture_event.called
+        with opentelemetry_baggage_scope({"conversation_id": "stale-value", "existing_key": "existing-value"}):
+            await broker.publish(faker.pystr(), channel=input_channel)
+
+    assert observed_context == [(conversation_id, "existing-value", conversation_id)]
+    assert baggage.get_baggage("conversation_id") is None
 
 
 async def test_faststream_logging(broker: RedisBroker, minimal_logging_config: LoggingConfig) -> None:

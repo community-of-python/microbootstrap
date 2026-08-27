@@ -24,6 +24,7 @@ from microbootstrap.instruments.opentelemetry_instrument import (
 from microbootstrap.instruments.prometheus_instrument import FastStreamPrometheusConfig, PrometheusInstrument
 from microbootstrap.instruments.pyroscope_instrument import PyroscopeInstrument
 from microbootstrap.instruments.sentry_instrument import SentryInstrument
+from microbootstrap.middlewares.faststream import FastStreamOpenTelemetryBaggageMiddleware
 from microbootstrap.settings import FastStreamSettings
 
 
@@ -100,6 +101,11 @@ class FastStreamOpentelemetryInstrument(BaseOpentelemetryInstrument[FastStreamOp
         if self.instrument_config.opentelemetry_middleware_cls and application.broker:
             application.broker.add_middleware(
                 self.instrument_config.opentelemetry_middleware_cls(tracer_provider=self.tracer_provider),
+            )
+            application.broker.add_middleware(
+                FastStreamOpenTelemetryBaggageMiddleware(
+                    baggage_span_attributes=self.instrument_config.opentelemetry_baggage_span_attributes,
+                ),
             )
         return application
 
