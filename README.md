@@ -463,6 +463,22 @@ Parameters description:
 
 These settings are subsequently passed to [opentelemetry](https://opentelemetry.io/), finalizing your Opentelemetry integration.
 
+If an authoritative baggage value becomes available only after the current span has started, pass the same mapping to
+`opentelemetry_baggage_scope` to also materialize that value on the already-started span:
+
+```python
+from microbootstrap import opentelemetry_baggage_scope
+
+
+with opentelemetry_baggage_scope(
+    {"conversation_id": conversation_id},
+    current_span_attributes=settings.opentelemetry_baggage_span_attributes,
+):
+    ...
+```
+
+Only non-`None` baggage values supplied to the scope and present in the mapping are added to a recording current span.
+
 #### FastStream
 
 For FastStream you also should pass `opentelemetry_middleware_cls` - OpenTelemetry middleware for your broker

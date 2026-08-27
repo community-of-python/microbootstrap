@@ -64,6 +64,51 @@ def test_opentelemetry_baggage_scope_does_not_replace_exception_when_snapshot_fa
         raise ValueError("application error")
 
 
+def test_opentelemetry_baggage_scope_materializes_supplied_values_on_current_span(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    conversation_id = 42
+    current_span = MagicMock(spec=Span)
+    current_span.is_recording.return_value = True
+    monkeypatch.setattr(opentelemetry_instrument, "get_current_span", Mock(return_value=current_span))
+
+    with opentelemetry_baggage_scope(
+        {"conversation_id": conversation_id, "not_configured": "ignored"},
+        current_span_attributes={
+            "conversation_id": "conversation.id",
+            "not_supplied": "not.supplied",
+        },
+    ):
+        assert baggage.get_baggage("conversation_id") == conversation_id
+
+    current_span.set_attribute.assert_called_once_with("conversation.id", str(conversation_id))
+
+
+@pytest.mark.parametrize(
+    ("baggage_value", "is_recording"),
+    [
+        (None, True),
+        ("conversation-1", False),
+    ],
+)
+def test_opentelemetry_baggage_scope_skips_current_span_attribute(
+    baggage_value: str | None,
+    is_recording: bool,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    current_span = MagicMock(spec=Span)
+    current_span.is_recording.return_value = is_recording
+    monkeypatch.setattr(opentelemetry_instrument, "get_current_span", Mock(return_value=current_span))
+
+    with opentelemetry_baggage_scope(
+        {"conversation_id": baggage_value},
+        current_span_attributes={"conversation_id": "conversation.id"},
+    ):
+        pass
+
+    current_span.set_attribute.assert_not_called()
+
+
 @pytest.mark.parametrize(
     ("span_kind", "expected_attribute"),
     [
