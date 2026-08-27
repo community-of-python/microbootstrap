@@ -17,7 +17,7 @@ from opentelemetry.sdk.trace import ReadableSpan, Span, SpanProcessor
 from opentelemetry.sdk.trace import TracerProvider as SdkTracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor, ConsoleSpanExporter, SimpleSpanProcessor
 from opentelemetry.semconv.resource import ResourceAttributes
-from opentelemetry.trace import SpanKind, format_span_id, set_tracer_provider
+from opentelemetry.trace import SpanKind, format_span_id, get_current_span, set_tracer_provider
 from opentelemetry.util._importlib_metadata import entry_points
 
 from microbootstrap.instruments.base import BaseInstrumentConfig, Instrument
@@ -44,6 +44,8 @@ OpentelemetryConfigT = typing.TypeVar("OpentelemetryConfigT", bound="Opentelemet
 @contextlib.contextmanager
 def opentelemetry_baggage_scope(
     baggage_values: typing.Mapping[str, object | None],
+    *,
+    current_span_attributes: typing.Mapping[str, str] | None = None,
 ) -> typing.Iterator[None]:
     baggage_context = context.get_current()
     for key, value in baggage_values.items():
@@ -55,6 +57,10 @@ def opentelemetry_baggage_scope(
 
     token: typing.Final = context.attach(baggage_context)
     try:
+        if current_span_attributes and (current_span := get_current_span()).is_recording():
+            for baggage_key, span_attribute in current_span_attributes.items():
+                if baggage_key in baggage_values and (value := baggage_values[baggage_key]) is not None:
+                    current_span.set_attribute(span_attribute, str(value))
         yield
     except Exception as exc:
         with contextlib.suppress(Exception):
