@@ -1,4 +1,5 @@
 from __future__ import annotations
+import builtins
 import copy
 import logging
 import typing
@@ -435,6 +436,26 @@ class TestSentryEnrichEventFromOpentelemetryBaggage:
 
         assert cause_result["tags"]["conversation_id"] == "cause"
         assert wrapper_result["tags"]["conversation_id"] == "wrapper"
+
+    @pytest.mark.skipif(not hasattr(builtins, "ExceptionGroup"), reason="ExceptionGroup requires Python 3.11+")
+    def test_exception_group_uses_first_nested_snapshot(self) -> None:
+        first_exception = RuntimeError("first")
+        setattr(first_exception, SENTRY_OTEL_BAGGAGE_SNAPSHOT_ATTRIBUTE, {"conversation_id": "first"})
+        second_exception = RuntimeError("second")
+        setattr(second_exception, SENTRY_OTEL_BAGGAGE_SNAPSHOT_ATTRIBUTE, {"conversation_id": "second"})
+        exception_group_type = vars(builtins)["ExceptionGroup"]
+        exception_group: BaseException = exception_group_type(
+            "concurrent failures", [first_exception, second_exception]
+        )
+
+        result = enrich_sentry_event_from_opentelemetry_baggage(
+            {"conversation_id"},
+            {},
+            {},
+            {"exc_info": (type(exception_group), exception_group, None)},
+        )
+
+        assert result["tags"]["conversation_id"] == "first"
 
     def test_exception_chain_cycle_falls_back_to_live_baggage(self) -> None:
         exception = RuntimeError("cycle")

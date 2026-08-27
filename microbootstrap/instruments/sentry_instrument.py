@@ -111,14 +111,26 @@ def _find_sentry_opentelemetry_baggage_snapshot(hint: sentry_types.Hint) -> Mapp
     if not isinstance(exception_value, BaseException):
         return None
 
-    exception: BaseException | None = exception_value
+    exceptions_to_visit: list[BaseException] = [exception_value]
     visited_exceptions: set[int] = set()
-    while exception is not None and id(exception) not in visited_exceptions:
+    while exceptions_to_visit:
+        exception = exceptions_to_visit.pop()
+        if id(exception) in visited_exceptions:
+            continue
         visited_exceptions.add(id(exception))
         exception_snapshot = getattr(exception, SENTRY_OTEL_BAGGAGE_SNAPSHOT_ATTRIBUTE, None)
         if isinstance(exception_snapshot, Mapping):
             return exception_snapshot
-        exception = exception.__cause__ or (None if exception.__suppress_context__ else exception.__context__)
+
+        nested_exceptions = getattr(exception, "exceptions", ())
+        if isinstance(nested_exceptions, tuple):
+            exceptions_to_visit.extend(
+                reversed([nested for nested in nested_exceptions if isinstance(nested, BaseException)])
+            )
+        if chained_exception := exception.__cause__ or (
+            None if exception.__suppress_context__ else exception.__context__
+        ):
+            exceptions_to_visit.append(chained_exception)
     return None
 
 
