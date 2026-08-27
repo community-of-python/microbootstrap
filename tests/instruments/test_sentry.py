@@ -1,4 +1,5 @@
 from __future__ import annotations
+import builtins
 import copy
 import logging
 import typing
@@ -7,19 +8,23 @@ from unittest import mock
 import fastapi
 import litestar
 import pytest
+import sentry_sdk
 import structlog
 from fastapi.testclient import TestClient as FastAPITestClient
 from litestar.testing import TestClient as LitestarTestClient
 from opentelemetry import baggage
 from opentelemetry.context import Context, attach, detach
 
+from microbootstrap import opentelemetry_baggage_scope
 from microbootstrap.bootstrappers.fastapi import FastApiLoggingInstrument
 from microbootstrap.bootstrappers.litestar import LitestarSentryInstrument
 from microbootstrap.instruments.logging_instrument import LoggingConfig, LoggingInstrument
 from microbootstrap.instruments.sentry_instrument import (
     SENTRY_EXTRA_OTEL_TRACE_ID_KEY,
     SENTRY_EXTRA_OTEL_TRACE_URL_KEY,
+    SENTRY_OTEL_BAGGAGE_SNAPSHOT_ATTRIBUTE,
     SentryInstrument,
+    SentryOpentelemetryBaggageIntegration,
     add_trace_url_to_event,
     enrich_sentry_event_from_opentelemetry_baggage,
     enrich_sentry_event_from_structlog_log,
@@ -159,6 +164,17 @@ class TestSentryEnrichEventFromStructlog:
 
 
 TRACE_URL_TEMPLATE = "https://example.com/traces/{trace_id}"
+CONVERSATION_LOGS_URL_TEMPLATE = "https://example.com/logs/{conversation_id}"
+
+
+def _configure_sentry_baggage_integration(monkeypatch: pytest.MonkeyPatch) -> None:
+    integration: typing.Final = SentryOpentelemetryBaggageIntegration(
+        {"conversation_id"},
+        {"conversation_id": CONVERSATION_LOGS_URL_TEMPLATE},
+    )
+    client = mock.Mock()
+    client.get_integration.return_value = integration
+    monkeypatch.setattr(sentry_sdk, "get_client", mock.Mock(return_value=client))
 
 
 class TestSentryAddTraceUrlToEvent:
@@ -271,6 +287,206 @@ class TestSentryEnrichEventFromOpentelemetryBaggage:
 
         assert [result["tags"]["conversation_id"] for result in results] == ["first", "second"]
 
+    @pytest.mark.parametrize(
+        "hint",
+        [
+            {"exc_info": ()},
+            {"exc_info": (RuntimeError, "not-an-exception", None)},
+        ],
+    )
+    def test_invalid_exception_hint_falls_back_to_live_baggage(self, hint: sentry_types.Hint) -> None:
+        with opentelemetry_baggage_scope({"conversation_id": "live"}):
+            result = enrich_sentry_event_from_opentelemetry_baggage(
+                {"conversation_id"},
+                {},
+                {},
+                hint,
+            )
+
+        assert result["tags"]["conversation_id"] == "live"
+
+    def test_uses_exception_snapshot_after_baggage_scope_detaches(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        _configure_sentry_baggage_integration(monkeypatch)
+
+        with (
+            pytest.raises(RuntimeError) as exc_info,
+            opentelemetry_baggage_scope(
+                {
+                    "conversation_id": "conversation/id +",
+                    "not_allowed": "secret",
+                }
+            ),
+        ):
+            raise RuntimeError("test error")
+
+        assert baggage.get_baggage("conversation_id") is None
+        result = enrich_sentry_event_from_opentelemetry_baggage(
+            {"conversation_id"},
+            {"conversation_id": CONVERSATION_LOGS_URL_TEMPLATE},
+            {},
+            {"exc_info": (RuntimeError, exc_info.value, exc_info.value.__traceback__)},
+        )
+
+        assert result["tags"] == {"conversation_id": "conversation/id +"}
+        assert result["extra"] == {
+            "conversation_id_url": "https://example.com/logs/conversation%2Fid%20%2B",
+        }
+        assert getattr(exc_info.value, SENTRY_OTEL_BAGGAGE_SNAPSHOT_ATTRIBUTE) == {
+            "conversation_id": "conversation/id +",
+        }
+
+    def test_nested_baggage_scopes_keep_innermost_snapshot(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        _configure_sentry_baggage_integration(monkeypatch)
+
+        with (
+            pytest.raises(RuntimeError) as exc_info,
+            opentelemetry_baggage_scope({"conversation_id": "outer"}),
+            opentelemetry_baggage_scope({"conversation_id": "inner"}),
+        ):
+            raise RuntimeError("test error")
+
+        result = enrich_sentry_event_from_opentelemetry_baggage(
+            {"conversation_id"},
+            {},
+            {},
+            {"exc_info": (RuntimeError, exc_info.value, exc_info.value.__traceback__)},
+        )
+
+        assert result["tags"]["conversation_id"] == "inner"
+
+    def test_unhashable_baggage_value_does_not_replace_original_exception(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        _configure_sentry_baggage_integration(monkeypatch)
+        baggage_value: list[str] = ["conversation-1"]
+
+        with (
+            pytest.raises(RuntimeError, match="test error") as exc_info,
+            opentelemetry_baggage_scope({"conversation_id": baggage_value}),
+        ):
+            raise RuntimeError("test error")
+
+        assert getattr(exc_info.value, SENTRY_OTEL_BAGGAGE_SNAPSHOT_ATTRIBUTE) == {
+            "conversation_id": baggage_value,
+        }
+
+    def test_missing_snapshot_value_removes_stale_event_fields(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        _configure_sentry_baggage_integration(monkeypatch)
+        outer_token = attach(baggage.set_baggage("conversation_id", "parent", context=Context()))
+
+        try:
+            with pytest.raises(RuntimeError) as exc_info, opentelemetry_baggage_scope({"conversation_id": None}):
+                raise RuntimeError("test error")
+
+            assert baggage.get_baggage("conversation_id") == "parent"
+            result = enrich_sentry_event_from_opentelemetry_baggage(
+                {"conversation_id"},
+                {"conversation_id": CONVERSATION_LOGS_URL_TEMPLATE},
+                {
+                    "tags": {"conversation_id": "stale", "existing": "tag"},
+                    "extra": {"conversation_id_url": "stale", "existing": "extra"},
+                },
+                {"exc_info": (RuntimeError, exc_info.value, exc_info.value.__traceback__)},
+            )
+        finally:
+            detach(outer_token)
+
+        assert result["tags"] == {"existing": "tag"}
+        assert result["extra"] == {"existing": "extra"}
+
+    def test_caught_exception_snapshot_does_not_contaminate_later_event(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        _configure_sentry_baggage_integration(monkeypatch)
+
+        with pytest.raises(RuntimeError), opentelemetry_baggage_scope({"conversation_id": "caught"}):
+            raise RuntimeError("caught error")
+
+        with opentelemetry_baggage_scope({"conversation_id": "later"}):
+            result = enrich_sentry_event_from_opentelemetry_baggage(
+                {"conversation_id"},
+                {},
+                {},
+                {},
+            )
+
+        assert result["tags"]["conversation_id"] == "later"
+
+    def test_wrapped_exception_uses_first_snapshot_in_visible_chain(self) -> None:
+        cause = RuntimeError("cause")
+        setattr(cause, SENTRY_OTEL_BAGGAGE_SNAPSHOT_ATTRIBUTE, {"conversation_id": "cause"})
+        wrapper = ValueError("wrapper")
+        wrapper.__cause__ = cause
+
+        cause_result = enrich_sentry_event_from_opentelemetry_baggage(
+            {"conversation_id"},
+            {},
+            {},
+            {"exc_info": (ValueError, wrapper, None)},
+        )
+        setattr(wrapper, SENTRY_OTEL_BAGGAGE_SNAPSHOT_ATTRIBUTE, {"conversation_id": "wrapper"})
+        wrapper_result = enrich_sentry_event_from_opentelemetry_baggage(
+            {"conversation_id"},
+            {},
+            {},
+            {"exc_info": (ValueError, wrapper, None)},
+        )
+
+        assert cause_result["tags"]["conversation_id"] == "cause"
+        assert wrapper_result["tags"]["conversation_id"] == "wrapper"
+
+    @pytest.mark.skipif(not hasattr(builtins, "ExceptionGroup"), reason="ExceptionGroup requires Python 3.11+")
+    def test_exception_group_uses_first_nested_snapshot(self) -> None:
+        first_exception = RuntimeError("first")
+        setattr(first_exception, SENTRY_OTEL_BAGGAGE_SNAPSHOT_ATTRIBUTE, {"conversation_id": "first"})
+        second_exception = RuntimeError("second")
+        setattr(second_exception, SENTRY_OTEL_BAGGAGE_SNAPSHOT_ATTRIBUTE, {"conversation_id": "second"})
+        exception_group_type = vars(builtins)["ExceptionGroup"]
+        exception_group: BaseException = exception_group_type(
+            "concurrent failures", [first_exception, second_exception]
+        )
+
+        result = enrich_sentry_event_from_opentelemetry_baggage(
+            {"conversation_id"},
+            {},
+            {},
+            {"exc_info": (type(exception_group), exception_group, None)},
+        )
+
+        assert result["tags"]["conversation_id"] == "first"
+
+    def test_exception_chain_cycle_falls_back_to_live_baggage(self) -> None:
+        exception = RuntimeError("cycle")
+        exception.__cause__ = exception
+
+        with opentelemetry_baggage_scope({"conversation_id": "live"}):
+            result = enrich_sentry_event_from_opentelemetry_baggage(
+                {"conversation_id"},
+                {},
+                {},
+                {"exc_info": (RuntimeError, exception, None)},
+            )
+
+        assert result["tags"]["conversation_id"] == "live"
+
+    def test_scope_without_sentry_integration_does_not_attach_snapshot(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        client = mock.Mock()
+        client.get_integration.return_value = None
+        monkeypatch.setattr(sentry_sdk, "get_client", mock.Mock(return_value=client))
+
+        with (
+            pytest.raises(RuntimeError) as exc_info,
+            opentelemetry_baggage_scope({"conversation_id": "conversation-1"}),
+        ):
+            raise RuntimeError("test error")
+
+        assert not hasattr(exc_info.value, SENTRY_OTEL_BAGGAGE_SNAPSHOT_ATTRIBUTE)
+
 
 def test_sentry_bootstrap_composes_baggage_enrichment_before_custom_callback(
     minimal_sentry_config: SentryConfig,
@@ -278,6 +494,9 @@ def test_sentry_bootstrap_composes_baggage_enrichment_before_custom_callback(
 ) -> None:
     custom_before_send = mock.Mock(side_effect=lambda event, _hint: event)
     minimal_sentry_config.sentry_opentelemetry_baggage_keys = {"conversation_id"}
+    minimal_sentry_config.sentry_opentelemetry_baggage_url_templates = {
+        "conversation_id": CONVERSATION_LOGS_URL_TEMPLATE,
+    }
     minimal_sentry_config.sentry_before_send = custom_before_send
     init = mock.Mock()
     monkeypatch.setattr("sentry_sdk.init", init)
@@ -291,6 +510,16 @@ def test_sentry_bootstrap_composes_baggage_enrichment_before_custom_callback(
 
     assert result["tags"]["conversation_id"] == "conversation-1"
     assert custom_before_send.call_args.args[0]["tags"]["conversation_id"] == "conversation-1"
+    baggage_integration: typing.Final = next(
+        integration
+        for integration in init.call_args.kwargs["integrations"]
+        if isinstance(integration, SentryOpentelemetryBaggageIntegration)
+    )
+    assert baggage_integration.baggage_keys == {"conversation_id"}
+    assert baggage_integration.baggage_url_templates == {
+        "conversation_id": CONVERSATION_LOGS_URL_TEMPLATE,
+    }
+    assert baggage_integration.setup_once() is None
 
 
 @pytest.mark.parametrize("logger_instance", [structlog.get_logger(__name__), logging.getLogger(__name__)])

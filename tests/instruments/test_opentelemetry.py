@@ -48,6 +48,22 @@ def test_opentelemetry_baggage_scope_overrides_removes_and_restores_values() -> 
         context.detach(outer_token)
 
 
+def test_opentelemetry_baggage_scope_does_not_replace_exception_when_snapshot_fails(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        opentelemetry_instrument,
+        "snapshot_sentry_opentelemetry_baggage",
+        Mock(side_effect=RuntimeError("snapshot failed")),
+    )
+
+    with (
+        pytest.raises(ValueError, match="application error"),
+        opentelemetry_baggage_scope({"conversation_id": "conversation-1"}),
+    ):
+        raise ValueError("application error")
+
+
 @pytest.mark.parametrize(
     ("span_kind", "expected_attribute"),
     [
