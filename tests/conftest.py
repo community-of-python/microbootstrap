@@ -1,10 +1,13 @@
 from __future__ import annotations
+import dataclasses
 import importlib
 import typing
 from unittest.mock import AsyncMock, MagicMock
 
 import litestar
 import pytest
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
 from prometheus_client import REGISTRY
 from sentry_sdk.transport import Transport as SentryTransport
 
@@ -27,10 +30,54 @@ from microbootstrap.settings import BaseServiceSettings, ServerConfig
 
 
 if typing.TYPE_CHECKING:
+    from opentelemetry.sdk.resources import Resource
     from sentry_sdk.envelope import Envelope as SentryEnvelope
 
 
 pytestmark = [pytest.mark.anyio]
+
+
+@dataclasses.dataclass
+class InMemoryOpenTelemetry:
+    exporters: list[InMemorySpanExporter] = dataclasses.field(default_factory=list)
+    exporter_calls: list[tuple[tuple[object, ...], dict[str, object]]] = dataclasses.field(default_factory=list)
+    providers: list[TracerProvider] = dataclasses.field(default_factory=list)
+
+    @staticmethod
+    def _flush_provider(provider: TracerProvider) -> None:
+        if not provider.force_flush(timeout_millis=1_000):
+            raise AssertionError("force_flush returned False")
+
+    @staticmethod
+    def _record_cleanup_failure(
+        operation: str,
+        cleanup: typing.Callable[[], None],
+        failures: list[tuple[str, Exception]],
+    ) -> None:
+        try:
+            cleanup()
+        except Exception as exc:  # noqa: BLE001 - fixture cleanup must continue for every owned provider.
+            failures.append((operation, exc))
+
+    def cleanup(self) -> None:
+        failures: list[tuple[str, Exception]] = []
+        for provider_index, provider in enumerate(self.providers):
+
+            def flush_provider(selected_provider: TracerProvider = provider) -> None:
+                self._flush_provider(selected_provider)
+
+            self._record_cleanup_failure(
+                f"provider {provider_index} force_flush",
+                flush_provider,
+                failures,
+            )
+
+        for provider_index, provider in enumerate(self.providers):
+            self._record_cleanup_failure(f"provider {provider_index} shutdown", provider.shutdown, failures)
+
+        if failures:
+            details = "; ".join(f"{operation}: {failure!r}" for operation, failure in failures)
+            raise RuntimeError(f"OpenTelemetry fixture cleanup failed: {details}") from failures[0][1]
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -139,7 +186,32 @@ def reset_reloaded_settings_module() -> typing.Iterator[None]:
 
 @pytest.fixture(autouse=True)
 def patch_out_entry_points(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(opentelemetry_instrument, "entry_points", MagicMock(retrun_value=[]))
+    monkeypatch.setattr(opentelemetry_instrument, "entry_points", MagicMock(return_value=[]))
+
+
+@pytest.fixture(autouse=True)
+def in_memory_otel(monkeypatch: pytest.MonkeyPatch) -> typing.Iterator[InMemoryOpenTelemetry]:
+    """Keep real SDK providers/processors while replacing OTLP delivery at its boundary."""
+    harness = InMemoryOpenTelemetry()
+
+    def create_exporter(*args: object, **kwargs: object) -> InMemorySpanExporter:
+        harness.exporter_calls.append((args, kwargs))
+        exporter = InMemorySpanExporter()
+        harness.exporters.append(exporter)
+        return exporter
+
+    def create_provider(*, resource: Resource | None = None) -> TracerProvider:
+        provider = TracerProvider(resource=resource)
+        harness.providers.append(provider)
+        return provider
+
+    monkeypatch.setattr(opentelemetry_instrument, "OTLPSpanExporter", create_exporter)
+    monkeypatch.setattr(opentelemetry_instrument, "SdkTracerProvider", create_provider)
+
+    try:
+        yield harness
+    finally:
+        harness.cleanup()
 
 
 @pytest.fixture(autouse=True)

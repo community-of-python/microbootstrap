@@ -2,15 +2,18 @@ import typing
 
 import fastapi
 import litestar
+import pytest
 from fastapi.testclient import TestClient as FastAPITestClient
 from litestar import openapi, status_codes
 from litestar.openapi import spec as litestar_openapi
 from litestar.openapi.plugins import ScalarRenderPlugin
 from litestar.static_files import StaticFilesConfig
 from litestar.testing import TestClient as LitestarTestClient
+from pydantic import ValidationError
 
 from microbootstrap.bootstrappers.fastapi import FastApiSwaggerInstrument
 from microbootstrap.bootstrappers.litestar import LitestarSwaggerInstrument
+from microbootstrap.instruments.openapi_version_docs import OpenApiOperationSelector, OpenApiVersionDocsConfig
 from microbootstrap.instruments.swagger_instrument import SwaggerConfig, SwaggerInstrument
 
 
@@ -37,7 +40,7 @@ def test_swagger_teardown(
     minimal_swagger_config: SwaggerConfig,
 ) -> None:
     swagger_instrument: typing.Final = SwaggerInstrument(minimal_swagger_config)
-    assert swagger_instrument.teardown() is None  # type: ignore[func-returns-value]
+    swagger_instrument.teardown()
 
 
 def test_litestar_swagger_bootstrap_online_docs(minimal_swagger_config: SwaggerConfig) -> None:
@@ -130,6 +133,8 @@ def test_litestar_swagger_bootstrap_working_offline_docs(
         assert response.status_code == status_codes.HTTP_200_OK
         response = test_client.get(f"{minimal_swagger_config.service_static_path}/swagger-ui.css")
         assert response.status_code == status_codes.HTTP_200_OK
+        response = test_client.get(f"{minimal_swagger_config.service_static_path}/swagger-ui-bundle.js")
+        assert response.status_code == status_codes.HTTP_200_OK
 
 
 def test_fastapi_swagger_bootstrap_online_docs(minimal_swagger_config: SwaggerConfig) -> None:
@@ -172,3 +177,127 @@ def test_fastapi_swagger_bootstrap_working_offline_docs(
         assert response.status_code == status_codes.HTTP_200_OK
         response = test_client.get(f"{minimal_swagger_config.service_static_path}/swagger-ui.css")
         assert response.status_code == status_codes.HTTP_200_OK
+        response = test_client.get(f"{minimal_swagger_config.service_static_path}/swagger-ui-bundle.js")
+        assert response.status_code == status_codes.HTTP_200_OK
+
+
+@pytest.mark.parametrize(
+    ("configuration", "error"),
+    [
+        (
+            lambda: OpenApiVersionDocsConfig(
+                enabled=True,
+                vendor_media_type="application/vnd.example+json",
+            ),
+            "requires at least one supported API version",
+        ),
+        (
+            lambda: OpenApiVersionDocsConfig(enabled=True, supported_versions=("2026-01",)),
+            "requires an explicit vendor media type",
+        ),
+        (
+            lambda: OpenApiVersionDocsConfig(
+                enabled=True,
+                vendor_media_type="application/json",
+                supported_versions=("1.0",),
+            ),
+            "Vendor media type must use",
+        ),
+        (
+            lambda: OpenApiVersionDocsConfig(
+                enabled=True,
+                vendor_media_type="application/vnd.example+json",
+                supported_versions=("1.0", "1.0"),
+            ),
+            "must not contain duplicates",
+        ),
+        (
+            lambda: OpenApiOperationSelector(path="widgets", method="get"),
+            "must be an absolute path",
+        ),
+        (
+            lambda: OpenApiOperationSelector(path="/widgets", method="GET"),
+            "Operation method must be one of",
+        ),
+    ],
+)
+def test_openapi_version_docs_configuration_rejects_invalid_values(
+    configuration: typing.Callable[[], object],
+    error: str,
+) -> None:
+    with pytest.raises(ValidationError, match=error):
+        configuration()
+
+
+@pytest.mark.parametrize(
+    "vendor_media_type",
+    [
+        "",
+        "version1.0",
+        "application/json",
+        "application/vnd.+json",
+        "application/vnd.example api+json",
+        "application/vnd.bad name+json",
+        "application/vnd.example\tapi+json",
+        "application/vnd.example\napi+json",
+        "application/vnd.example\x00api+json",
+        "application/vnd.example`api+json",
+        "application/vnd.example,api+json",
+        "application/vnd.example;api+json",
+    ],
+)
+def test_openapi_version_docs_rejects_unsafe_vendor_media_types(vendor_media_type: str) -> None:
+    with pytest.raises(ValidationError, match="Vendor media type must use"):
+        OpenApiVersionDocsConfig(
+            enabled=True,
+            vendor_media_type=vendor_media_type,
+            supported_versions=("release-2026",),
+        )
+
+
+@pytest.mark.parametrize(
+    "version",
+    [
+        "",
+        "1.0 ",
+        "1.0\tnext",
+        "1.0\nnext",
+        "1.0\x00next",
+        "1.0`next",
+        "1.0,next",
+        "1.0;next",
+        "version1.0, application/json",
+    ],
+)
+def test_openapi_version_docs_rejects_unsafe_versions(version: str) -> None:
+    with pytest.raises(ValidationError, match="safe media-type token"):
+        OpenApiVersionDocsConfig(
+            enabled=True,
+            vendor_media_type="application/vnd.real-api+json",
+            supported_versions=(version,),
+        )
+
+
+def test_openapi_version_docs_accepts_real_vendor_and_non_semver_versions() -> None:
+    configuration: typing.Final = OpenApiVersionDocsConfig(
+        enabled=True,
+        vendor_media_type="application/vnd.real-api_v2+json",
+        supported_versions=("2026-01", "release-candidate", "v1.0+beta"),
+    )
+
+    assert configuration.vendor_media_type == "application/vnd.real-api_v2+json"
+    assert configuration.supported_versions == ("2026-01", "release-candidate", "v1.0+beta")
+
+
+def test_openapi_version_docs_disabled_default_is_usable() -> None:
+    configuration: typing.Final = OpenApiVersionDocsConfig()
+
+    assert not configuration.enabled
+    assert configuration.vendor_media_type is None
+    assert not configuration.supported_versions
+
+
+def test_openapi_version_docs_disabled_default_survives_model_dump_and_revalidation() -> None:
+    configuration: typing.Final = OpenApiVersionDocsConfig()
+
+    assert OpenApiVersionDocsConfig.model_validate(configuration.model_dump()) == configuration

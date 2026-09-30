@@ -81,6 +81,20 @@ Also, you can specify extras during installation for concrete framework:
 - `faststream` (ASGI app)
 - `fastmcp`
 
+The `fastapi`, `litestar`, and `faststream` bounds are support-policy bounds based on the evidence below, not
+mathematical minimum versions or certification of every version in each declared range, every dependency combination,
+or every supported Python version.
+
+A full combined selected-framework-floors suite passed 308 tests on Python 3.12.7 with FastAPI 0.110.1,
+prometheus-fastapi-instrumentator 7.1.0, Litestar 2.21.1, and FastStream 0.6.7. A separate fresh frozen installation
+using uv 0.10 passed 308 tests, Ruff check, Ruff format check, and mypy with an exact resolved graph including FastAPI
+0.141.1, prometheus-fastapi-instrumentator 8.1.0, Litestar 2.24.0, and FastStream 0.6.7. The ignored lock file is
+local validation evidence and is not included in this PR. These runs exclude the brokerless AsyncAPI case and do not
+certify future releases, platform variants, multi-broker configurations, external transports, or OTLP delivery.
+
+An application without a broker is not required to deliver AsyncAPI documentation and is not part of the OpenAPI
+delivery contract.
+
 Also we have `granian` extra that is requires for `create_granian_server`.
 
 For uv:
@@ -593,6 +607,93 @@ Parameter descriptions:
 - `swagger_path` - The path where the documentation can be found.
 - `swagger_offline_docs` - A boolean value that, when set to True, allows the Swagger JS bundles to be accessed offline. This is because the service starts to host via static.
 - `swagger_extra_params` - Additional parameters to pass into the OpenAPI configuration.
+
+#### Optional security schemes and API-version documentation
+
+Both OpenAPI additions are opt-in. `SwaggerConfig.security_schemes` adds reusable definitions to
+`components.securitySchemes`; it does not add global or operation-level security requirements.
+`OpenApiVersionDocsConfig` documents a media-type convention only; it does not negotiate requests, add an `Accept`
+parameter, change response media types, or select a version in Swagger UI.
+
+```python
+from microbootstrap import (
+    OpenApiApiKeySecurityScheme as ApiKeySecurityScheme,
+    OpenApiHttpSecurityScheme,
+    OpenApiOperationSelector,
+    OpenApiOperationVersionOverride,
+    OpenApiOAuth2SecurityScheme,
+    OpenApiOAuthFlow,
+    OpenApiOAuthFlows,
+    OpenApiOpenIdConnectSecurityScheme,
+    OpenApiVersionDocsConfig,
+    SwaggerConfig,
+)
+
+version_docs = OpenApiVersionDocsConfig(
+    enabled=True,
+    vendor_media_type="application/vnd.example+json",
+    supported_versions=("1.0",),
+    suppressed_operations=(OpenApiOperationSelector(path="/internal/widgets", method="get"),),
+    operation_versions=(
+        OpenApiOperationVersionOverride(path="/widgets", method="post", supported_versions=("2.0",)),
+    ),
+)
+
+application = (
+    LitestarBootstrapper(settings)
+    .configure_instrument(
+        SwaggerConfig(
+            security_schemes={
+                "serviceAuth": OpenApiHttpSecurityScheme(scheme="bearer", bearer_format="JWT"),
+                "apiKey": ApiKeySecurityScheme(name="X-API-Key", location="header"),
+                "oauth": OpenApiOAuth2SecurityScheme(
+                    flows=OpenApiOAuthFlows(
+                        client_credentials=OpenApiOAuthFlow(token_url="/oauth/token", scopes={"read": "Read data"})
+                    )
+                ),
+                "oidc": OpenApiOpenIdConnectSecurityScheme(
+                    open_id_connect_url="/.well-known/openid-configuration"
+                ),
+            },
+            openapi_version_docs=version_docs,
+        )
+    )
+    .bootstrap()
+)
+```
+
+The supported typed definitions are HTTP, API key, OAuth 2.0, and OpenID Connect. Python field names and OpenAPI
+aliases are accepted; serialized schemas use canonical OpenAPI names such as `bearerFormat`, `in`, `tokenUrl`, and
+`openIdConnectUrl`. OAuth flow and OpenID Connect URLs may be relative, but must be non-empty and contain no whitespace
+or control characters. OAuth 2.0 configuration must declare at least one flow. A matching service-owned scheme is retained, while a same-named
+conflicting definition raises `ValueError`.
+
+Each non-suppressed documented operation receives an `x-accept-versioning` extension and matching text appended to its
+existing description. The extension is:
+
+```json
+{
+  "header": "Accept",
+  "mediaType": "application/vnd.example+json",
+  "parameter": "version",
+  "supportedVersions": ["1.0"]
+}
+```
+
+`operation_versions` replaces the project version list for its exact path and lower-case method pair. Suppressed pairs
+remain untouched. A conflicting service-owned `x-accept-versioning` extension raises `ValueError`; an identical one is
+idempotent. Configure before the first schema or documentation request.
+
+When enabled, `vendor_media_type` is required explicitly. It must match
+`application/vnd.<vendor>+json`, where `<vendor>` is one or more characters from
+`!#$%&'*+-.^_|~0-9A-Za-z`. Backticks are intentionally excluded from the HTTP token set because values are rendered in
+Markdown code spans. Each `supported_versions` value uses the same non-empty grammar and is not constrained to a
+numeric or semantic-version format. Whitespace, control characters, commas, semicolons, and values outside that grammar
+are rejected; values are never trimmed or escaped.
+
+For Litestar, the bootstrapper updates the canonical OpenAPI model; for FastAPI, it composes the public `app.openapi`
+callable. Custom components, renderers, generators, schema caching, and errors are retained. Exporters should use that
+same canonical schema.
 
 #### FastStream AsyncAPI documentation
 
