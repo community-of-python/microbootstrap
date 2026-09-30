@@ -77,10 +77,7 @@ class KwargsAsgiFastStream(AsgiFastStream):
 
 
 def build_faststream_route_details_from_scope(scope: Scope) -> tuple[str, dict[str, str]]:
-    """Retrieve the span name and attributes from the ASGI scope for FastStream routes.
-
-    FastStream matches ASGI routes by exact path, so the request path is the route itself.
-    """
+    # FastStream matches ASGI routes by exact path, so the request path is the route itself
     method: typing.Final = str(scope.get("method", "HTTP")).strip()
     path: typing.Final = scope.get("path")
     if path is None:
