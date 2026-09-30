@@ -481,7 +481,7 @@ Only non-`None` baggage values supplied to the scope and present in the mapping 
 
 #### FastStream
 
-For FastStream you also should pass `opentelemetry_middleware_cls` - OpenTelemetry middleware for your broker
+To trace broker messages, pass `opentelemetry_middleware_cls` - OpenTelemetry middleware for your broker
 
 ```python
 from microbootstrap import FastStreamSettings, FastStreamTelemetryMiddlewareProtocol
@@ -497,12 +497,21 @@ class YourSettings(FastStreamSettings):
 HTTP requests to the FastStream ASGI application (health checks, AsyncAPI docs and other `asgi_routes`) are wrapped in
 [`OpenTelemetryMiddleware`](https://opentelemetry-python-contrib.readthedocs.io/en/latest/instrumentation/asgi/asgi.html)
 the same way as in Litestar, so each request produces a `SERVER` span named like `GET /health/` with the `http.route` attribute
-and the response status code. Lifespan events bypass the middleware.
+and the response status code. This does not require `opentelemetry_middleware_cls`. Requests to unknown paths produce spans
+named after the HTTP method only, without `http.route`. Lifespan events bypass the middleware.
 
 - `opentelemetry_exclude_urls` - urls without spans, `/metrics` by default.
 - `opentelemetry_generate_health_check_spans` - set to `False` to skip spans for `health_checks_path`.
 - The status code attribute name depends on `OTEL_SEMCONV_STABILITY_OPT_IN`: `http.status_code` when unset,
   `http.response.status_code` for `http`, both for `http/dup`.
+
+To wrap HTTP requests in your own ASGI middleware, use `add_http_middleware` on the bootstrapped application.
+It accepts a factory that receives the current HTTP ASGI app and returns the wrapped one:
+
+```python
+application = FastStreamBootstrapper(settings).bootstrap()
+application.add_http_middleware(lambda app: YourAsgiMiddleware(app))
+```
 
 ### [Pyroscope](https://pyroscope.io)
 

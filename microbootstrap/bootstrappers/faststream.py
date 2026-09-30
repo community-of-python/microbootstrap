@@ -76,17 +76,19 @@ class KwargsAsgiFastStream(AsgiFastStream):
         await super().__call__(scope, receive, send)
 
 
-def build_faststream_route_details_from_scope(scope: Scope) -> tuple[str, dict[str, str]]:
-    # FastStream matches ASGI routes by exact path, so the request path is the route itself
+def build_faststream_route_details_from_scope(
+    scope: Scope,
+    routes: typing.Iterable[tuple[str, ASGIApp]],
+) -> tuple[str, dict[str, str]]:
     method: typing.Final = str(scope.get("method", "HTTP")).strip()
     path: typing.Final = scope.get("path")
-    if path is None:
+    # FastStream matches ASGI routes by exact path, unmatched paths get no `http.route` to keep its cardinality low
+    if path is None or all(path != route_path for route_path, _ in routes):
         return method, {}
-    path_stripped: typing.Final = path.strip()
-    return build_span_name(method, path_stripped), {"http.route": path_stripped}
+    return build_span_name(method, path), {"http.route": path}
 
 
-class FastStreamBootstrapper(ApplicationBootstrapper[FastStreamSettings, AsgiFastStream, FastStreamConfig]):
+class FastStreamBootstrapper(ApplicationBootstrapper[FastStreamSettings, KwargsAsgiFastStream, FastStreamConfig]):
     application_config = FastStreamConfig()
     application_type = KwargsAsgiFastStream
 
@@ -120,9 +122,6 @@ FastStreamBootstrapper.use_instrument()(PyroscopeInstrument)
 
 @FastStreamBootstrapper.use_instrument()
 class FastStreamOpentelemetryInstrument(BaseOpentelemetryInstrument[FastStreamOpentelemetryConfig]):
-    def is_ready(self) -> bool:
-        return bool(self.instrument_config.opentelemetry_middleware_cls and super().is_ready())
-
     def bootstrap_after(self, application: AsgiFastStream) -> AsgiFastStream:  # type: ignore[override]
         if self.instrument_config.opentelemetry_middleware_cls and application.broker:
             application.broker.add_middleware(
@@ -134,13 +133,18 @@ class FastStreamOpentelemetryInstrument(BaseOpentelemetryInstrument[FastStreamOp
                 ),
             )
         if isinstance(application, KwargsAsgiFastStream):
-            application.add_http_middleware(self.create_open_telemetry_middleware)
+            application.add_http_middleware(
+                functools.partial(self.create_open_telemetry_middleware, application=application),
+            )
         return application
 
-    def create_open_telemetry_middleware(self, app: ASGIApp) -> ASGIApp:
+    def create_open_telemetry_middleware(self, app: ASGIApp, application: AsgiFastStream) -> ASGIApp:
+        def build_route_details(scope: Scope) -> tuple[str, dict[str, str]]:
+            return build_faststream_route_details_from_scope(scope, application.routes)
+
         return OpenTelemetryMiddleware(
             app=app,
-            default_span_details=build_faststream_route_details_from_scope,
+            default_span_details=build_route_details,
             excluded_urls=ExcludeList(self.define_exclude_urls()),
             tracer_provider=self.tracer_provider,
         )

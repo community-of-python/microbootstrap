@@ -33,6 +33,7 @@ from microbootstrap.instruments.logging_instrument import LoggingConfig
 from microbootstrap.instruments.opentelemetry_instrument import FastStreamOpentelemetryConfig, OpentelemetryConfig
 from microbootstrap.instruments.prometheus_instrument import FastStreamPrometheusConfig
 from microbootstrap.instruments.sentry_instrument import SentryConfig
+from microbootstrap.middlewares.faststream import FastStreamOpenTelemetryBaggageMiddleware
 from microbootstrap.settings import FastStreamSettings
 
 
@@ -458,7 +459,7 @@ class TestFastStreamHttpOpentelemetry:
         server_spans: typing.Final = find_server_spans(span_exporter)
         assert [span.name for span in server_spans] == ["GET /asyncapi"]
 
-    def test_unknown_route_uses_raw_path(self, broker: RedisBroker, span_exporter: InMemorySpanExporter) -> None:
+    def test_unknown_route_has_no_http_route(self, broker: RedisBroker, span_exporter: InMemorySpanExporter) -> None:
         application: typing.Final = build_faststream_application_with_opentelemetry(broker)
 
         response: typing.Final = TestClient(app=application).get("/unknown")
@@ -466,8 +467,27 @@ class TestFastStreamHttpOpentelemetry:
         assert response.status_code == status.HTTP_404_NOT_FOUND
         server_spans: typing.Final = find_server_spans(span_exporter)
         assert len(server_spans) == 1
-        assert server_spans[0].attributes
-        assert server_spans[0].attributes["http.route"] == "/unknown"
+        assert server_spans[0].name == "GET"
+        assert server_spans[0].attributes is not None
+        assert "http.route" not in server_spans[0].attributes
+
+    def test_server_spans_without_broker_middleware(
+        self, broker: RedisBroker, span_exporter: InMemorySpanExporter
+    ) -> None:
+        application: typing.Final = (
+            FastStreamBootstrapper(FastStreamSettings())
+            .configure_application(FastStreamConfig(broker=broker))
+            .configure_instruments(FastStreamOpentelemetryConfig(opentelemetry_log_traces=True))
+            .bootstrap()
+        )
+
+        TestClient(app=application).get("/health/")
+
+        assert [span.name for span in find_server_spans(span_exporter)] == ["GET /health/"]
+        assert not any(
+            isinstance(middleware, (RedisTelemetryMiddleware, FastStreamOpenTelemetryBaggageMiddleware))
+            for middleware in application.broker.middlewares  # type: ignore[union-attr]
+        )
 
     async def test_broker_spans_are_not_duplicated(
         self, faker: faker.Faker, broker: RedisBroker, span_exporter: InMemorySpanExporter
@@ -521,7 +541,8 @@ class TestFastStreamHttpOpentelemetry:
     [
         ({"path": "/health/", "method": "GET"}, "GET /health/", {"http.route": "/health/"}),
         ({"path": "/health/"}, "HTTP /health/", {"http.route": "/health/"}),
-        ({"path": " ", "method": "GET"}, "GET", {"http.route": ""}),
+        ({"path": "/health", "method": "GET"}, "GET", {}),
+        ({"path": "/wp-admin/", "method": "GET"}, "GET", {}),
         ({"method": "GET"}, "GET", {}),
     ],
 )
@@ -530,4 +551,6 @@ def test_build_faststream_route_details_from_scope(
     expected_span_name: str,
     expected_attributes: dict[str, str],
 ) -> None:
-    assert build_faststream_route_details_from_scope(scope) == (expected_span_name, expected_attributes)
+    routes: typing.Final = [("/health/", mock.AsyncMock())]
+
+    assert build_faststream_route_details_from_scope(scope, routes) == (expected_span_name, expected_attributes)
