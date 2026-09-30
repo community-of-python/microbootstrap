@@ -28,7 +28,6 @@ from microbootstrap import (
     SwaggerConfig,
 )
 from microbootstrap.bootstrappers.fastapi import FastApiBootstrapper, FastApiSwaggerInstrument
-from microbootstrap.bootstrappers.fastapi import add_security_schemes as add_fastapi_security_schemes
 from microbootstrap.bootstrappers.litestar import (
     LitestarBootstrapper,
     LitestarSwaggerInstrument,
@@ -577,14 +576,16 @@ def test_fastapi_security_scheme_collisions_are_atomic_and_identical_schemes_are
         "securitySchemes": {"matching": expected_scheme, "conflicting": {"type": "http", "scheme": "basic"}},
     }
 
-    with pytest.raises(ValueError, match="security scheme 'conflicting' conflicts"):
-        add_fastapi_security_schemes(
-            service_schema,
-            {
+    FastApiSwaggerInstrument(
+        SwaggerConfig(
+            security_schemes={
                 "insert": OpenApiApiKeySecurityScheme(name="X-API-Key", location="header"),
                 "conflicting": OpenApiHttpSecurityScheme(scheme="bearer"),
-            },
+            }
         )
+    ).bootstrap_after(application)
+    with pytest.raises(ValueError, match="security scheme 'conflicting' conflicts"):
+        application.openapi()
     assert "insert" not in service_schema["components"]["securitySchemes"]
 
 
@@ -697,7 +698,7 @@ def test_litestar_version_docs_preserve_service_owned_renderer_hooks_and_late_sc
     shutdown_hook.assert_called_once_with(application.application)
 
 
-def test_litestar_version_docs_preserve_custom_operation_subclasses_and_extensions() -> None:
+def test_litestar_version_docs_preserve_standard_operation_fields() -> None:
     expected_extension: typing.Final[dict[str, str | list[str]]] = {
         "header": "Accept",
         "mediaType": "application/vnd.real-api+json",
@@ -705,70 +706,19 @@ def test_litestar_version_docs_preserve_custom_operation_subclasses_and_extensio
         "supportedVersions": ["2026-01", "release-candidate"],
     }
 
-    @dataclasses.dataclass(slots=True)
-    class ServiceMetadataOperation(litestar_openapi.Operation):
-        service_metadata: dict[str, str] | None = dataclasses.field(
-            default=None,
-            metadata={"alias": "x-service-metadata"},
-        )
-        rendering_state: str = dataclasses.field(init=False, default="draft")
-
-        def service_owner(self) -> str | None:
-            if self.service_metadata is None:
-                return None
-            return self.service_metadata["owner"]
-
-        def to_schema(self) -> dict[str, typing.Any]:
-            return {**super(ServiceMetadataOperation, self).to_schema(), "x-rendering-state": self.rendering_state}
-
-    @dataclasses.dataclass(slots=True)
-    class ServiceVersionedOperation(ServiceMetadataOperation):
-        accept_versioning: dict[str, str | list[str]] | None = dataclasses.field(
-            default=None,
-            metadata={"alias": "x-accept-versioning"},
-        )
-
-    def custom_litestar_operation_generator(
-        operation: litestar_openapi.Operation,
-        accept_versioning: dict[str, str | list[str]] | None = None,
-    ) -> ServiceMetadataOperation:
-        operation_fields: typing.Final = {
-            field.name: getattr(operation, field.name)
-            for field in dataclasses.fields(operation)
-            if field.name not in {"service_metadata", "accept_versioning", "rendering_state"}
-        }
-        if accept_versioning is None:
-            return ServiceMetadataOperation(
-                **operation_fields,
-                service_metadata={"owner": "widgets"},
-            )
-        return ServiceVersionedOperation(
-            **operation_fields,
-            service_metadata={"owner": "widgets"},
-            accept_versioning=accept_versioning,
-        )
-
-    @get(TARGET_PATH, description=GET_DESCRIPTION)
-    async def list_service_widgets() -> dict[str, str]:
-        return {"status": "ok"}
-
-    application: typing.Final = litestar.Litestar(route_handlers=[list_service_widgets])
+    application: typing.Final = build_litestar_application(None).application
+    assert isinstance(application, litestar.Litestar)
     assert application.openapi_schema is not None
     assert application.openapi_schema.paths is not None
     path_item: typing.Final = application.openapi_schema.paths[TARGET_PATH]
     assert isinstance(path_item, litestar_openapi.PathItem)
     assert path_item.get is not None
-    service_owned_operation: typing.Final[ServiceVersionedOperation] = typing.cast(
-        "ServiceVersionedOperation",
-        custom_litestar_operation_generator(path_item.get, {}),
-    )
-    service_owned_operation.accept_versioning = None
-    service_owned_operation.rendering_state = "published"
-    path_item.get = service_owned_operation
-    pre_adaptation_schema: typing.Final = service_owned_operation.to_schema()
-    assert pre_adaptation_schema["x-service-metadata"] == {"owner": "widgets"}
-    assert pre_adaptation_schema["x-rendering-state"] == "published"
-    assert "x-accept-versioning" not in pre_adaptation_schema
+    standard_operation: typing.Final = path_item.get
+    standard_fields: typing.Final = {
+        field.name: getattr(standard_operation, field.name)
+        for field in dataclasses.fields(litestar_openapi.Operation)
+        if field.name != "description"
+    }
 
     instrument: typing.Final = LitestarSwaggerInstrument(
         SwaggerConfig(openapi_version_docs=build_version_docs_config())
@@ -776,37 +726,119 @@ def test_litestar_version_docs_preserve_custom_operation_subclasses_and_extensio
     instrument.bootstrap_after(application)
 
     documented_operation: typing.Final = path_item.get
-    assert type(documented_operation) is ServiceVersionedOperation
-    assert documented_operation.service_owner() == "widgets"
-    assert documented_operation.to_schema()["x-service-metadata"] == {"owner": "widgets"}
-    assert documented_operation.to_schema()["x-rendering-state"] == "published"
+    assert documented_operation is not standard_operation
+    assert all(getattr(documented_operation, name) == value for name, value in standard_fields.items())
     assert documented_operation.to_schema()["x-accept-versioning"] == expected_extension
 
     instrument.bootstrap_after(application)
     assert path_item.get is documented_operation
-    assert documented_operation.rendering_state == "published"
 
     canonical_schema: typing.Final = application.openapi_schema.to_schema()
     with LitestarTestClient(app=application) as test_client:
         served_schema: typing.Final = test_client.get("/schema/openapi.json")
 
-    assert canonical_schema["paths"][TARGET_PATH]["get"]["x-service-metadata"] == {"owner": "widgets"}
-    assert canonical_schema["paths"][TARGET_PATH]["get"]["x-rendering-state"] == "published"
     assert canonical_schema["paths"][TARGET_PATH]["get"]["x-accept-versioning"] == expected_extension
     assert served_schema.status_code == status_codes.HTTP_200_OK
-    assert served_schema.json()["paths"][TARGET_PATH]["get"]["x-service-metadata"] == {"owner": "widgets"}
-    assert served_schema.json()["paths"][TARGET_PATH]["get"]["x-rendering-state"] == "published"
     assert served_schema.json()["paths"][TARGET_PATH]["get"]["x-accept-versioning"] == expected_extension
 
-    matching_operation: typing.Final = custom_litestar_operation_generator(service_owned_operation, expected_extension)
-    assert add_accept_versioning_extension(matching_operation, expected_extension) is matching_operation
 
-    conflicting_operation: typing.Final = custom_litestar_operation_generator(
-        service_owned_operation,
-        {**expected_extension, "header": "X-Service-Version"},
+def test_litestar_version_docs_copy_custom_aliased_operation() -> None:
+    expected_extension: typing.Final[dict[str, str | list[str]]] = {
+        "header": "Accept",
+        "mediaType": "application/vnd.real-api+json",
+        "parameter": "version",
+        "supportedVersions": ["2026-01", "release-candidate"],
+    }
+
+    @dataclasses.dataclass
+    class ServiceVersionedOperation(litestar_openapi.Operation):
+        service_metadata: dict[str, str] | None = dataclasses.field(
+            default=None,
+            metadata={"alias": "x-service-metadata"},
+        )
+        accept_versioning: dict[str, str | list[str]] | None = dataclasses.field(
+            default=None,
+            metadata={"alias": "x-accept-versioning"},
+        )
+        rendering_state: str = dataclasses.field(init=False, default="draft")
+
+        def to_schema(self) -> dict[str, typing.Any]:
+            return {**super().to_schema(), "x-rendering-state": self.rendering_state}
+
+    application: typing.Final = build_litestar_application(None).application
+    assert isinstance(application, litestar.Litestar)
+    assert application.openapi_schema is not None
+    assert application.openapi_schema.paths is not None
+    path_item: typing.Final = application.openapi_schema.paths[TARGET_PATH]
+    assert isinstance(path_item, litestar_openapi.PathItem)
+    assert path_item.get is not None
+    operation_fields: typing.Final = {
+        field.name: getattr(path_item.get, field.name) for field in dataclasses.fields(litestar_openapi.Operation)
+    }
+    service_owned_operation: typing.Final = ServiceVersionedOperation(
+        **operation_fields,
+        service_metadata={"owner": "widgets"},
     )
+    service_owned_operation.rendering_state = "published"
+    path_item.get = service_owned_operation
+
+    LitestarSwaggerInstrument(SwaggerConfig(openapi_version_docs=build_version_docs_config())).bootstrap_after(
+        application
+    )
+
+    documented_operation: typing.Final = path_item.get
+    assert type(documented_operation) is ServiceVersionedOperation
+    assert documented_operation.service_metadata == {"owner": "widgets"}
+    assert documented_operation.rendering_state == "published"
+    assert documented_operation.to_schema()["x-accept-versioning"] == expected_extension
+
+    assert add_accept_versioning_extension(documented_operation, expected_extension) is documented_operation
+    conflicting_operation: typing.Final = copy.copy(documented_operation)
+    conflicting_operation.accept_versioning = {**expected_extension, "header": "X-Service-Version"}
     with pytest.raises(ValueError, match="x-accept-versioning conflicts"):
         add_accept_versioning_extension(conflicting_operation, expected_extension)
+
+
+def test_litestar_version_docs_reject_unsupported_custom_operation_atomically() -> None:
+    @dataclasses.dataclass
+    class ServiceMetadataOperation(litestar_openapi.Operation):
+        service_metadata: dict[str, str] | None = dataclasses.field(
+            default=None,
+            metadata={"alias": "x-service-metadata"},
+        )
+
+    application: typing.Final = build_litestar_application(None).application
+    assert isinstance(application, litestar.Litestar)
+    assert application.openapi_schema is not None
+    assert application.openapi_schema.paths is not None
+    path_item: typing.Final = application.openapi_schema.paths[TARGET_PATH]
+    assert isinstance(path_item, litestar_openapi.PathItem)
+    assert path_item.post is not None
+    original_get: typing.Final = path_item.get
+    operation_fields: typing.Final = {
+        field.name: getattr(path_item.post, field.name) for field in dataclasses.fields(litestar_openapi.Operation)
+    }
+    unsupported_operation: typing.Final = ServiceMetadataOperation(
+        **operation_fields,
+        service_metadata={"owner": "widgets"},
+    )
+    path_item.post = unsupported_operation
+    baseline_schema: typing.Final = copy.deepcopy(application.openapi_schema.to_schema())
+
+    instrument: typing.Final = LitestarSwaggerInstrument(
+        SwaggerConfig(
+            security_schemes={"serviceAuth": OpenApiHttpSecurityScheme(scheme="bearer")},
+            openapi_version_docs=build_version_docs_config(),
+        )
+    )
+    with pytest.raises(TypeError, match="must declare an x-accept-versioning alias"):
+        instrument.bootstrap_after(application)
+
+    assert application.openapi_schema.to_schema() == baseline_schema
+    assert path_item.get is original_get
+    assert path_item.post is unsupported_operation
+    assert application.openapi_schema.components.security_schemes is not None
+    assert "serviceAuth" not in application.openapi_schema.components.security_schemes
 
 
 def test_fastapi_production_version_docs_preserve_custom_generator_and_errors() -> None:

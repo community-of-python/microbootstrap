@@ -682,7 +682,11 @@ existing description. The extension is:
 
 `operation_versions` replaces the project version list for its exact path and lower-case method pair. Suppressed pairs
 remain untouched. A conflicting service-owned `x-accept-versioning` extension raises `ValueError`; an identical one is
-idempotent. Configure before the first schema or documentation request.
+idempotent. Configure before the first schema or documentation request. For Litestar's standard `Operation`, the
+extension is added to an explicit extension-aware operation while preserving its standard fields. A custom Litestar
+operation is supported when it explicitly declares an `x-accept-versioning`-aliased dataclass field and can be shallow
+copied. Custom operation subclasses without that field are rejected before schema mutation rather than losing custom
+state.
 
 When enabled, `vendor_media_type` is required explicitly. It must match
 `application/vnd.<vendor>+json`, where `<vendor>` is one or more characters from

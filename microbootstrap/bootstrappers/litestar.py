@@ -1,4 +1,5 @@
 from __future__ import annotations
+import copy
 import dataclasses
 import typing
 
@@ -55,6 +56,14 @@ from microbootstrap.settings import LitestarSettings
 
 
 ApplicationT = typing.TypeVar("ApplicationT", bound=litestar.Litestar)
+
+
+@dataclasses.dataclass
+class AcceptVersionedOperation(openapi.spec.Operation):
+    accept_versioning: dict[str, str | list[str]] | None = dataclasses.field(
+        default=None,
+        metadata={"alias": "x-accept-versioning"},
+    )
 
 
 if typing.TYPE_CHECKING:
@@ -141,13 +150,6 @@ class LitestarSwaggerInstrument(SwaggerInstrument):
         return application
 
 
-def add_security_schemes(
-    openapi_schema: openapi.spec.OpenAPI,
-    configured_schemes: typing.Mapping[str, OpenApiSecurityScheme],
-) -> None:
-    apply_security_schemes(openapi_schema, prepare_security_schemes(openapi_schema, configured_schemes))
-
-
 def prepare_security_schemes(
     openapi_schema: openapi.spec.OpenAPI,
     configured_schemes: typing.Mapping[str, OpenApiSecurityScheme],
@@ -209,8 +211,8 @@ def prepare_version_documentation(
             if documented_operation is operation:
                 if description == operation.description:
                     continue
-                documented_operation = copy_operation(operation)
-            object.__setattr__(documented_operation, "description", description)
+                documented_operation = copy.copy(operation)
+            documented_operation.description = description
             updates.append((path_item, method, documented_operation))
     return updates
 
@@ -283,56 +285,22 @@ def add_accept_versioning_extension(
             continue
         existing_extension = getattr(operation, field.name)
         if existing_extension is None:
-            versioned_operation = copy_operation(operation)
-            object.__setattr__(versioned_operation, field.name, expected_extension)
+            versioned_operation = copy.copy(operation)
+            setattr(versioned_operation, field.name, expected_extension)
             return versioned_operation
         if existing_extension != expected_extension:
             message = f"OpenAPI operation {extension_name} conflicts with configured Accept version documentation."
             raise ValueError(message)
         return operation
 
-    operation_type = typing.cast(
-        "type[openapi.spec.Operation]",
-        dataclasses.make_dataclass(
-            cls_name=f"{type(operation).__name__}WithAcceptVersioning",
-            fields=[
-                (
-                    "accept_versioning",
-                    dict[str, str | list[str]] | None,
-                    dataclasses.field(default=None, metadata={"alias": extension_name}),
-                )
-            ],
-            bases=(type(operation),),
-        ),
-    )
-    versioned_operation = copy_operation(operation, operation_type)
-    object.__setattr__(versioned_operation, "accept_versioning", expected_extension)
-    return versioned_operation
-
-
-def copy_operation(
-    operation: openapi.spec.Operation,
-    operation_type: type[openapi.spec.Operation] | None = None,
-) -> openapi.spec.Operation:
-    copied_operation = object.__new__(operation_type or type(operation))
-    copy_instance_state(operation, copied_operation)
-    return copied_operation
-
-
-def copy_instance_state(source: object, target: object) -> None:
-    source_dict = getattr(source, "__dict__", None)
-    target_dict = getattr(target, "__dict__", None)
-    if isinstance(source_dict, dict) and isinstance(target_dict, dict):
-        target_dict.update(source_dict)
-
-    for source_class in type(source).__mro__:
-        slot_names = source_class.__dict__.get("__slots__", ())
-        if isinstance(slot_names, str):
-            slot_names = (slot_names,)
-        for slot_name in slot_names:
-            if slot_name in {"__dict__", "__weakref__"} or not hasattr(source, slot_name):
-                continue
-            object.__setattr__(target, slot_name, getattr(source, slot_name))
+    if type(operation) is not openapi.spec.Operation:
+        message = (
+            f"OpenAPI operation {type(operation).__name__} must declare an {extension_name} alias "
+            "to use Accept version documentation."
+        )
+        raise TypeError(message)
+    operation_arguments = {field.name: getattr(operation, field.name) for field in dataclasses.fields(operation)}
+    return AcceptVersionedOperation(**operation_arguments, accept_versioning=expected_extension)
 
 
 @LitestarBootstrapper.use_instrument()

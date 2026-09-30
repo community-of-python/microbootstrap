@@ -102,13 +102,6 @@ class FastApiSwaggerInstrument(SwaggerInstrument):
         return application
 
 
-def add_version_documentation(
-    openapi_schema: dict[str, typing.Any],
-    configuration: OpenApiVersionDocsConfig,
-) -> None:
-    apply_version_documentation(prepare_version_documentation(openapi_schema, configuration))
-
-
 def prepare_version_documentation(
     openapi_schema: dict[str, typing.Any],
     configuration: OpenApiVersionDocsConfig,
@@ -133,17 +126,6 @@ def apply_version_documentation(
     for operation, extension, description in updates:
         operation["x-accept-versioning"] = extension
         operation["description"] = description
-
-
-def document_operation(
-    configuration: OpenApiVersionDocsConfig,
-    path: str,
-    method: object,
-    operation: object,
-) -> None:
-    update = prepare_document_operation(configuration, path, method, operation)
-    if update is not None:
-        apply_version_documentation((update,))
 
 
 def prepare_document_operation(
@@ -173,13 +155,6 @@ def prepare_document_operation(
         message = f"OpenAPI operation {method.upper()} {path} has a non-string description."
         raise ValueError(message)
     return operation, extension, append_version_documentation(description, configuration, supported_versions)
-
-
-def add_security_schemes(
-    openapi_schema: dict[str, typing.Any],
-    configured_schemes: typing.Mapping[str, OpenApiSecurityScheme],
-) -> None:
-    apply_security_schemes(openapi_schema, prepare_security_schemes(openapi_schema, configured_schemes))
 
 
 def prepare_security_schemes(
@@ -223,19 +198,6 @@ def apply_security_schemes(
         return
     assert isinstance(security_schemes, dict)  # noqa: S101 - validated before application.
     security_schemes.update({name: scheme for name, scheme in expected_schemes.items() if name not in security_schemes})
-
-
-def add_accept_versioning_extension(
-    operation: dict[str, typing.Any],
-    expected_extension: dict[str, str | list[str]],
-) -> None:
-    extension_name: typing.Final = "x-accept-versioning"
-    if extension_name not in operation:
-        operation[extension_name] = expected_extension
-        return
-    if operation[extension_name] != expected_extension:
-        message = f"OpenAPI operation {extension_name} conflicts with configured Accept version documentation."
-        raise ValueError(message)
 
 
 @FastApiBootstrapper.use_instrument()
