@@ -11,7 +11,8 @@ from faststream._internal.logger.logger_proxy import RealLoggerObject
 from faststream.asgi import AsgiFastStream, AsgiResponse
 from faststream.asgi import get as handle_get
 from faststream.specification import AsyncAPI
-from opentelemetry import trace
+from opentelemetry.instrumentation.asgi import OpenTelemetryMiddleware
+from opentelemetry.util.http import ExcludeList
 
 from microbootstrap.bootstrappers.base import ApplicationBootstrapper
 from microbootstrap.config.faststream import FastStreamConfig
@@ -20,6 +21,7 @@ from microbootstrap.instruments.logging_instrument import LoggingInstrument
 from microbootstrap.instruments.opentelemetry_instrument import (
     BaseOpentelemetryInstrument,
     FastStreamOpentelemetryConfig,
+    build_span_name,
 )
 from microbootstrap.instruments.prometheus_instrument import FastStreamPrometheusConfig, PrometheusInstrument
 from microbootstrap.instruments.pyroscope_instrument import PyroscopeInstrument
@@ -28,7 +30,10 @@ from microbootstrap.middlewares.faststream import FastStreamOpenTelemetryBaggage
 from microbootstrap.settings import FastStreamSettings
 
 
-tracer: typing.Final = trace.get_tracer(__name__)
+if typing.TYPE_CHECKING:
+    from faststream.asgi.types import ASGIApp, Receive, Scope, Send
+
+
 MessageT = typing.TypeVar("MessageT")
 ResponseT = typing.TypeVar("ResponseT")
 
@@ -58,6 +63,30 @@ class KwargsAsgiFastStream(AsgiFastStream):
     def __init__(self, **kwargs: typing.Any) -> None:  # noqa: ANN401
         # `broker` argument is positional-only
         super().__init__(kwargs.pop("broker", None), **kwargs)
+        self.http_app: ASGIApp = super().__call__
+
+    def add_http_middleware(self, build_middleware: typing.Callable[[ASGIApp], ASGIApp]) -> None:
+        self.http_app = build_middleware(self.http_app)
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        # Lifespan and websocket scopes bypass HTTP middlewares
+        if scope["type"] == "http":
+            await self.http_app(scope, receive, send)
+            return
+        await super().__call__(scope, receive, send)
+
+
+def build_faststream_route_details_from_scope(scope: Scope) -> tuple[str, dict[str, str]]:
+    """Retrieve the span name and attributes from the ASGI scope for FastStream routes.
+
+    FastStream matches ASGI routes by exact path, so the request path is the route itself.
+    """
+    method: typing.Final = str(scope.get("method", "HTTP")).strip()
+    path: typing.Final = scope.get("path")
+    if path is None:
+        return method, {}
+    path_stripped: typing.Final = path.strip()
+    return build_span_name(method, path_stripped), {"http.route": path_stripped}
 
 
 class FastStreamBootstrapper(ApplicationBootstrapper[FastStreamSettings, AsgiFastStream, FastStreamConfig]):
@@ -107,7 +136,17 @@ class FastStreamOpentelemetryInstrument(BaseOpentelemetryInstrument[FastStreamOp
                     baggage_span_attributes=self.instrument_config.opentelemetry_baggage_span_attributes,
                 ),
             )
+        if isinstance(application, KwargsAsgiFastStream):
+            application.add_http_middleware(self.create_open_telemetry_middleware)
         return application
+
+    def create_open_telemetry_middleware(self, app: ASGIApp) -> ASGIApp:
+        return OpenTelemetryMiddleware(
+            app=app,
+            default_span_details=build_faststream_route_details_from_scope,
+            excluded_urls=ExcludeList(self.define_exclude_urls()),
+            tracer_provider=self.tracer_provider,
+        )
 
     @classmethod
     def get_config_type(cls) -> type[FastStreamOpentelemetryConfig]:
@@ -173,11 +212,6 @@ class FastStreamHealthChecksInstrument(HealthChecksInstrument):
                 )
                 if await self.define_health_status()
                 else AsgiResponse(b"Service is unhealthy", 500, headers={"content-type": "application/json"})
-            )
-
-        if self.instrument_config.opentelemetry_generate_health_check_spans:
-            check_health = tracer.start_as_current_span(f"GET {self.instrument_config.health_checks_path}")(
-                check_health,
             )
 
         return {"asgi_routes": ((self.instrument_config.health_checks_path, check_health),)}
