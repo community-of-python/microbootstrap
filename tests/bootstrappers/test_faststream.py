@@ -9,19 +9,31 @@ import pytest
 import sentry_sdk
 from fastapi import status
 from fastapi.testclient import TestClient
+from faststream.asgi import AsgiFastStream
 from faststream.redis import RedisBroker, TestRedisBroker
 from faststream.redis.opentelemetry import RedisTelemetryMiddleware
 from faststream.redis.prometheus import RedisPrometheusMiddleware
 from opentelemetry import baggage, trace
+from opentelemetry.instrumentation._semconv import (
+    OTEL_SEMCONV_STABILITY_OPT_IN,
+    _OpenTelemetrySemanticConventionStability,
+)
+from opentelemetry.sdk.trace import ReadableSpan
+from opentelemetry.sdk.trace import TracerProvider as SdkTracerProvider
+from opentelemetry.sdk.trace.export import SimpleSpanProcessor
+from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
+from opentelemetry.trace import SpanKind, StatusCode
 
 from microbootstrap import opentelemetry_baggage_scope
-from microbootstrap.bootstrappers.faststream import FastStreamBootstrapper
+from microbootstrap.bootstrappers.faststream import FastStreamBootstrapper, build_faststream_route_details_from_scope
 from microbootstrap.config.faststream import FastStreamConfig
+from microbootstrap.instruments import opentelemetry_instrument
 from microbootstrap.instruments.health_checks_instrument import HealthChecksConfig
 from microbootstrap.instruments.logging_instrument import LoggingConfig
 from microbootstrap.instruments.opentelemetry_instrument import FastStreamOpentelemetryConfig, OpentelemetryConfig
 from microbootstrap.instruments.prometheus_instrument import FastStreamPrometheusConfig
 from microbootstrap.instruments.sentry_instrument import SentryConfig
+from microbootstrap.middlewares.faststream import FastStreamOpenTelemetryBaggageMiddleware
 from microbootstrap.settings import FastStreamSettings
 
 
@@ -326,3 +338,219 @@ async def test_faststream_sentry_isolates_broker_configured_on_startup(
     await application.start()
 
     assert hasattr(broker.subscribers[0].process_message, "__wrapped__")
+
+
+@pytest.fixture
+def span_exporter(monkeypatch: pytest.MonkeyPatch) -> InMemorySpanExporter:
+    exporter: typing.Final = InMemorySpanExporter()
+
+    def build_tracer_provider(*args: typing.Any, **kwargs: typing.Any) -> SdkTracerProvider:  # noqa: ANN401
+        tracer_provider: typing.Final = SdkTracerProvider(*args, **kwargs)
+        tracer_provider.add_span_processor(SimpleSpanProcessor(exporter))
+        return tracer_provider
+
+    monkeypatch.setattr(opentelemetry_instrument, "SdkTracerProvider", build_tracer_provider)
+    monkeypatch.setattr("opentelemetry.sdk.trace.TracerProvider.shutdown", mock.Mock())
+    monkeypatch.setattr(_OpenTelemetrySemanticConventionStability, "_initialized", False)
+    return exporter
+
+
+def build_faststream_application_with_opentelemetry(
+    broker: RedisBroker,
+    **opentelemetry_params: typing.Any,  # noqa: ANN401
+) -> AsgiFastStream:
+    return (
+        FastStreamBootstrapper(FastStreamSettings())
+        .configure_application(FastStreamConfig(broker=broker))
+        .configure_instruments(
+            FastStreamOpentelemetryConfig(
+                opentelemetry_log_traces=True,
+                opentelemetry_middleware_cls=RedisTelemetryMiddleware,
+                **opentelemetry_params,
+            ),
+            FastStreamPrometheusConfig(prometheus_middleware_cls=RedisPrometheusMiddleware),
+        )
+        .bootstrap()
+    )
+
+
+def find_server_spans(span_exporter: InMemorySpanExporter) -> list[ReadableSpan]:
+    return [span for span in span_exporter.get_finished_spans() if span.kind == SpanKind.SERVER]
+
+
+class TestFastStreamHttpOpentelemetry:
+    @pytest.mark.parametrize(
+        ("semconv_opt_in", "expected_status_attributes"),
+        [
+            (None, {"http.status_code"}),
+            ("http", {"http.response.status_code"}),
+            ("http/dup", {"http.status_code", "http.response.status_code"}),
+        ],
+    )
+    async def test_health_check_server_span(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        broker: RedisBroker,
+        span_exporter: InMemorySpanExporter,
+        semconv_opt_in: str | None,
+        expected_status_attributes: set[str],
+    ) -> None:
+        if semconv_opt_in is None:
+            monkeypatch.delenv(OTEL_SEMCONV_STABILITY_OPT_IN, raising=False)
+        else:
+            monkeypatch.setenv(OTEL_SEMCONV_STABILITY_OPT_IN, semconv_opt_in)
+        application: typing.Final = build_faststream_application_with_opentelemetry(broker)
+
+        async with TestRedisBroker(broker):
+            response: typing.Final = TestClient(app=application).get("/health/")
+
+        assert response.status_code == status.HTTP_200_OK
+        assert [span.name for span in span_exporter.get_finished_spans() if span.name == "GET /health/"] == [
+            "GET /health/"
+        ]
+        server_spans: typing.Final = find_server_spans(span_exporter)
+        assert len(server_spans) == 1
+        assert server_spans[0].name == "GET /health/"
+        assert server_spans[0].attributes
+        assert server_spans[0].attributes["http.route"] == "/health/"
+        assert {
+            attribute_name: server_spans[0].attributes[attribute_name]
+            for attribute_name in ("http.status_code", "http.response.status_code")
+            if attribute_name in server_spans[0].attributes
+        } == dict.fromkeys(expected_status_attributes, status.HTTP_200_OK)
+
+    def test_unhealthy_broker_server_span(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        broker: RedisBroker,
+        span_exporter: InMemorySpanExporter,
+    ) -> None:
+        monkeypatch.setenv(OTEL_SEMCONV_STABILITY_OPT_IN, "http")
+        application: typing.Final = build_faststream_application_with_opentelemetry(broker)
+
+        response: typing.Final = TestClient(app=application).get("/health/")
+
+        assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
+        server_spans: typing.Final = find_server_spans(span_exporter)
+        assert len(server_spans) == 1
+        assert server_spans[0].attributes
+        assert server_spans[0].attributes["http.response.status_code"] == status.HTTP_500_INTERNAL_SERVER_ERROR
+        assert server_spans[0].status.status_code == StatusCode.ERROR
+
+    def test_metrics_are_excluded(self, broker: RedisBroker, span_exporter: InMemorySpanExporter) -> None:
+        application: typing.Final = build_faststream_application_with_opentelemetry(broker)
+
+        response: typing.Final = TestClient(app=application).get("/metrics")
+
+        assert response.status_code == status.HTTP_200_OK
+        assert not span_exporter.get_finished_spans()
+
+    def test_health_check_spans_disabled(self, broker: RedisBroker, span_exporter: InMemorySpanExporter) -> None:
+        application: typing.Final = build_faststream_application_with_opentelemetry(
+            broker, opentelemetry_generate_health_check_spans=False
+        )
+        client: typing.Final = TestClient(app=application)
+
+        client.get("/health/")
+        assert not span_exporter.get_finished_spans()
+
+        response: typing.Final = client.get("/asyncapi")
+        assert response.status_code == status.HTTP_200_OK
+        server_spans: typing.Final = find_server_spans(span_exporter)
+        assert [span.name for span in server_spans] == ["GET /asyncapi"]
+
+    def test_unknown_route_has_no_http_route(self, broker: RedisBroker, span_exporter: InMemorySpanExporter) -> None:
+        application: typing.Final = build_faststream_application_with_opentelemetry(broker)
+
+        response: typing.Final = TestClient(app=application).get("/unknown")
+
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+        server_spans: typing.Final = find_server_spans(span_exporter)
+        assert len(server_spans) == 1
+        assert server_spans[0].name == "GET"
+        assert server_spans[0].attributes is not None
+        assert "http.route" not in server_spans[0].attributes
+
+    def test_server_spans_without_broker_middleware(
+        self, broker: RedisBroker, span_exporter: InMemorySpanExporter
+    ) -> None:
+        application: typing.Final = (
+            FastStreamBootstrapper(FastStreamSettings())
+            .configure_application(FastStreamConfig(broker=broker))
+            .configure_instruments(FastStreamOpentelemetryConfig(opentelemetry_log_traces=True))
+            .bootstrap()
+        )
+
+        TestClient(app=application).get("/health/")
+
+        assert [span.name for span in find_server_spans(span_exporter)] == ["GET /health/"]
+        assert not any(
+            isinstance(middleware, (RedisTelemetryMiddleware, FastStreamOpenTelemetryBaggageMiddleware))
+            for middleware in application.broker.middlewares  # type: ignore[union-attr]
+        )
+
+    async def test_broker_spans_are_not_duplicated(
+        self, faker: faker.Faker, broker: RedisBroker, span_exporter: InMemorySpanExporter
+    ) -> None:
+        channel: typing.Final = faker.pystr()
+
+        @broker.subscriber(channel)
+        async def handler(_: str) -> None: ...
+
+        application: typing.Final = build_faststream_application_with_opentelemetry(broker)
+
+        async with TestRedisBroker(broker):
+            await broker.publish(faker.pystr(), channel=channel)
+
+        telemetry_middlewares: typing.Final = [
+            middleware
+            for middleware in application.broker.middlewares  # type: ignore[union-attr]
+            if isinstance(middleware, RedisTelemetryMiddleware)
+        ]
+        assert len(telemetry_middlewares) == 1
+        assert sorted(span.name for span in span_exporter.get_finished_spans()) == [
+            f"{channel} create",
+            f"{channel} process",
+            f"{channel} publish",
+        ]
+
+    def test_lifespan_bypasses_middleware(
+        self, broker: RedisBroker, span_exporter: InMemorySpanExporter, magic_mock: MagicMock
+    ) -> None:
+        application: typing.Final = (
+            FastStreamBootstrapper(FastStreamSettings())
+            .configure_application(FastStreamConfig(broker=broker, lifespan=magic_mock))
+            .configure_instruments(
+                FastStreamOpentelemetryConfig(
+                    opentelemetry_log_traces=True, opentelemetry_middleware_cls=RedisTelemetryMiddleware
+                )
+            )
+            .bootstrap()
+        )
+
+        with mock.patch.object(broker, "start"), mock.patch.object(broker, "stop"), TestClient(app=application):
+            assert magic_mock.called
+
+        assert isinstance(application, AsgiFastStream)
+        assert application.broker is broker
+        assert not find_server_spans(span_exporter)
+
+
+@pytest.mark.parametrize(
+    ("scope", "expected_span_name", "expected_attributes"),
+    [
+        ({"path": "/health/", "method": "GET"}, "GET /health/", {"http.route": "/health/"}),
+        ({"path": "/health/"}, "HTTP /health/", {"http.route": "/health/"}),
+        ({"path": "/health", "method": "GET"}, "GET", {}),
+        ({"path": "/wp-admin/", "method": "GET"}, "GET", {}),
+        ({"method": "GET"}, "GET", {}),
+    ],
+)
+def test_build_faststream_route_details_from_scope(
+    scope: dict[str, str],
+    expected_span_name: str,
+    expected_attributes: dict[str, str],
+) -> None:
+    routes: typing.Final = [("/health/", mock.AsyncMock())]
+
+    assert build_faststream_route_details_from_scope(scope, routes) == (expected_span_name, expected_attributes)

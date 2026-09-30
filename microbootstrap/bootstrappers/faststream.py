@@ -11,7 +11,8 @@ from faststream._internal.logger.logger_proxy import RealLoggerObject
 from faststream.asgi import AsgiFastStream, AsgiResponse
 from faststream.asgi import get as handle_get
 from faststream.specification import AsyncAPI
-from opentelemetry import trace
+from opentelemetry.instrumentation.asgi import OpenTelemetryMiddleware
+from opentelemetry.util.http import ExcludeList
 
 from microbootstrap.bootstrappers.base import ApplicationBootstrapper
 from microbootstrap.config.faststream import FastStreamConfig
@@ -20,6 +21,7 @@ from microbootstrap.instruments.logging_instrument import LoggingInstrument
 from microbootstrap.instruments.opentelemetry_instrument import (
     BaseOpentelemetryInstrument,
     FastStreamOpentelemetryConfig,
+    build_span_name,
 )
 from microbootstrap.instruments.prometheus_instrument import FastStreamPrometheusConfig, PrometheusInstrument
 from microbootstrap.instruments.pyroscope_instrument import PyroscopeInstrument
@@ -28,7 +30,10 @@ from microbootstrap.middlewares.faststream import FastStreamOpenTelemetryBaggage
 from microbootstrap.settings import FastStreamSettings
 
 
-tracer: typing.Final = trace.get_tracer(__name__)
+if typing.TYPE_CHECKING:
+    from faststream.asgi.types import ASGIApp, Receive, Scope, Send
+
+
 MessageT = typing.TypeVar("MessageT")
 ResponseT = typing.TypeVar("ResponseT")
 
@@ -58,9 +63,32 @@ class KwargsAsgiFastStream(AsgiFastStream):
     def __init__(self, **kwargs: typing.Any) -> None:  # noqa: ANN401
         # `broker` argument is positional-only
         super().__init__(kwargs.pop("broker", None), **kwargs)
+        self.http_app: ASGIApp = super().__call__
+
+    def add_http_middleware(self, build_middleware: typing.Callable[[ASGIApp], ASGIApp]) -> None:
+        self.http_app = build_middleware(self.http_app)
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        # Lifespan and websocket scopes bypass HTTP middlewares
+        if scope["type"] == "http":
+            await self.http_app(scope, receive, send)
+            return
+        await super().__call__(scope, receive, send)
 
 
-class FastStreamBootstrapper(ApplicationBootstrapper[FastStreamSettings, AsgiFastStream, FastStreamConfig]):
+def build_faststream_route_details_from_scope(
+    scope: Scope,
+    routes: typing.Iterable[tuple[str, ASGIApp]],
+) -> tuple[str, dict[str, str]]:
+    method: typing.Final = str(scope.get("method", "HTTP")).strip()
+    path: typing.Final = scope.get("path")
+    # FastStream matches ASGI routes by exact path, unmatched paths get no `http.route` to keep its cardinality low
+    if path is None or all(path != route_path for route_path, _ in routes):
+        return method, {}
+    return build_span_name(method, path), {"http.route": path}
+
+
+class FastStreamBootstrapper(ApplicationBootstrapper[FastStreamSettings, KwargsAsgiFastStream, FastStreamConfig]):
     application_config = FastStreamConfig()
     application_type = KwargsAsgiFastStream
 
@@ -94,9 +122,6 @@ FastStreamBootstrapper.use_instrument()(PyroscopeInstrument)
 
 @FastStreamBootstrapper.use_instrument()
 class FastStreamOpentelemetryInstrument(BaseOpentelemetryInstrument[FastStreamOpentelemetryConfig]):
-    def is_ready(self) -> bool:
-        return bool(self.instrument_config.opentelemetry_middleware_cls and super().is_ready())
-
     def bootstrap_after(self, application: AsgiFastStream) -> AsgiFastStream:  # type: ignore[override]
         if self.instrument_config.opentelemetry_middleware_cls and application.broker:
             application.broker.add_middleware(
@@ -107,7 +132,22 @@ class FastStreamOpentelemetryInstrument(BaseOpentelemetryInstrument[FastStreamOp
                     baggage_span_attributes=self.instrument_config.opentelemetry_baggage_span_attributes,
                 ),
             )
+        if isinstance(application, KwargsAsgiFastStream):
+            application.add_http_middleware(
+                functools.partial(self.create_open_telemetry_middleware, application=application),
+            )
         return application
+
+    def create_open_telemetry_middleware(self, app: ASGIApp, application: AsgiFastStream) -> ASGIApp:
+        def build_route_details(scope: Scope) -> tuple[str, dict[str, str]]:
+            return build_faststream_route_details_from_scope(scope, application.routes)
+
+        return OpenTelemetryMiddleware(
+            app=app,
+            default_span_details=build_route_details,
+            excluded_urls=ExcludeList(self.define_exclude_urls()),
+            tracer_provider=self.tracer_provider,
+        )
 
     @classmethod
     def get_config_type(cls) -> type[FastStreamOpentelemetryConfig]:
@@ -173,11 +213,6 @@ class FastStreamHealthChecksInstrument(HealthChecksInstrument):
                 )
                 if await self.define_health_status()
                 else AsgiResponse(b"Service is unhealthy", 500, headers={"content-type": "application/json"})
-            )
-
-        if self.instrument_config.opentelemetry_generate_health_check_spans:
-            check_health = tracer.start_as_current_span(f"GET {self.instrument_config.health_checks_path}")(
-                check_health,
             )
 
         return {"asgi_routes": ((self.instrument_config.health_checks_path, check_health),)}
