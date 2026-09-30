@@ -40,7 +40,7 @@ With <b>microbootstrap</b>, you receive an application with lightweight built-in
 - `opentelemetry`
 - `logging`
 - `cors`
-- `swagger` - with additional offline version support
+- `swagger` - offline UI assets, OpenAPI security definitions, and optional Accept-version documentation
 - `health-checks`
 
 Those instruments can be bootstrapped for:
@@ -80,20 +80,6 @@ Also, you can specify extras during installation for concrete framework:
 - `litestar`
 - `faststream` (ASGI app)
 - `fastmcp`
-
-The `fastapi`, `litestar`, and `faststream` bounds are support-policy bounds based on the evidence below, not
-mathematical minimum versions or certification of every version in each declared range, every dependency combination,
-or every supported Python version.
-
-A full combined selected-framework-floors suite passed 308 tests on Python 3.12.7 with FastAPI 0.110.1,
-prometheus-fastapi-instrumentator 7.1.0, Litestar 2.21.1, and FastStream 0.6.7. A separate fresh frozen installation
-using uv 0.10 passed 308 tests, Ruff check, Ruff format check, and mypy with an exact resolved graph including FastAPI
-0.141.1, prometheus-fastapi-instrumentator 8.1.0, Litestar 2.24.0, and FastStream 0.6.7. The ignored lock file is
-local validation evidence and is not included in this PR. These runs exclude the brokerless AsyncAPI case and do not
-certify future releases, platform variants, multi-broker configurations, external transports, or OTLP delivery.
-
-An application without a broker is not required to deliver AsyncAPI documentation and is not part of the OpenAPI
-delivery contract.
 
 Also we have `granian` extra that is requires for `create_granian_server`.
 
@@ -610,94 +596,49 @@ Parameter descriptions:
 
 #### Optional security schemes and API-version documentation
 
-Both OpenAPI additions are opt-in. `SwaggerConfig.security_schemes` adds reusable definitions to
-`components.securitySchemes`; it does not add global or operation-level security requirements.
-`OpenApiVersionDocsConfig` documents a media-type convention only; it does not negotiate requests, add an `Accept`
-parameter, change response media types, or select a version in Swagger UI.
+Both additions are disabled by default. Security schemes add reusable OpenAPI definitions under
+`components.securitySchemes`; they do not authenticate requests or add global or operation-level security requirements.
+Keep requirements and authentication in your application routes and dependencies.
 
 ```python
 from microbootstrap import (
-    OpenApiApiKeySecurityScheme as ApiKeySecurityScheme,
+    LitestarSettings,
     OpenApiHttpSecurityScheme,
     OpenApiOperationSelector,
     OpenApiOperationVersionOverride,
-    OpenApiOAuth2SecurityScheme,
-    OpenApiOAuthFlow,
-    OpenApiOAuthFlows,
-    OpenApiOpenIdConnectSecurityScheme,
+    OpenApiSecurityScheme,
     OpenApiVersionDocsConfig,
-    SwaggerConfig,
 )
 
-version_docs = OpenApiVersionDocsConfig(
-    enabled=True,
-    vendor_media_type="application/vnd.example+json",
-    supported_versions=("1.0",),
-    suppressed_operations=(OpenApiOperationSelector(path="/internal/widgets", method="get"),),
-    operation_versions=(
-        OpenApiOperationVersionOverride(path="/widgets", method="post", supported_versions=("2.0",)),
-    ),
-)
 
-application = (
-    LitestarBootstrapper(settings)
-    .configure_instrument(
-        SwaggerConfig(
-            security_schemes={
-                "serviceAuth": OpenApiHttpSecurityScheme(scheme="bearer", bearer_format="JWT"),
-                "apiKey": ApiKeySecurityScheme(name="X-API-Key", location="header"),
-                "oauth": OpenApiOAuth2SecurityScheme(
-                    flows=OpenApiOAuthFlows(
-                        client_credentials=OpenApiOAuthFlow(token_url="/oauth/token", scopes={"read": "Read data"})
-                    )
-                ),
-                "oidc": OpenApiOpenIdConnectSecurityScheme(
-                    open_id_connect_url="/.well-known/openid-configuration"
-                ),
-            },
-            openapi_version_docs=version_docs,
-        )
+class Settings(LitestarSettings):
+    security_schemes: dict[str, OpenApiSecurityScheme] = {
+        "serviceAuth": OpenApiHttpSecurityScheme(scheme="bearer", bearer_format="JWT"),
+    }
+    openapi_version_docs: OpenApiVersionDocsConfig | None = OpenApiVersionDocsConfig(
+        enabled=True,
+        vendor_media_type="application/vnd.example+json",
+        supported_versions=("1.0",),
+        suppressed_operations=(OpenApiOperationSelector(path="/internal/widgets", method="get"),),
+        operation_versions=(
+            OpenApiOperationVersionOverride(path="/widgets", method="post", supported_versions=("2.0",)),
+        ),
     )
-    .bootstrap()
-)
 ```
 
-The supported typed definitions are HTTP, API key, OAuth 2.0, and OpenID Connect. Python field names and OpenAPI
-aliases are accepted; serialized schemas use canonical OpenAPI names such as `bearerFormat`, `in`, `tokenUrl`, and
-`openIdConnectUrl`. OAuth flow and OpenID Connect URLs may be relative, but must be non-empty and contain no whitespace
-or control characters. OAuth 2.0 configuration must declare at least one flow. A matching service-owned scheme is retained, while a same-named
-conflicting definition raises `ValueError`.
+HTTP, API key, OAuth 2.0, and OpenID Connect definitions are supported. Python field names and OpenAPI aliases are
+accepted; output uses canonical names such as `bearerFormat`, `in`, `tokenUrl`, and `openIdConnectUrl`. A same-named
+definition must be identical to the service-owned definition or schema generation raises `ValueError`.
 
-Each non-suppressed documented operation receives an `x-accept-versioning` extension and matching text appended to its
-existing description. The extension is:
+Version documentation is a fixed Accept-media-type convention. Each non-suppressed operation gets an
+`x-accept-versioning` extension and matching description text; `operation_versions` replaces the project version list
+for one exact path and lower-case HTTP method. It does not negotiate requests, add an `Accept` parameter, change response
+media types, or provide a Swagger UI version selector.
 
-```json
-{
-  "header": "Accept",
-  "mediaType": "application/vnd.example+json",
-  "parameter": "version",
-  "supportedVersions": ["1.0"]
-}
-```
-
-`operation_versions` replaces the project version list for its exact path and lower-case method pair. Suppressed pairs
-remain untouched. A conflicting service-owned `x-accept-versioning` extension raises `ValueError`; an identical one is
-idempotent. Configure before the first schema or documentation request. For Litestar's standard `Operation`, the
-extension is added to an explicit extension-aware operation while preserving its standard fields. A custom Litestar
-operation is supported when it explicitly declares an `x-accept-versioning`-aliased dataclass field and can be shallow
-copied. Custom operation subclasses without that field are rejected before schema mutation rather than losing custom
-state.
-
-When enabled, `vendor_media_type` is required explicitly. It must match
-`application/vnd.<vendor>+json`, where `<vendor>` is one or more characters from
-`!#$%&'*+-.^_|~0-9A-Za-z`. Backticks are intentionally excluded from the HTTP token set because values are rendered in
-Markdown code spans. Each `supported_versions` value uses the same non-empty grammar and is not constrained to a
-numeric or semantic-version format. Whitespace, control characters, commas, semicolons, and values outside that grammar
-are rejected; values are never trimmed or escaped.
-
-For Litestar, the bootstrapper updates the canonical OpenAPI model; for FastAPI, it composes the public `app.openapi`
-callable. Custom components, renderers, generators, schema caching, and errors are retained. Exporters should use that
-same canonical schema.
+For Litestar, custom `Operation` subclasses must explicitly declare an `x-accept-versioning`-aliased dataclass field;
+unsupported subclasses are rejected rather than losing custom state. For FastAPI, configure documentation before the
+first OpenAPI request. The original `app.openapi` generator and its cache remain in use, so after correcting a
+service-owned schema conflict, requesting the schema again applies the configured documentation to that cached schema.
 
 #### FastStream AsyncAPI documentation
 

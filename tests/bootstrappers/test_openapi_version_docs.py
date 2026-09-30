@@ -31,7 +31,6 @@ from microbootstrap.bootstrappers.fastapi import FastApiBootstrapper, FastApiSwa
 from microbootstrap.bootstrappers.litestar import (
     LitestarBootstrapper,
     LitestarSwaggerInstrument,
-    add_accept_versioning_extension,
 )
 from microbootstrap.config.litestar import LitestarConfig
 from microbootstrap.instruments.openapi_security_schemes import serialize_security_schemes
@@ -484,6 +483,43 @@ def test_fastapi_combined_openapi_augmentation_is_atomic_and_retryable(failure: 
     assert served_schema.json() == first_schema
 
 
+def test_fastapi_default_openapi_cache_retries_after_a_corrected_conflict() -> None:
+    application: typing.Final = fastapi.FastAPI()
+
+    @application.get(
+        TARGET_PATH,
+        description=GET_DESCRIPTION,
+        openapi_extra={"x-accept-versioning": {"header": "X-Service-Version"}},
+    )
+    async def list_widgets() -> dict[str, str]:
+        return {"status": "ok"}
+
+    FastApiSwaggerInstrument(
+        SwaggerConfig(
+            security_schemes={"serviceAuth": OpenApiHttpSecurityScheme(scheme="bearer")},
+            openapi_version_docs=build_version_docs_config(),
+        )
+    ).bootstrap_after(application)
+
+    with pytest.raises(ValueError, match="x-accept-versioning conflicts"):
+        application.openapi()
+
+    cached_schema: typing.Final = application.openapi_schema
+    assert cached_schema is not None
+    assert "serviceAuth" not in cached_schema.get("components", {}).get("securitySchemes", {})
+    assert cached_schema["paths"][TARGET_PATH]["get"]["x-accept-versioning"] == {"header": "X-Service-Version"}
+
+    cached_schema["paths"][TARGET_PATH]["get"].pop("x-accept-versioning")
+    corrected_schema: typing.Final = application.openapi()
+
+    assert corrected_schema is cached_schema
+    assert corrected_schema["components"]["securitySchemes"]["serviceAuth"] == {
+        "type": "http",
+        "scheme": "bearer",
+    }
+    assert corrected_schema["paths"][TARGET_PATH]["get"]["x-accept-versioning"]["header"] == "Accept"
+
+
 @pytest.mark.parametrize(
     ("failure", "error"),
     [
@@ -502,18 +538,20 @@ def test_litestar_combined_openapi_augmentation_is_atomic_and_retryable(failure:
     assert path_item.get is not None
     assert path_item.post is not None
     original_get: typing.Final = path_item.get
-    if failure == "conflicting_extension":
-        path_item.post = add_accept_versioning_extension(path_item.post, {"header": "X-Service-Version"})
-    else:
-        path_item.post.description = 1  # type: ignore[assignment]  # Deliberately invalid service-owned schema.
-    baseline_schema: typing.Final = copy.deepcopy(application.openapi_schema.to_schema())
     instrument: typing.Final = LitestarSwaggerInstrument(
         SwaggerConfig(
             security_schemes={"serviceAuth": OpenApiHttpSecurityScheme(scheme="bearer")},
             openapi_version_docs=build_version_docs_config(),
         )
     )
-
+    if failure == "conflicting_extension":
+        path_item.post = instrument._add_accept_versioning_extension(  # noqa: SLF001 - setup through the instrument.
+            path_item.post,
+            {"header": "X-Service-Version"},
+        )
+    else:
+        path_item.post.description = 1  # type: ignore[assignment]  # Deliberately invalid service-owned schema.
+    baseline_schema: typing.Final = copy.deepcopy(application.openapi_schema.to_schema())
     with pytest.raises(ValueError, match=error):
         instrument.bootstrap_after(application)
 
@@ -782,9 +820,10 @@ def test_litestar_version_docs_copy_custom_aliased_operation() -> None:
     service_owned_operation.rendering_state = "published"
     path_item.get = service_owned_operation
 
-    LitestarSwaggerInstrument(SwaggerConfig(openapi_version_docs=build_version_docs_config())).bootstrap_after(
-        application
+    instrument: typing.Final = LitestarSwaggerInstrument(
+        SwaggerConfig(openapi_version_docs=build_version_docs_config())
     )
+    instrument.bootstrap_after(application)
 
     documented_operation: typing.Final = path_item.get
     assert type(documented_operation) is ServiceVersionedOperation
@@ -792,11 +831,14 @@ def test_litestar_version_docs_copy_custom_aliased_operation() -> None:
     assert documented_operation.rendering_state == "published"
     assert documented_operation.to_schema()["x-accept-versioning"] == expected_extension
 
-    assert add_accept_versioning_extension(documented_operation, expected_extension) is documented_operation
+    assert (
+        instrument._add_accept_versioning_extension(documented_operation, expected_extension)  # noqa: SLF001
+        is documented_operation
+    )
     conflicting_operation: typing.Final = copy.copy(documented_operation)
     conflicting_operation.accept_versioning = {**expected_extension, "header": "X-Service-Version"}
     with pytest.raises(ValueError, match="x-accept-versioning conflicts"):
-        add_accept_versioning_extension(conflicting_operation, expected_extension)
+        instrument._add_accept_versioning_extension(conflicting_operation, expected_extension)  # noqa: SLF001
 
 
 def test_litestar_version_docs_reject_unsupported_custom_operation_atomically() -> None:
