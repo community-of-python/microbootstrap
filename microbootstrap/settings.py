@@ -107,6 +107,7 @@ class FastMcpSettings(  # type: ignore[misc]
     BaseServiceSettings,
     ServerConfig,
     LoggingConfig,
+    OpentelemetryConfig,
     SentryConfig,
     FastMcpPrometheusConfig,
     HealthChecksConfig,
