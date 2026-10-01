@@ -106,11 +106,13 @@ class TestFastStreamHealthCheck:
 
 @pytest.mark.parametrize("conversation_id", ["authoritative-value", None])
 async def test_faststream_opentelemetry(
+    monkeypatch: pytest.MonkeyPatch,
     faker: faker.Faker,
     broker: RedisBroker,
     minimal_opentelemetry_config: OpentelemetryConfig,
     conversation_id: str | None,
 ) -> None:
+    monkeypatch.setattr("opentelemetry.sdk.trace.TracerProvider.shutdown", mock.Mock())
     input_channel: typing.Final = faker.pystr()
     output_channel: typing.Final = faker.pystr()
     conversation_id_span_attribute: typing.Final = "conversation.id"

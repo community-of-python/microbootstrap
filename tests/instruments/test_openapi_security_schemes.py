@@ -1,7 +1,7 @@
 import typing
 
 import pytest
-from pydantic import ValidationError
+from pydantic import Field, ValidationError
 
 from microbootstrap import OpenApiApiKeySecurityScheme as ApiKeySecurityScheme
 from microbootstrap import (
@@ -10,14 +10,47 @@ from microbootstrap import (
     OpenApiOAuthFlow,
     OpenApiOAuthFlows,
     OpenApiOpenIdConnectSecurityScheme,
-    OpenApiSecurityScheme,
-    SwaggerConfig,
 )
-from microbootstrap.instruments.openapi_security_schemes import serialize_security_schemes
+from microbootstrap.instruments.instrument_box import InstrumentBox
+from microbootstrap.instruments.openapi_security_schemes import _OpenApiSecurityScheme, serialize_security_schemes
+from microbootstrap.instruments.swagger_instrument import SwaggerConfig, SwaggerInstrument
+from microbootstrap.settings import LitestarSettings
+
+
+class HttpOnlySettings(LitestarSettings):
+    security_schemes: dict[str, OpenApiHttpSecurityScheme] = Field(default_factory=dict)
+
+
+class ApiKeyOnlySettings(LitestarSettings):
+    security_schemes: dict[str, ApiKeySecurityScheme] = Field(default_factory=dict)
+
+
+class MixedSecuritySettings(LitestarSettings):
+    security_schemes: dict[str, OpenApiHttpSecurityScheme | ApiKeySecurityScheme] = Field(default_factory=dict)
+
+
+@pytest.fixture
+def http_only_settings() -> HttpOnlySettings:
+    return HttpOnlySettings(security_schemes={"http": OpenApiHttpSecurityScheme(scheme="bearer", bearer_format="JWT")})
+
+
+@pytest.fixture
+def api_key_only_settings() -> ApiKeyOnlySettings:
+    return ApiKeyOnlySettings(security_schemes={"api": ApiKeySecurityScheme(name="X-API-Key", location="header")})
+
+
+@pytest.fixture
+def mixed_security_settings() -> MixedSecuritySettings:
+    return MixedSecuritySettings(
+        security_schemes={
+            "http": OpenApiHttpSecurityScheme(scheme="bearer"),
+            "api": ApiKeySecurityScheme(name="X-API-Key", location="query"),
+        }
+    )
 
 
 def test_security_schemes_accept_python_names_and_serialize_openapi_aliases() -> None:
-    security_schemes: typing.Final[dict[str, OpenApiSecurityScheme]] = {
+    security_schemes: typing.Final[dict[str, _OpenApiSecurityScheme]] = {
         "http.auth": OpenApiHttpSecurityScheme(scheme="bearer", bearer_format="JWT"),
         "api-key": ApiKeySecurityScheme(name="X-API-Key", location="header"),
         "oauth2": OpenApiOAuth2SecurityScheme(
@@ -54,6 +87,74 @@ def test_security_schemes_accept_python_names_and_serialize_openapi_aliases() ->
         },
         "oidc": {"type": "openIdConnect", "openIdConnectUrl": "/.well-known/openid-configuration"},
     }
+
+
+def test_swagger_config_round_trips_all_security_scheme_types() -> None:
+    configuration: typing.Final = SwaggerConfig(
+        security_schemes={
+            "http": OpenApiHttpSecurityScheme(scheme="bearer", bearer_format="JWT"),
+            "api": ApiKeySecurityScheme(name="X-API-Key", location="header"),
+            "oauth": OpenApiOAuth2SecurityScheme(
+                flows=OpenApiOAuthFlows(client_credentials=OpenApiOAuthFlow(token_url="/token"))  # noqa: S106
+            ),
+            "oidc": OpenApiOpenIdConnectSecurityScheme(open_id_connect_url="/.well-known/openid-configuration"),
+        }
+    )
+
+    from_dump: typing.Final = SwaggerConfig.model_validate(configuration.model_dump(by_alias=True))
+    from_json: typing.Final = SwaggerConfig.model_validate_json(configuration.model_dump_json(by_alias=True))
+
+    for round_tripped in (from_dump, from_json):
+        assert type(round_tripped.security_schemes) is dict
+        assert round_tripped.security_schemes == configuration.security_schemes
+        assert isinstance(round_tripped.security_schemes["http"], OpenApiHttpSecurityScheme)
+        assert isinstance(round_tripped.security_schemes["api"], ApiKeySecurityScheme)
+        assert isinstance(round_tripped.security_schemes["oauth"], OpenApiOAuth2SecurityScheme)
+        assert isinstance(round_tripped.security_schemes["oidc"], OpenApiOpenIdConnectSecurityScheme)
+
+
+def test_instrument_box_reconstructs_concrete_security_scheme_settings(
+    http_only_settings: HttpOnlySettings,
+    api_key_only_settings: ApiKeyOnlySettings,
+    mixed_security_settings: MixedSecuritySettings,
+) -> None:
+    configurations: list[SwaggerConfig] = []
+    for settings in (http_only_settings, api_key_only_settings, mixed_security_settings):
+        instrument_box = InstrumentBox(__instruments__=[SwaggerInstrument])
+        instrument_box.initialize(settings)
+
+        configuration = instrument_box.instruments[0].instrument_config
+
+        assert isinstance(configuration, SwaggerConfig)
+        assert type(configuration.security_schemes) is dict
+        configurations.append(configuration)
+
+    http_configuration, api_key_configuration, mixed_configuration = configurations
+    assert isinstance(http_configuration.security_schemes["http"], OpenApiHttpSecurityScheme)
+    assert isinstance(api_key_configuration.security_schemes["api"], ApiKeySecurityScheme)
+    assert isinstance(mixed_configuration.security_schemes["http"], OpenApiHttpSecurityScheme)
+    assert isinstance(mixed_configuration.security_schemes["api"], ApiKeySecurityScheme)
+
+
+def test_instrument_box_merges_security_scheme_dicts() -> None:
+    instrument_box: typing.Final = InstrumentBox(__instruments__=[SwaggerInstrument])
+    instrument_box.initialize(HttpOnlySettings(security_schemes={"http": OpenApiHttpSecurityScheme(scheme="bearer")}))
+    instrument_box.configure_instrument(
+        SwaggerConfig(security_schemes={"api": ApiKeySecurityScheme(name="X-API-Key", location="header")})
+    )
+
+    configuration = instrument_box.instruments[0].instrument_config
+
+    assert isinstance(configuration, SwaggerConfig)
+    assert type(configuration.security_schemes) is dict
+    assert set(configuration.security_schemes) == {"http", "api"}
+    assert isinstance(configuration.security_schemes["http"], OpenApiHttpSecurityScheme)
+    assert isinstance(configuration.security_schemes["api"], ApiKeySecurityScheme)
+
+
+def test_http_only_settings_reject_other_security_scheme_kinds() -> None:
+    with pytest.raises(ValidationError):
+        HttpOnlySettings(security_schemes={"api": ApiKeySecurityScheme(name="X-API-Key", location="header")})
 
 
 def test_security_schemes_accept_openapi_aliases() -> None:

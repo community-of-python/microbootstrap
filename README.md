@@ -605,13 +605,12 @@ from microbootstrap import (
     LitestarSettings,
     OpenApiHttpSecurityScheme,
     OpenApiOperationVersionOverride,
-    OpenApiSecurityScheme,
     OpenApiVersionDocsConfig,
 )
 
 
 class Settings(LitestarSettings):
-    security_schemes: dict[str, OpenApiSecurityScheme] = {
+    security_schemes: dict[str, OpenApiHttpSecurityScheme] = {
         "serviceAuth": OpenApiHttpSecurityScheme(scheme="bearer", bearer_format="JWT"),
     }
     openapi_version_docs: OpenApiVersionDocsConfig | None = OpenApiVersionDocsConfig(
@@ -624,9 +623,11 @@ class Settings(LitestarSettings):
     )
 ```
 
-HTTP, API key, OAuth 2.0, and OpenID Connect definitions are supported. Python field names and OpenAPI aliases are
-accepted; output uses canonical names such as `bearerFormat`, `in`, `tokenUrl`, and `openIdConnectUrl`. A same-named
-definition must be identical to the service-owned definition or schema generation raises `ValueError`.
+HTTP, API key, OAuth 2.0, and OpenID Connect definitions are supported by `SwaggerConfig`. Annotating a consumer
+setting with a concrete scheme class intentionally rejects other kinds for that consumer. Python field names and
+OpenAPI aliases are accepted; output uses canonical names such as `bearerFormat`, `in`, `tokenUrl`, and
+`openIdConnectUrl`. A same-named definition must be identical to the service-owned definition or schema generation
+raises `ValueError`.
 
 Set `openapi_version_docs` to `None` to disable version documentation. A configured non-empty global
 `supported_versions` list adds an `x-accept-versioning` extension and matching description text to each operation.
@@ -634,13 +635,10 @@ Set `openapi_version_docs` to `None` to disable version documentation. A configu
 microbootstrap's additions for that operation without asserting that no service-owned version metadata exists. This does
 not negotiate requests, add an `Accept` parameter, change response media types, or provide a Swagger UI version selector.
 
-Breaking migration: replace `enabled=False` with `openapi_version_docs=None`, and replace each old suppressed operation
-with an `OpenApiOperationVersionOverride` whose `supported_versions=()`. There is no compatibility shim.
-
-For Litestar, custom `Operation` subclasses must explicitly declare an `x-accept-versioning`-aliased dataclass field;
-unsupported subclasses are rejected rather than losing custom state. For FastAPI, configure documentation before the
-first OpenAPI request. The original `app.openapi` generator and its cache remain in use, so after correcting a
-service-owned schema conflict, requesting the schema again applies the configured documentation to that cached schema.
+The generated schema is the framework's normal schema with these definitions and operation fields added. Repeated
+schema reads remain stable. A conflicting service-owned definition or `x-accept-versioning` extension raises
+`ValueError`; correct the configuration and rebuild the application. Litestar supports its standard `Operation` type
+for version documentation and rejects other custom operation subclasses.
 
 #### FastStream AsyncAPI documentation
 

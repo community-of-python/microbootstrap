@@ -8,7 +8,6 @@ from microbootstrap.instruments.openapi_security_schemes import (
     OpenApiOAuthFlow,
     OpenApiOAuthFlows,
     OpenApiOpenIdConnectSecurityScheme,
-    OpenApiSecurityScheme,
 )
 from microbootstrap.instruments.openapi_version_docs import (
     OpenApiOperationVersionOverride,
@@ -62,7 +61,6 @@ __all__ = (
     "OpenApiOAuthFlows",
     "OpenApiOpenIdConnectSecurityScheme",
     "OpenApiOperationVersionOverride",
-    "OpenApiSecurityScheme",
     "OpenApiVersionDocsConfig",
     "OpentelemetryConfig",
     "PyroscopeConfig",

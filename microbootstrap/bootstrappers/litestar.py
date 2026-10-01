@@ -1,5 +1,4 @@
 from __future__ import annotations
-import copy
 import dataclasses
 import typing
 
@@ -34,7 +33,7 @@ from microbootstrap.instruments.openapi_security_schemes import (
     OpenApiOAuthFlow,
     OpenApiOAuthFlows,
     OpenApiOpenIdConnectSecurityScheme,
-    OpenApiSecurityScheme,
+    _OpenApiSecurityScheme,
     serialize_security_schemes,
 )
 from microbootstrap.instruments.openapi_version_docs import SUPPORTED_HTTP_METHODS
@@ -127,24 +126,18 @@ class LitestarSwaggerInstrument(SwaggerInstrument):
         return bootstrap_result
 
     def bootstrap_after(self, application: ApplicationT) -> ApplicationT:
-        version_docs = self.instrument_config.openapi_version_docs
-        if (version_docs is None and not self.instrument_config.security_schemes) or application.openapi_schema is None:
+        if (self.instrument_config.openapi_version_docs is None and not self.instrument_config.security_schemes) or (
+            application.openapi_schema is None
+        ):
             return application
-        security_updates: dict[str, openapi.spec.SecurityScheme] | None = None
         if self.instrument_config.security_schemes:
-            expected_schemes: typing.Final = serialize_security_schemes(self.instrument_config.security_schemes)
-            security_updates = self._prepare_security_scheme_updates(application.openapi_schema, expected_schemes)
-        version_documentation: typing.Final = self._prepare_version_documentation_updates(application.openapi_schema)
-        if security_updates is not None:
-            self._apply_security_scheme_updates(application.openapi_schema, security_updates)
-        self._apply_version_documentation_updates(version_documentation)
+            self._merge_security_schemes(application.openapi_schema)
+        if self.instrument_config.openapi_version_docs is not None:
+            self._document_operations(application.openapi_schema)
         return application
 
-    def _prepare_security_scheme_updates(
-        self,
-        openapi_schema: openapi.spec.OpenAPI,
-        expected_schemes: dict[str, dict[str, typing.Any]],
-    ) -> dict[str, openapi.spec.SecurityScheme]:
+    def _merge_security_schemes(self, openapi_schema: openapi.spec.OpenAPI) -> None:
+        expected_schemes: typing.Final = serialize_security_schemes(self.instrument_config.security_schemes)
         security_schemes = openapi_schema.components.security_schemes
         if security_schemes is not None:
             canonical_schemes: typing.Final = {
@@ -152,54 +145,32 @@ class LitestarSwaggerInstrument(SwaggerInstrument):
                 for name, scheme in security_schemes.items()
             }
             self._validate_security_scheme_conflicts(canonical_schemes, expected_schemes)
-        return {
+        configured_schemes = {
             scheme_name: self._build_litestar_security_scheme(security_scheme)
             for scheme_name, security_scheme in self.instrument_config.security_schemes.items()
         }
-
-    @staticmethod
-    def _apply_security_scheme_updates(
-        openapi_schema: openapi.spec.OpenAPI,
-        expected_schemes: dict[str, openapi.spec.SecurityScheme],
-    ) -> None:
-        security_schemes = openapi_schema.components.security_schemes
         if security_schemes is None:
             openapi_schema.components.security_schemes = typing.cast(
                 "dict[str, openapi.spec.SecurityScheme | openapi.spec.Reference]",
-                expected_schemes,
+                configured_schemes,
             )
             return
         security_schemes.update(
-            {name: scheme for name, scheme in expected_schemes.items() if name not in security_schemes}
+            {name: scheme for name, scheme in configured_schemes.items() if name not in security_schemes}
         )
 
-    def _prepare_version_documentation_updates(
-        self,
-        openapi_schema: openapi.spec.OpenAPI,
-    ) -> list[tuple[openapi.spec.PathItem, str, openapi.spec.Operation]]:
-        updates: list[tuple[openapi.spec.PathItem, str, openapi.spec.Operation]] = []
-        configuration = self.instrument_config.openapi_version_docs
-        if configuration is None or openapi_schema.paths is None:
-            return updates
+    def _document_operations(self, openapi_schema: openapi.spec.OpenAPI) -> None:
+        if openapi_schema.paths is None:
+            return
         for path, path_item in openapi_schema.paths.items():
-            if not isinstance(path_item, openapi.spec.PathItem):
-                continue
             for method in SUPPORTED_HTTP_METHODS:
                 operation = getattr(path_item, method)
                 if operation is None:
                     continue
-                accept_versioning_field = next(
-                    (
-                        field
-                        for field in dataclasses.fields(operation)
-                        if field.metadata.get("alias") == "x-accept-versioning"
-                    ),
-                    None,
-                )
                 existing_extension = (
-                    getattr(operation, accept_versioning_field.name) if accept_versioning_field is not None else None
+                    operation.accept_versioning if isinstance(operation, AcceptVersionedOperation) else None
                 )
-                documentation = self._prepare_version_documentation(
+                documentation = self._build_version_documentation(
                     path,
                     method,
                     operation.description,
@@ -209,58 +180,25 @@ class LitestarSwaggerInstrument(SwaggerInstrument):
                 if documentation is None:
                     continue
                 extension, description = documentation
-                documented_operation = self._prepare_documented_operation(
-                    operation,
-                    accept_versioning_field,
-                    existing_extension,
-                    extension,
-                    description,
-                )
-                updates.append((path_item, method, documented_operation))
-        return updates
-
-    @staticmethod
-    def _apply_version_documentation_updates(
-        updates: typing.Iterable[tuple[openapi.spec.PathItem, str, openapi.spec.Operation]],
-    ) -> None:
-        for path_item, method, operation in updates:
-            setattr(path_item, method, operation)
-
-    @staticmethod
-    def _prepare_documented_operation(
-        operation: openapi.spec.Operation,
-        accept_versioning_field: dataclasses.Field[typing.Any] | None,
-        existing_extension: object,
-        expected_extension: dict[str, str | list[str]],
-        description: str,
-    ) -> openapi.spec.Operation:
-        if accept_versioning_field is not None:
-            if existing_extension is not None:
-                documented_operation = operation
-            else:
-                documented_operation = copy.copy(operation)
-                setattr(documented_operation, accept_versioning_field.name, expected_extension)
-        else:
-            if type(operation) is not openapi.spec.Operation:
-                message = (
-                    f"OpenAPI operation {type(operation).__name__} must declare an x-accept-versioning alias "
-                    "to use Accept version documentation."
-                )
-                raise TypeError(message)
-            init_fields = {
-                field.name: getattr(operation, field.name)
-                for field in dataclasses.fields(openapi.spec.Operation)
-                if field.init
-            }
-            documented_operation = AcceptVersionedOperation(**init_fields, accept_versioning=expected_extension)
-        if description != operation.description:
-            if documented_operation is operation:
-                documented_operation = copy.copy(documented_operation)
-            documented_operation.description = description
-        return documented_operation
+                if type(operation) is openapi.spec.Operation:
+                    init_fields = {
+                        field.name: getattr(operation, field.name)
+                        for field in dataclasses.fields(openapi.spec.Operation)
+                        if field.init
+                    }
+                    operation = AcceptVersionedOperation(**init_fields, accept_versioning=extension)
+                    setattr(path_item, method, operation)
+                elif type(operation) is not AcceptVersionedOperation:
+                    message = (
+                        f"OpenAPI operation {type(operation).__name__} is not supported "
+                        "for Accept version documentation."
+                    )
+                    raise TypeError(message)
+                operation.accept_versioning = extension
+                operation.description = description
 
     @classmethod
-    def _build_litestar_security_scheme(cls, security_scheme: OpenApiSecurityScheme) -> openapi.spec.SecurityScheme:
+    def _build_litestar_security_scheme(cls, security_scheme: _OpenApiSecurityScheme) -> openapi.spec.SecurityScheme:
         if isinstance(security_scheme, OpenApiHttpSecurityScheme):
             return openapi.spec.SecurityScheme(
                 type=security_scheme.type,

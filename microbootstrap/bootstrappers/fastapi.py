@@ -13,6 +13,7 @@ from microbootstrap.instruments.cors_instrument import CorsInstrument
 from microbootstrap.instruments.health_checks_instrument import HealthChecksInstrument, HealthCheckTypedDict
 from microbootstrap.instruments.logging_instrument import LoggingInstrument
 from microbootstrap.instruments.openapi_security_schemes import serialize_security_schemes
+from microbootstrap.instruments.openapi_version_docs import SUPPORTED_HTTP_METHODS
 from microbootstrap.instruments.opentelemetry_instrument import OpentelemetryInstrument
 from microbootstrap.instruments.prometheus_instrument import FastApiPrometheusConfig, PrometheusInstrument
 from microbootstrap.instruments.pyroscope_instrument import PyroscopeInstrument
@@ -68,84 +69,37 @@ class FastApiSwaggerInstrument(SwaggerInstrument):
     def bootstrap_after(self, application: ApplicationT) -> ApplicationT:
         if self.instrument_config.swagger_offline_docs:
             enable_offline_docs(application, static_files_handler=self.instrument_config.service_static_path)
-        version_docs = self.instrument_config.openapi_version_docs
-        if version_docs is None and not self.instrument_config.security_schemes:
+        if self.instrument_config.openapi_version_docs is None and not self.instrument_config.security_schemes:
             return application
 
         original_openapi: typing.Final = application.openapi
 
         def documented_openapi() -> dict[str, typing.Any]:
             openapi_schema: typing.Final = original_openapi()
-            security_updates: dict[str, dict[str, typing.Any]] | None = None
             if self.instrument_config.security_schemes:
-                expected_schemes: typing.Final = serialize_security_schemes(self.instrument_config.security_schemes)
-                security_updates = self._prepare_security_scheme_updates(openapi_schema, expected_schemes)
-            version_documentation: typing.Final = self._prepare_version_documentation_updates(openapi_schema)
-            if security_updates is not None:
-                self._apply_security_scheme_updates(openapi_schema, security_updates)
-            self._apply_version_documentation_updates(version_documentation)
+                self._merge_security_schemes(openapi_schema)
+            if self.instrument_config.openapi_version_docs is not None:
+                self._document_operations(openapi_schema)
             return openapi_schema
 
         application.openapi = documented_openapi  # type: ignore[method-assign]  # FastAPI's public custom OpenAPI hook.
         return application
 
-    def _prepare_security_scheme_updates(
-        self,
-        openapi_schema: dict[str, typing.Any],
-        expected_schemes: dict[str, dict[str, typing.Any]],
-    ) -> dict[str, dict[str, typing.Any]]:
-        components = openapi_schema.get("components")
-        if components is None:
-            return expected_schemes
-        if not isinstance(components, dict):
-            message = "OpenAPI components must be a dictionary to configure security schemes."
-            raise TypeError(message)
-        security_schemes = components.get("securitySchemes")
-        if security_schemes is None:
-            return expected_schemes
-        if not isinstance(security_schemes, dict):
-            message = "OpenAPI components.securitySchemes must be a dictionary to configure security schemes."
-            raise TypeError(message)
+    def _merge_security_schemes(self, openapi_schema: dict[str, typing.Any]) -> None:
+        expected_schemes: typing.Final = serialize_security_schemes(self.instrument_config.security_schemes)
+        components = openapi_schema.setdefault("components", {})
+        security_schemes = components.setdefault("securitySchemes", {})
         self._validate_security_scheme_conflicts(security_schemes, expected_schemes)
-        return expected_schemes
-
-    @staticmethod
-    def _apply_security_scheme_updates(
-        openapi_schema: dict[str, typing.Any],
-        expected_schemes: dict[str, dict[str, typing.Any]],
-    ) -> None:
-        components = openapi_schema.get("components")
-        if components is None:
-            openapi_schema["components"] = {"securitySchemes": expected_schemes}
-            return
-        assert isinstance(components, dict)  # noqa: S101 - validated before application.
-        security_schemes = components.get("securitySchemes")
-        if security_schemes is None:
-            components["securitySchemes"] = expected_schemes
-            return
-        assert isinstance(security_schemes, dict)  # noqa: S101 - validated before application.
         security_schemes.update(
             {name: scheme for name, scheme in expected_schemes.items() if name not in security_schemes}
         )
 
-    def _prepare_version_documentation_updates(
-        self,
-        openapi_schema: dict[str, typing.Any],
-    ) -> list[tuple[dict[str, typing.Any], dict[str, str | list[str]], str]]:
-        updates: list[tuple[dict[str, typing.Any], dict[str, str | list[str]], str]] = []
-        configuration = self.instrument_config.openapi_version_docs
-        if configuration is None:
-            return updates
-        paths = openapi_schema.get("paths")
-        if not isinstance(paths, dict):
-            return updates
-        for path, path_item in paths.items():
-            if not isinstance(path, str) or not isinstance(path_item, dict):
-                continue
+    def _document_operations(self, openapi_schema: dict[str, typing.Any]) -> None:
+        for path, path_item in openapi_schema["paths"].items():
             for method, operation in path_item.items():
-                if not isinstance(method, str) or not isinstance(operation, dict):
+                if method not in SUPPORTED_HTTP_METHODS:
                     continue
-                documentation = self._prepare_version_documentation(
+                documentation = self._build_version_documentation(
                     path,
                     method,
                     operation.get("description"),
@@ -153,17 +107,7 @@ class FastApiSwaggerInstrument(SwaggerInstrument):
                     has_existing_extension="x-accept-versioning" in operation,
                 )
                 if documentation is not None:
-                    extension, description = documentation
-                    updates.append((operation, extension, description))
-        return updates
-
-    @staticmethod
-    def _apply_version_documentation_updates(
-        updates: typing.Iterable[tuple[dict[str, typing.Any], dict[str, str | list[str]], str]],
-    ) -> None:
-        for operation, extension, description in updates:
-            operation["x-accept-versioning"] = extension
-            operation["description"] = description
+                    operation["x-accept-versioning"], operation["description"] = documentation
 
 
 @FastApiBootstrapper.use_instrument()

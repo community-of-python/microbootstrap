@@ -100,7 +100,7 @@ class OpenApiOpenIdConnectSecurityScheme(OpenApiSecuritySchemeModel):
         return validated_value
 
 
-OpenApiSecurityScheme: typing.TypeAlias = typing.Annotated[
+_OpenApiSecurityScheme: typing.TypeAlias = typing.Annotated[
     OpenApiHttpSecurityScheme
     | OpenApiApiKeySecurityScheme
     | OpenApiOAuth2SecurityScheme
@@ -119,7 +119,7 @@ def validate_openapi_url(value: str | None) -> str | None:
 
 
 def serialize_security_schemes(
-    security_schemes: typing.Mapping[str, OpenApiSecurityScheme],
+    security_schemes: typing.Mapping[str, _OpenApiSecurityScheme],
 ) -> dict[str, dict[str, typing.Any]]:
     return {
         scheme_name: security_scheme.model_dump(by_alias=True, exclude_none=True)

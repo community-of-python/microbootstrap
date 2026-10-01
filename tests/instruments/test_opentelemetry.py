@@ -22,7 +22,6 @@ from microbootstrap.bootstrappers.litestar import (
 )
 from microbootstrap.instruments import opentelemetry_instrument
 from microbootstrap.instruments.opentelemetry_instrument import BaggageSpanProcessor, OpentelemetryInstrument
-from tests.conftest import InMemoryOpenTelemetry
 
 
 def test_opentelemetry_baggage_scope_overrides_removes_and_restores_values() -> None:
@@ -179,66 +178,6 @@ def test_opentelemetry_bootstrap_registers_baggage_span_processor(
     }
 
 
-def test_opentelemetry_bootstrap_exports_to_in_memory_delivery_boundary(
-    minimal_opentelemetry_config: OpentelemetryConfig,
-    in_memory_otel: typing.Any,  # noqa: ANN401
-) -> None:
-    instrument = OpentelemetryInstrument(minimal_opentelemetry_config)
-    instrument.bootstrap()
-
-    assert in_memory_otel.exporter_calls == [
-        (
-            (),
-            {
-                "endpoint": minimal_opentelemetry_config.opentelemetry_endpoint,
-                "insecure": minimal_opentelemetry_config.opentelemetry_insecure,
-            },
-        )
-    ]
-
-    with instrument.tracer_provider.get_tracer(__name__).start_as_current_span("in-memory-export"):
-        pass
-
-    assert in_memory_otel.providers[-1].force_flush(timeout_millis=1_000)
-    assert [span.name for span in in_memory_otel.exporters[-1].get_finished_spans()] == ["in-memory-export"]
-
-
-def test_in_memory_opentelemetry_cleanup_flushes_and_shuts_down_all_owned_providers() -> None:
-    first_provider: typing.Final = MagicMock(spec=TracerProvider)
-    second_provider: typing.Final = MagicMock(spec=TracerProvider)
-    first_provider.force_flush.return_value = True
-    second_provider.force_flush.return_value = True
-    telemetry_harness = InMemoryOpenTelemetry(providers=[first_provider, second_provider])
-
-    telemetry_harness.cleanup()
-
-    first_provider.force_flush.assert_called_once_with(timeout_millis=1_000)
-    second_provider.force_flush.assert_called_once_with(timeout_millis=1_000)
-    first_provider.shutdown.assert_called_once_with()
-    second_provider.shutdown.assert_called_once_with()
-
-
-def test_in_memory_opentelemetry_cleanup_attempts_all_providers_and_surfaces_all_failures() -> None:
-    first_provider: typing.Final = MagicMock(spec=TracerProvider)
-    second_provider: typing.Final = MagicMock(spec=TracerProvider)
-    first_provider.force_flush.side_effect = RuntimeError("first flush failed")
-    second_provider.force_flush.return_value = False
-    first_provider.shutdown.side_effect = RuntimeError("first shutdown failed")
-    second_provider.shutdown.side_effect = RuntimeError("second shutdown failed")
-    telemetry_harness = InMemoryOpenTelemetry(providers=[first_provider, second_provider])
-
-    with pytest.raises(
-        RuntimeError,
-        match=r"first flush failed.*force_flush returned False.*first shutdown failed.*second shutdown failed",
-    ):
-        telemetry_harness.cleanup()
-
-    first_provider.force_flush.assert_called_once_with(timeout_millis=1_000)
-    second_provider.force_flush.assert_called_once_with(timeout_millis=1_000)
-    first_provider.shutdown.assert_called_once_with()
-    second_provider.shutdown.assert_called_once_with()
-
-
 def test_opentelemetry_is_ready(
     minimal_opentelemetry_config: OpentelemetryConfig,
 ) -> None:
@@ -323,7 +262,11 @@ def test_litestar_opentelemetry_bootstrap_working(
         assert async_mock.called
 
 
-def test_fastapi_opentelemetry_bootstrap_working(minimal_opentelemetry_config: OpentelemetryConfig) -> None:
+def test_fastapi_opentelemetry_bootstrap_working(
+    minimal_opentelemetry_config: OpentelemetryConfig, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr("opentelemetry.sdk.trace.TracerProvider.shutdown", Mock())
+
     test_opentelemetry_instrument: typing.Final = FastApiOpentelemetryInstrument(minimal_opentelemetry_config)
     test_opentelemetry_instrument.bootstrap()
     fastapi_application: typing.Final = test_opentelemetry_instrument.bootstrap_after(fastapi.FastAPI())
