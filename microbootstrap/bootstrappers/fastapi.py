@@ -12,6 +12,7 @@ from microbootstrap.config.fastapi import FastApiConfig
 from microbootstrap.instruments.cors_instrument import CorsInstrument
 from microbootstrap.instruments.health_checks_instrument import HealthChecksInstrument, HealthCheckTypedDict
 from microbootstrap.instruments.logging_instrument import LoggingInstrument
+from microbootstrap.instruments.openapi_security_schemes import serialize_security_schemes
 from microbootstrap.instruments.opentelemetry_instrument import OpentelemetryInstrument
 from microbootstrap.instruments.prometheus_instrument import FastApiPrometheusConfig, PrometheusInstrument
 from microbootstrap.instruments.pyroscope_instrument import PyroscopeInstrument
@@ -67,17 +68,21 @@ class FastApiSwaggerInstrument(SwaggerInstrument):
     def bootstrap_after(self, application: ApplicationT) -> ApplicationT:
         if self.instrument_config.swagger_offline_docs:
             enable_offline_docs(application, static_files_handler=self.instrument_config.service_static_path)
-        if not self._has_version_documentation() and not self.instrument_config.security_schemes:
+        version_docs = self.instrument_config.openapi_version_docs
+        if version_docs is None and not self.instrument_config.security_schemes:
             return application
 
         original_openapi: typing.Final = application.openapi
 
         def documented_openapi() -> dict[str, typing.Any]:
             openapi_schema: typing.Final = original_openapi()
-            expected_schemes: typing.Final = self._prepare_security_scheme_updates(openapi_schema)
+            security_updates: dict[str, dict[str, typing.Any]] | None = None
+            if self.instrument_config.security_schemes:
+                expected_schemes: typing.Final = serialize_security_schemes(self.instrument_config.security_schemes)
+                security_updates = self._prepare_security_scheme_updates(openapi_schema, expected_schemes)
             version_documentation: typing.Final = self._prepare_version_documentation_updates(openapi_schema)
-            if expected_schemes is not None:
-                self._apply_security_scheme_updates(openapi_schema, expected_schemes)
+            if security_updates is not None:
+                self._apply_security_scheme_updates(openapi_schema, security_updates)
             self._apply_version_documentation_updates(version_documentation)
             return openapi_schema
 
@@ -87,10 +92,8 @@ class FastApiSwaggerInstrument(SwaggerInstrument):
     def _prepare_security_scheme_updates(
         self,
         openapi_schema: dict[str, typing.Any],
-    ) -> dict[str, dict[str, typing.Any]] | None:
-        if not self.instrument_config.security_schemes:
-            return None
-        expected_schemes: typing.Final = self._expected_security_schemes()
+        expected_schemes: dict[str, dict[str, typing.Any]],
+    ) -> dict[str, dict[str, typing.Any]]:
         components = openapi_schema.get("components")
         if components is None:
             return expected_schemes
@@ -103,7 +106,7 @@ class FastApiSwaggerInstrument(SwaggerInstrument):
         if not isinstance(security_schemes, dict):
             message = "OpenAPI components.securitySchemes must be a dictionary to configure security schemes."
             raise TypeError(message)
-        self._validate_security_scheme_conflicts(security_schemes)
+        self._validate_security_scheme_conflicts(security_schemes, expected_schemes)
         return expected_schemes
 
     @staticmethod
@@ -130,7 +133,8 @@ class FastApiSwaggerInstrument(SwaggerInstrument):
         openapi_schema: dict[str, typing.Any],
     ) -> list[tuple[dict[str, typing.Any], dict[str, str | list[str]], str]]:
         updates: list[tuple[dict[str, typing.Any], dict[str, str | list[str]], str]] = []
-        if not self._has_version_documentation():
+        configuration = self.instrument_config.openapi_version_docs
+        if configuration is None:
             return updates
         paths = openapi_schema.get("paths")
         if not isinstance(paths, dict):

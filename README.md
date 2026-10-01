@@ -604,7 +604,6 @@ Keep requirements and authentication in your application routes and dependencies
 from microbootstrap import (
     LitestarSettings,
     OpenApiHttpSecurityScheme,
-    OpenApiOperationSelector,
     OpenApiOperationVersionOverride,
     OpenApiSecurityScheme,
     OpenApiVersionDocsConfig,
@@ -616,12 +615,11 @@ class Settings(LitestarSettings):
         "serviceAuth": OpenApiHttpSecurityScheme(scheme="bearer", bearer_format="JWT"),
     }
     openapi_version_docs: OpenApiVersionDocsConfig | None = OpenApiVersionDocsConfig(
-        enabled=True,
         vendor_media_type="application/vnd.example+json",
         supported_versions=("1.0",),
-        suppressed_operations=(OpenApiOperationSelector(path="/internal/widgets", method="get"),),
         operation_versions=(
             OpenApiOperationVersionOverride(path="/widgets", method="post", supported_versions=("2.0",)),
+            OpenApiOperationVersionOverride(path="/internal/widgets", method="get", supported_versions=()),
         ),
     )
 ```
@@ -630,10 +628,14 @@ HTTP, API key, OAuth 2.0, and OpenID Connect definitions are supported. Python f
 accepted; output uses canonical names such as `bearerFormat`, `in`, `tokenUrl`, and `openIdConnectUrl`. A same-named
 definition must be identical to the service-owned definition or schema generation raises `ValueError`.
 
-Version documentation is a fixed Accept-media-type convention. Each non-suppressed operation gets an
-`x-accept-versioning` extension and matching description text; `operation_versions` replaces the project version list
-for one exact path and lower-case HTTP method. It does not negotiate requests, add an `Accept` parameter, change response
-media types, or provide a Swagger UI version selector.
+Set `openapi_version_docs` to `None` to disable version documentation. A configured non-empty global
+`supported_versions` list adds an `x-accept-versioning` extension and matching description text to each operation.
+`operation_versions` replaces that list for one exact path and lower-case HTTP method; an explicit empty tuple skips
+microbootstrap's additions for that operation without asserting that no service-owned version metadata exists. This does
+not negotiate requests, add an `Accept` parameter, change response media types, or provide a Swagger UI version selector.
+
+Breaking migration: replace `enabled=False` with `openapi_version_docs=None`, and replace each old suppressed operation
+with an `OpenApiOperationVersionOverride` whose `supported_versions=()`. There is no compatibility shim.
 
 For Litestar, custom `Operation` subclasses must explicitly declare an `x-accept-versioning`-aliased dataclass field;
 unsupported subclasses are rejected rather than losing custom state. For FastAPI, configure documentation before the

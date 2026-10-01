@@ -13,7 +13,7 @@ from pydantic import ValidationError
 
 from microbootstrap.bootstrappers.fastapi import FastApiSwaggerInstrument
 from microbootstrap.bootstrappers.litestar import LitestarSwaggerInstrument
-from microbootstrap.instruments.openapi_version_docs import OpenApiOperationSelector, OpenApiVersionDocsConfig
+from microbootstrap.instruments.openapi_version_docs import OpenApiOperationVersionOverride, OpenApiVersionDocsConfig
 from microbootstrap.instruments.swagger_instrument import SwaggerConfig, SwaggerInstrument
 
 
@@ -185,19 +185,29 @@ def test_fastapi_swagger_bootstrap_working_offline_docs(
     ("configuration", "error"),
     [
         (
+            lambda: OpenApiVersionDocsConfig.model_validate({"vendor_media_type": "application/vnd.example+json"}),
+            "Field required",
+        ),
+        (
+            lambda: OpenApiVersionDocsConfig.model_validate({"supported_versions": ("2026-01",)}),
+            "Field required",
+        ),
+        (
             lambda: OpenApiVersionDocsConfig(
-                enabled=True,
-                vendor_media_type="application/vnd.example+json",
+                vendor_media_type=None,
+                supported_versions=("2026-01",),
             ),
-            "requires at least one supported API version",
-        ),
-        (
-            lambda: OpenApiVersionDocsConfig(enabled=True, supported_versions=("2026-01",)),
-            "requires an explicit vendor media type",
+            "Input should be a valid string",
         ),
         (
             lambda: OpenApiVersionDocsConfig(
-                enabled=True,
+                vendor_media_type="application/vnd.example+json",
+                supported_versions=None,
+            ),
+            "Input should be a valid tuple",
+        ),
+        (
+            lambda: OpenApiVersionDocsConfig(
                 vendor_media_type="application/json",
                 supported_versions=("1.0",),
             ),
@@ -205,18 +215,17 @@ def test_fastapi_swagger_bootstrap_working_offline_docs(
         ),
         (
             lambda: OpenApiVersionDocsConfig(
-                enabled=True,
                 vendor_media_type="application/vnd.example+json",
                 supported_versions=("1.0", "1.0"),
             ),
             "must not contain duplicates",
         ),
         (
-            lambda: OpenApiOperationSelector(path="widgets", method="get"),
+            lambda: OpenApiOperationVersionOverride(path="widgets", method="get", supported_versions=()),
             "must be an absolute path",
         ),
         (
-            lambda: OpenApiOperationSelector(path="/widgets", method="GET"),
+            lambda: OpenApiOperationVersionOverride(path="/widgets", method="GET", supported_versions=()),
             "Operation method must be one of",
         ),
     ],
@@ -227,6 +236,29 @@ def test_openapi_version_docs_configuration_rejects_invalid_values(
 ) -> None:
     with pytest.raises(ValidationError, match=error):
         configuration()
+
+
+@pytest.mark.parametrize("enabled", [False, True])
+def test_openapi_version_docs_rejects_removed_enabled_field(enabled: bool) -> None:
+    with pytest.raises(ValidationError, match="Extra inputs are not permitted"):
+        OpenApiVersionDocsConfig.model_validate(
+            {"enabled": enabled, "vendor_media_type": "application/vnd.example+json", "supported_versions": ("1.0",)}
+        )
+
+
+def test_openapi_version_docs_rejects_removed_suppression_and_unknown_override_fields() -> None:
+    with pytest.raises(ValidationError, match="Extra inputs are not permitted"):
+        OpenApiVersionDocsConfig.model_validate(
+            {
+                "vendor_media_type": "application/vnd.example+json",
+                "supported_versions": ("1.0",),
+                "suppressed_operations": (),
+            }
+        )
+    with pytest.raises(ValidationError, match="Extra inputs are not permitted"):
+        OpenApiOperationVersionOverride.model_validate(
+            {"path": "/widgets", "method": "get", "supported_versions": (), "enabled": False}
+        )
 
 
 @pytest.mark.parametrize(
@@ -249,7 +281,6 @@ def test_openapi_version_docs_configuration_rejects_invalid_values(
 def test_openapi_version_docs_rejects_unsafe_vendor_media_types(vendor_media_type: str) -> None:
     with pytest.raises(ValidationError, match="Vendor media type must use"):
         OpenApiVersionDocsConfig(
-            enabled=True,
             vendor_media_type=vendor_media_type,
             supported_versions=("release-2026",),
         )
@@ -272,7 +303,6 @@ def test_openapi_version_docs_rejects_unsafe_vendor_media_types(vendor_media_typ
 def test_openapi_version_docs_rejects_unsafe_versions(version: str) -> None:
     with pytest.raises(ValidationError, match="safe media-type token"):
         OpenApiVersionDocsConfig(
-            enabled=True,
             vendor_media_type="application/vnd.real-api+json",
             supported_versions=(version,),
         )
@@ -280,7 +310,6 @@ def test_openapi_version_docs_rejects_unsafe_versions(version: str) -> None:
 
 def test_openapi_version_docs_accepts_real_vendor_and_non_semver_versions() -> None:
     configuration: typing.Final = OpenApiVersionDocsConfig(
-        enabled=True,
         vendor_media_type="application/vnd.real-api_v2+json",
         supported_versions=("2026-01", "release-candidate", "v1.0+beta"),
     )
@@ -289,15 +318,11 @@ def test_openapi_version_docs_accepts_real_vendor_and_non_semver_versions() -> N
     assert configuration.supported_versions == ("2026-01", "release-candidate", "v1.0+beta")
 
 
-def test_openapi_version_docs_disabled_default_is_usable() -> None:
-    configuration: typing.Final = OpenApiVersionDocsConfig()
+def test_openapi_version_docs_accepts_explicit_empty_operation_override_versions() -> None:
+    configuration: typing.Final = OpenApiOperationVersionOverride(
+        path="/widgets",
+        method="get",
+        supported_versions=(),
+    )
 
-    assert not configuration.enabled
-    assert configuration.vendor_media_type is None
-    assert not configuration.supported_versions
-
-
-def test_openapi_version_docs_disabled_default_survives_model_dump_and_revalidation() -> None:
-    configuration: typing.Final = OpenApiVersionDocsConfig()
-
-    assert OpenApiVersionDocsConfig.model_validate(configuration.model_dump()) == configuration
+    assert configuration.supported_versions == ()

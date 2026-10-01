@@ -10,9 +10,12 @@ SAFE_MEDIA_TYPE_TOKEN: typing.Final[re.Pattern[str]] = re.compile(r"[!#$%&'*+\-.
 VENDOR_MEDIA_TYPE: typing.Final = re.compile(r"application/vnd\.([!#$%&'*+\-.^_|~0-9A-Za-z]+)\+json\Z")
 
 
-class OpenApiOperationSelector(pydantic.BaseModel):
+class OpenApiOperationVersionOverride(pydantic.BaseModel):
+    model_config = pydantic.ConfigDict(extra="forbid")
+
     path: str
     method: str
+    supported_versions: tuple[str, ...]
 
     @pydantic.field_validator("path")
     @classmethod
@@ -30,32 +33,22 @@ class OpenApiOperationSelector(pydantic.BaseModel):
             raise ValueError(message)
         return value
 
-
-class OpenApiOperationVersionOverride(OpenApiOperationSelector):
-    supported_versions: tuple[str, ...]
-
     @pydantic.field_validator("supported_versions")
     @classmethod
     def validate_supported_versions(cls, value: tuple[str, ...]) -> tuple[str, ...]:
-        validated_versions = validate_versions(value)
-        if not validated_versions:
-            message = "Operation version overrides must contain at least one supported API version."
-            raise ValueError(message)
-        return validated_versions
+        return validate_versions(value)
 
 
 class OpenApiVersionDocsConfig(pydantic.BaseModel):
-    enabled: bool = False
-    vendor_media_type: str | None = None
-    supported_versions: tuple[str, ...] = ()
-    suppressed_operations: tuple[OpenApiOperationSelector, ...] = ()
+    model_config = pydantic.ConfigDict(extra="forbid")
+
+    vendor_media_type: str
+    supported_versions: tuple[str, ...]
     operation_versions: tuple[OpenApiOperationVersionOverride, ...] = ()
 
     @pydantic.field_validator("vendor_media_type")
     @classmethod
-    def validate_vendor_media_type(cls, value: str | None) -> str | None:
-        if value is None:
-            return value
+    def validate_vendor_media_type(cls, value: str) -> str:
         if VENDOR_MEDIA_TYPE.fullmatch(value) is None:
             message = "Vendor media type must use the application/vnd.<name>+json form."
             raise ValueError(message)
@@ -64,7 +57,11 @@ class OpenApiVersionDocsConfig(pydantic.BaseModel):
     @pydantic.field_validator("supported_versions")
     @classmethod
     def validate_supported_versions(cls, value: tuple[str, ...]) -> tuple[str, ...]:
-        return validate_versions(value)
+        validated_versions = validate_versions(value)
+        if not validated_versions:
+            message = "OpenAPI version documentation requires at least one supported API version."
+            raise ValueError(message)
+        return validated_versions
 
     @pydantic.field_validator("operation_versions")
     @classmethod
@@ -77,16 +74,6 @@ class OpenApiVersionDocsConfig(pydantic.BaseModel):
             message = "Operation version overrides must not contain duplicate path and method pairs."
             raise ValueError(message)
         return value
-
-    @pydantic.model_validator(mode="after")
-    def validate_enabled_configuration(self) -> OpenApiVersionDocsConfig:
-        if self.enabled and self.vendor_media_type is None:
-            message = "Enabled OpenAPI version documentation requires an explicit vendor media type."
-            raise ValueError(message)
-        if self.enabled and not self.supported_versions:
-            message = "Enabled OpenAPI version documentation requires at least one supported API version."
-            raise ValueError(message)
-        return self
 
 
 def validate_versions(value: tuple[str, ...]) -> tuple[str, ...]:
