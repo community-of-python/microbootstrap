@@ -440,7 +440,7 @@ class YourSettings(BaseServiceSettings):
     opentelemetry_namespace: str | None = None
     opentelemetry_insecure: bool = True
     opentelemetry_instrumentors: list[OpenTelemetryInstrumentor] = []
-    opentelemetry_exclude_urls: list[str] = []
+    opentelemetry_exclude_urls: list[str] = ["/metrics"]
     opentelemetry_baggage_span_attributes: dict[str, str] = {}
 
     ... # Other settings here
@@ -456,9 +456,9 @@ Parameters description:
 - `opentelemetry_insecure` - is opentelemetry connection secure.
 - `opentelemetry_container_name` - will be passed to the `Resource`.
 - `opentelemetry_instrumentors` - a list of extra instrumentors.
-- `opentelemetry_exclude_urls` - list of ignored urls.
+- `opentelemetry_exclude_urls` - list of url regexes that produce no server spans (`["/metrics"]` by default). For Litestar they are combined with `OTEL_PYTHON_LITESTAR_EXCLUDED_URLS` (or `OTEL_PYTHON_EXCLUDED_URLS`), for FastMCP with `OTEL_PYTHON_STARLETTE_EXCLUDED_URLS` (or `OTEL_PYTHON_EXCLUDED_URLS`).
 - `opentelemetry_log_traces` - traces will be logged to stdout.
-- `opentelemetry_generate_health_check_spans` - generate spans for health check handlers if `True`
+- `opentelemetry_generate_health_check_spans` - generate spans for health check handlers if `True`; if `False`, `health_checks_path` is added to the excluded urls.
 - `opentelemetry_baggage_span_attributes` - maps allowed baggage keys to attributes added to local server and consumer spans.
 
 These settings are subsequently passed to [opentelemetry](https://opentelemetry.io/), finalizing your Opentelemetry integration.
@@ -481,7 +481,7 @@ Only non-`None` baggage values supplied to the scope and present in the mapping 
 
 #### FastStream
 
-For FastStream you also should pass `opentelemetry_middleware_cls` - OpenTelemetry middleware for your broker
+To trace broker messages, pass `opentelemetry_middleware_cls` - OpenTelemetry middleware for your broker
 
 ```python
 from microbootstrap import FastStreamSettings, FastStreamTelemetryMiddlewareProtocol
@@ -492,6 +492,68 @@ class YourSettings(FastStreamSettings):
     ...
     opentelemetry_middleware_cls: type[FastStreamTelemetryMiddlewareProtocol] | None = RedisTelemetryMiddleware
     ...
+```
+
+HTTP requests to the FastStream ASGI application (health checks, AsyncAPI docs and other `asgi_routes`) are wrapped in
+[`OpenTelemetryMiddleware`](https://opentelemetry-python-contrib.readthedocs.io/en/latest/instrumentation/asgi/asgi.html)
+the same way as in Litestar, so each request produces a `SERVER` span named like `GET /health/` with the `http.route` attribute
+and the response status code. This does not require `opentelemetry_middleware_cls`. Requests to unknown paths produce spans
+named after the HTTP method only, without `http.route`. Lifespan events bypass the middleware.
+
+- `opentelemetry_exclude_urls` - urls without spans, `/metrics` by default.
+- `opentelemetry_generate_health_check_spans` - set to `False` to skip spans for `health_checks_path`.
+- The status code attribute name depends on `OTEL_SEMCONV_STABILITY_OPT_IN`: `http.status_code` when unset,
+  `http.response.status_code` for `http`, both for `http/dup`.
+
+To wrap HTTP requests in your own ASGI middleware, use `add_http_middleware` on the bootstrapped application.
+It accepts a factory that receives the current HTTP ASGI app and returns the wrapped one:
+
+```python
+application = FastStreamBootstrapper(settings).bootstrap()
+application.add_http_middleware(lambda app: YourAsgiMiddleware(app))
+```
+
+#### FastMCP
+
+`FastMcpSettings` include all OpenTelemetry settings, so tracing is enabled with `opentelemetry_endpoint` alone:
+
+```python
+from fastmcp import FastMCP
+from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
+
+from microbootstrap import FastMcpSettings
+from microbootstrap.bootstrappers.fastmcp import FastMcpBootstrapper
+from microbootstrap.instruments.opentelemetry_instrument import OpenTelemetryInstrumentor
+
+
+class YourSettings(FastMcpSettings):
+    opentelemetry_endpoint: str | None = "otel-collector:4317"
+    opentelemetry_instrumentors: list[OpenTelemetryInstrumentor] = [OpenTelemetryInstrumentor(HTTPXClientInstrumentor())]
+
+
+application: FastMCP = FastMcpBootstrapper(YourSettings()).bootstrap()
+http_application = application.http_app(path="/mcp")
+```
+
+FastMCP creates its ASGI application only when `http_app()` is called (directly or by `application.run(transport="http")`),
+so `SERVER` spans are added to every application returned by `http_app()`. Each request to it is wrapped in
+[`OpenTelemetryMiddleware`](https://opentelemetry-python-contrib.readthedocs.io/en/latest/instrumentation/asgi/asgi.html)
+and produces a span named like `POST /mcp` or `GET /health/` with the `http.route` attribute and the response status code.
+Requests to unknown paths produce spans named after the HTTP method only, without `http.route`.
+
+- `opentelemetry_endpoint` - OTLP endpoint for exported traces.
+- `opentelemetry_instrumentors` - extra instrumentors, e.g. for HTTP clients used by your tools.
+- `opentelemetry_exclude_urls` - urls without spans, `["/metrics"]` by default. Combined with `OTEL_PYTHON_STARLETTE_EXCLUDED_URLS`.
+- `opentelemetry_generate_health_check_spans` - set to `False` to skip spans for `health_checks_path`.
+- The status code attribute name depends on `OTEL_SEMCONV_STABILITY_OPT_IN`: `http.status_code` when unset,
+  `http.response.status_code` for `http`, both for `http/dup`.
+
+Applications already instrumented by `StarletteInstrumentor` are left as is, so the request is never traced twice.
+To post-process every created ASGI application yourself, use `add_http_app_hook` on the bootstrapped application:
+
+```python
+application = FastMcpBootstrapper(settings).bootstrap()
+application.add_http_app_hook(lambda http_application: http_application)
 ```
 
 ### [Pyroscope](https://pyroscope.io)

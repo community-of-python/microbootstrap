@@ -4,12 +4,22 @@ import typing
 import prometheus_client
 import typing_extensions
 from fastmcp import FastMCP
+from opentelemetry.instrumentation.asgi import OpenTelemetryMiddleware
+from opentelemetry.util.http import ExcludeList, get_excluded_urls
+from starlette.applications import Starlette
 from starlette.responses import JSONResponse, Response
+from starlette.routing import Match, Mount, Route
 
 from microbootstrap.bootstrappers.base import ApplicationBootstrapper
 from microbootstrap.config.fastmcp import FastMcpConfig
 from microbootstrap.instruments.health_checks_instrument import HealthChecksInstrument, HealthCheckTypedDict
 from microbootstrap.instruments.logging_instrument import LoggingInstrument
+from microbootstrap.instruments.opentelemetry_instrument import (
+    BaseOpentelemetryInstrument,
+    CombinedExcludeList,
+    OpentelemetryConfig,
+    build_span_name,
+)
 from microbootstrap.instruments.prometheus_instrument import FastMcpPrometheusConfig, PrometheusInstrument
 from microbootstrap.instruments.pyroscope_instrument import PyroscopeInstrument
 from microbootstrap.instruments.sentry_instrument import SentryInstrument
@@ -18,16 +28,44 @@ from microbootstrap.settings import FastMcpSettings
 
 
 if typing.TYPE_CHECKING:
+    from fastmcp.server.http import StarletteWithLifespan
     from starlette.requests import Request
+    from starlette.types import Scope
+
+
+StarletteT = typing.TypeVar("StarletteT", bound=Starlette)
 
 
 class KwargsFastMCP(FastMCP[typing.Any]):
     def __init__(self, **kwargs: typing.Any) -> None:  # noqa: ANN401
         super().__init__(**kwargs)
+        self.http_app_hooks: list[typing.Callable[[StarletteWithLifespan], StarletteWithLifespan]] = []
+
+    def add_http_app_hook(self, hook: typing.Callable[[StarletteWithLifespan], StarletteWithLifespan]) -> None:
+        self.http_app_hooks.append(hook)
+
+    def http_app(self, *args: typing.Any, **kwargs: typing.Any) -> StarletteWithLifespan:  # noqa: ANN401
+        # ASGI application is created by the user after bootstrap, so instruments subscribe to its creation
+        http_application = super().http_app(*args, **kwargs)
+        for hook in self.http_app_hooks:
+            http_application = hook(http_application)
+        return http_application
+
+
+def build_fastmcp_route_details_from_scope(
+    scope: Scope,
+    routes: typing.Iterable[typing.Any],
+) -> tuple[str, dict[str, str]]:
+    method: typing.Final = str(scope.get("method", "HTTP")).strip()
+    for route in routes:
+        if isinstance(route, (Route, Mount)) and route.matches(scope)[0] == Match.FULL:
+            return build_span_name(method, route.path), {"http.route": route.path}
+    # Unmatched paths get no `http.route` to keep its cardinality low
+    return method, {}
 
 
 class FastMcpBootstrapper(
-    ApplicationBootstrapper[FastMcpSettings, FastMCP[typing.Any], FastMcpConfig],
+    ApplicationBootstrapper[FastMcpSettings, KwargsFastMCP, FastMcpConfig],
 ):
     application_config = FastMcpConfig()
     application_type = KwargsFastMCP
@@ -41,14 +79,46 @@ class FastMcpBootstrapper(
 
     def bootstrap_before_instruments_after_app_created(
         self,
-        application: FastMCP[typing.Any],
-    ) -> FastMCP[typing.Any]:
+        application: KwargsFastMCP,
+    ) -> KwargsFastMCP:
         self.console_writer.print_bootstrap_table()
         return application
 
 
 FastMcpBootstrapper.use_instrument()(SentryInstrument)
 FastMcpBootstrapper.use_instrument()(PyroscopeInstrument)
+
+
+@FastMcpBootstrapper.use_instrument()
+class FastMcpOpentelemetryInstrument(BaseOpentelemetryInstrument[OpentelemetryConfig]):
+    def bootstrap_after(self, application: FastMCP[typing.Any]) -> FastMCP[typing.Any]:  # type: ignore[override]
+        if isinstance(application, KwargsFastMCP):
+            application.add_http_app_hook(self.instrument_http_app)
+        return application
+
+    def instrument_http_app(self, http_application: StarletteT) -> StarletteT:
+        # `StarletteInstrumentor` marks applications the same way, so each application is instrumented once
+        if getattr(http_application, "_is_instrumented_by_opentelemetry", False):
+            return http_application
+
+        def build_route_details(scope: Scope) -> tuple[str, dict[str, str]]:
+            return build_fastmcp_route_details_from_scope(scope, http_application.routes)
+
+        http_application.add_middleware(
+            OpenTelemetryMiddleware,
+            tracer_provider=self.tracer_provider,
+            default_span_details=build_route_details,
+            excluded_urls=CombinedExcludeList(
+                ExcludeList(self.define_exclude_urls()),
+                get_excluded_urls("STARLETTE"),
+            ),
+        )
+        http_application._is_instrumented_by_opentelemetry = True  # type: ignore[attr-defined]  # noqa: SLF001
+        return http_application
+
+    @classmethod
+    def get_config_type(cls) -> type[OpentelemetryConfig]:
+        return OpentelemetryConfig
 
 
 @FastMcpBootstrapper.use_instrument()
