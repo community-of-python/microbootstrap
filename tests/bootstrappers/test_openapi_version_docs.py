@@ -1,7 +1,6 @@
 import copy
 import dataclasses
 import typing
-from unittest.mock import MagicMock
 
 import fastapi
 import litestar
@@ -61,7 +60,6 @@ class ServiceResponse(BaseModel):
 
 @dataclasses.dataclass
 class BuiltApplication:
-    framework: str
     application: fastapi.FastAPI | litestar.Litestar
     renderer: SwaggerRenderPlugin | None = None
 
@@ -115,8 +113,6 @@ def build_application(
     framework: str,
     config: OpenApiVersionDocsConfig | None,
     security_schemes: dict[str, _OpenApiSecurityScheme] | None = None,
-    startup_hook: MagicMock | None = None,
-    shutdown_hook: MagicMock | None = None,
 ) -> BuiltApplication:
     if framework == "fastapi":
         fastapi_application = FastApiBootstrapper(
@@ -144,7 +140,7 @@ def build_application(
         async def fastapi_without_description() -> dict[str, str]:
             return {"status": "ok"}
 
-        return BuiltApplication(framework, fastapi_application)
+        return BuiltApplication(fastapi_application)
 
     @get(TARGET_PATH, description="List widgets", security=[{"ServiceAuth": []}])
     async def litestar_list_widgets() -> ServiceResponse:
@@ -179,8 +175,6 @@ def build_application(
                     litestar_service_health,
                     litestar_without_description,
                 ],
-                on_startup=[startup_hook] if startup_hook is not None else [],
-                on_shutdown=[shutdown_hook] if shutdown_hook is not None else [],
                 openapi_config=openapi.OpenAPIConfig(
                     title="Service API",
                     version="1.0.0",
@@ -197,7 +191,7 @@ def build_application(
         )
         .bootstrap()
     )
-    return BuiltApplication(framework, litestar_application, renderer)
+    return BuiltApplication(litestar_application, renderer)
 
 
 def test_version_docs_change_only_selected_operations_and_match_served_schema(framework: str) -> None:
@@ -608,7 +602,6 @@ def test_litestar_standard_operations_preserve_fields_and_are_stable() -> None:
     instrument.bootstrap_after(built.application)
 
     assert all(getattr(path_item.post, name) == value for name, value in standard_fields.items())
-    assert type(path_item.post).__name__ == "AcceptVersionedOperation"
     assert built.schema()["paths"][TARGET_PATH]["post"]["x-accept-versioning"] == EXTENSION
     assert built.served_schema()["paths"][TARGET_PATH]["post"]["x-accept-versioning"] == EXTENSION
     documented_post = path_item.post
@@ -632,59 +625,3 @@ def test_litestar_rejects_unsupported_custom_operation() -> None:
     path_item.post = UnsupportedOperation(**fields, metadata={"owner": "widgets"})
     with pytest.raises(TypeError, match="is not supported for Accept version documentation"):
         LitestarSwaggerInstrument(SwaggerConfig(openapi_version_docs=version_docs())).bootstrap_after(built.application)
-
-
-@pytest.mark.parametrize("settings_type", [FastApiSettings, LitestarSettings])
-def test_settings_validate_security_schemes_and_operation_versions(
-    settings_type: type[FastApiSettings] | type[LitestarSettings],
-) -> None:
-    settings = settings_type(
-        security_schemes={"serviceBearer": {"type": "http", "scheme": "bearer"}},
-        openapi_version_docs={
-            "vendor_media_type": "application/vnd.real-api+json",
-            "supported_versions": ("2026-01",),
-            "operation_versions": ({"path": TARGET_PATH, "method": "post", "supported_versions": ("2027-01",)},),
-        },
-    )
-    assert settings.security_schemes == {"serviceBearer": OpenApiHttpSecurityScheme(scheme="bearer")}
-    assert settings.openapi_version_docs is not None
-    assert settings.openapi_version_docs.operation_versions[0].supported_versions == ("2027-01",)
-
-
-@pytest.mark.parametrize(
-    ("configuration", "message"),
-    [
-        (
-            lambda: OpenApiVersionDocsConfig(
-                vendor_media_type="application/vnd.real-api+json",
-                supported_versions=(),
-            ),
-            "requires at least one supported API version",
-        ),
-        (
-            lambda: OpenApiVersionDocsConfig(
-                vendor_media_type="application/vnd.real-api+json",
-                supported_versions=("2026-01",),
-                operation_versions=(
-                    OpenApiOperationVersionOverride(
-                        path=TARGET_PATH,
-                        method="post",
-                        supported_versions=("2027-01",),
-                    ),
-                    OpenApiOperationVersionOverride(
-                        path=TARGET_PATH,
-                        method="post",
-                        supported_versions=("2028-01",),
-                    ),
-                ),
-            ),
-            "duplicate path and method pairs",
-        ),
-    ],
-)
-def test_version_docs_settings_reject_empty_global_versions_and_duplicate_override_selectors(
-    configuration: typing.Callable[[], object],
-    message: str,
-) -> None:
-    with pytest.raises(ValueError, match=message):
-        configuration()

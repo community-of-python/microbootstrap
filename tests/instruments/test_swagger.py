@@ -13,8 +13,13 @@ from pydantic import ValidationError
 
 from microbootstrap.bootstrappers.fastapi import FastApiSwaggerInstrument
 from microbootstrap.bootstrappers.litestar import LitestarSwaggerInstrument
+from microbootstrap.instruments.openapi_security_schemes import OpenApiHttpSecurityScheme
 from microbootstrap.instruments.openapi_version_docs import OpenApiOperationVersionOverride, OpenApiVersionDocsConfig
 from microbootstrap.instruments.swagger_instrument import SwaggerConfig, SwaggerInstrument
+from microbootstrap.settings import FastApiSettings, LitestarSettings
+
+
+TARGET_PATH: typing.Final = "/widgets"
 
 
 def test_swagger_is_ready(minimal_swagger_config: SwaggerConfig) -> None:
@@ -326,3 +331,59 @@ def test_openapi_version_docs_accepts_explicit_empty_operation_override_versions
     )
 
     assert configuration.supported_versions == ()
+
+
+@pytest.mark.parametrize("settings_type", [FastApiSettings, LitestarSettings])
+def test_settings_validate_security_schemes_and_operation_versions(
+    settings_type: type[FastApiSettings] | type[LitestarSettings],
+) -> None:
+    settings = settings_type(
+        security_schemes={"serviceBearer": {"type": "http", "scheme": "bearer"}},
+        openapi_version_docs={
+            "vendor_media_type": "application/vnd.real-api+json",
+            "supported_versions": ("2026-01",),
+            "operation_versions": ({"path": TARGET_PATH, "method": "post", "supported_versions": ("2027-01",)},),
+        },
+    )
+    assert settings.security_schemes == {"serviceBearer": OpenApiHttpSecurityScheme(scheme="bearer")}
+    assert settings.openapi_version_docs is not None
+    assert settings.openapi_version_docs.operation_versions[0].supported_versions == ("2027-01",)
+
+
+@pytest.mark.parametrize(
+    ("configuration", "message"),
+    [
+        (
+            lambda: OpenApiVersionDocsConfig(
+                vendor_media_type="application/vnd.real-api+json",
+                supported_versions=(),
+            ),
+            "requires at least one supported API version",
+        ),
+        (
+            lambda: OpenApiVersionDocsConfig(
+                vendor_media_type="application/vnd.real-api+json",
+                supported_versions=("2026-01",),
+                operation_versions=(
+                    OpenApiOperationVersionOverride(
+                        path=TARGET_PATH,
+                        method="post",
+                        supported_versions=("2027-01",),
+                    ),
+                    OpenApiOperationVersionOverride(
+                        path=TARGET_PATH,
+                        method="post",
+                        supported_versions=("2028-01",),
+                    ),
+                ),
+            ),
+            "duplicate path and method pairs",
+        ),
+    ],
+)
+def test_version_docs_settings_reject_empty_global_versions_and_duplicate_override_selectors(
+    configuration: typing.Callable[[], object],
+    message: str,
+) -> None:
+    with pytest.raises(ValueError, match=message):
+        configuration()
