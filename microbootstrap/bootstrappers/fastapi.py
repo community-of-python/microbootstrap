@@ -12,6 +12,8 @@ from microbootstrap.config.fastapi import FastApiConfig
 from microbootstrap.instruments.cors_instrument import CorsInstrument
 from microbootstrap.instruments.health_checks_instrument import HealthChecksInstrument, HealthCheckTypedDict
 from microbootstrap.instruments.logging_instrument import LoggingInstrument
+from microbootstrap.instruments.openapi_security_schemes import serialize_security_schemes
+from microbootstrap.instruments.openapi_version_docs import SUPPORTED_HTTP_METHODS
 from microbootstrap.instruments.opentelemetry_instrument import OpentelemetryInstrument
 from microbootstrap.instruments.prometheus_instrument import FastApiPrometheusConfig, PrometheusInstrument
 from microbootstrap.instruments.pyroscope_instrument import PyroscopeInstrument
@@ -67,7 +69,45 @@ class FastApiSwaggerInstrument(SwaggerInstrument):
     def bootstrap_after(self, application: ApplicationT) -> ApplicationT:
         if self.instrument_config.swagger_offline_docs:
             enable_offline_docs(application, static_files_handler=self.instrument_config.service_static_path)
+        if self.instrument_config.openapi_version_docs is None and not self.instrument_config.security_schemes:
+            return application
+
+        original_openapi: typing.Final = application.openapi
+
+        def documented_openapi() -> dict[str, typing.Any]:
+            openapi_schema: typing.Final = original_openapi()
+            if self.instrument_config.security_schemes:
+                self._merge_security_schemes(openapi_schema)
+            if self.instrument_config.openapi_version_docs is not None:
+                self._document_operations(openapi_schema)
+            return openapi_schema
+
+        application.openapi = documented_openapi  # type: ignore[method-assign]  # FastAPI's public custom OpenAPI hook.
         return application
+
+    def _merge_security_schemes(self, openapi_schema: dict[str, typing.Any]) -> None:
+        expected_schemes: typing.Final = serialize_security_schemes(self.instrument_config.security_schemes)
+        components = openapi_schema.setdefault("components", {})
+        security_schemes = components.setdefault("securitySchemes", {})
+        self._validate_security_scheme_conflicts(security_schemes, expected_schemes)
+        security_schemes.update(
+            {name: scheme for name, scheme in expected_schemes.items() if name not in security_schemes}
+        )
+
+    def _document_operations(self, openapi_schema: dict[str, typing.Any]) -> None:
+        for path, path_item in openapi_schema["paths"].items():
+            for method, operation in path_item.items():
+                if method not in SUPPORTED_HTTP_METHODS:
+                    continue
+                documentation = self._build_version_documentation(
+                    path,
+                    method,
+                    operation.get("description"),
+                    operation.get("x-accept-versioning"),
+                    has_existing_extension="x-accept-versioning" in operation,
+                )
+                if documentation is not None:
+                    operation["x-accept-versioning"], operation["description"] = documentation
 
 
 @FastApiBootstrapper.use_instrument()

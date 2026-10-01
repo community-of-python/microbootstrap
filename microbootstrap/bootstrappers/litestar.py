@@ -1,4 +1,5 @@
 from __future__ import annotations
+import dataclasses
 import typing
 
 import litestar
@@ -25,6 +26,17 @@ from microbootstrap.instruments.health_checks_instrument import (
     HealthCheckTypedDict,
 )
 from microbootstrap.instruments.logging_instrument import LoggingInstrument
+from microbootstrap.instruments.openapi_security_schemes import (
+    OpenApiApiKeySecurityScheme,
+    OpenApiHttpSecurityScheme,
+    OpenApiOAuth2SecurityScheme,
+    OpenApiOAuthFlow,
+    OpenApiOAuthFlows,
+    OpenApiOpenIdConnectSecurityScheme,
+    _OpenApiSecurityScheme,
+    serialize_security_schemes,
+)
+from microbootstrap.instruments.openapi_version_docs import SUPPORTED_HTTP_METHODS
 from microbootstrap.instruments.opentelemetry_instrument import OpentelemetryInstrument
 from microbootstrap.instruments.prometheus_instrument import (
     LitestarPrometheusConfig,
@@ -35,6 +47,17 @@ from microbootstrap.instruments.sentry_instrument import SentryInstrument
 from microbootstrap.instruments.swagger_instrument import SwaggerInstrument
 from microbootstrap.middlewares.litestar import build_litestar_logging_middleware
 from microbootstrap.settings import LitestarSettings
+
+
+ApplicationT = typing.TypeVar("ApplicationT", bound=litestar.Litestar)
+
+
+@dataclasses.dataclass
+class AcceptVersionedOperation(openapi.spec.Operation):
+    accept_versioning: dict[str, str | list[str]] | None = dataclasses.field(
+        default=None,
+        metadata={"alias": "x-accept-versioning"},
+    )
 
 
 if typing.TYPE_CHECKING:
@@ -101,6 +124,129 @@ class LitestarSwaggerInstrument(SwaggerInstrument):
                 generate_static_files_config(static_files_handler_path=self.instrument_config.service_static_path),
             ]
         return bootstrap_result
+
+    def bootstrap_after(self, application: ApplicationT) -> ApplicationT:
+        if (self.instrument_config.openapi_version_docs is None and not self.instrument_config.security_schemes) or (
+            application.openapi_schema is None
+        ):
+            return application
+        if self.instrument_config.security_schemes:
+            self._merge_security_schemes(application.openapi_schema)
+        if self.instrument_config.openapi_version_docs is not None:
+            self._document_operations(application.openapi_schema)
+        return application
+
+    def _merge_security_schemes(self, openapi_schema: openapi.spec.OpenAPI) -> None:
+        expected_schemes: typing.Final = serialize_security_schemes(self.instrument_config.security_schemes)
+        security_schemes = openapi_schema.components.security_schemes
+        if security_schemes is not None:
+            canonical_schemes: typing.Final = {
+                name: scheme.to_schema() if isinstance(scheme, openapi.spec.SecurityScheme) else scheme
+                for name, scheme in security_schemes.items()
+            }
+            self._validate_security_scheme_conflicts(canonical_schemes, expected_schemes)
+        configured_schemes = {
+            scheme_name: self._build_litestar_security_scheme(security_scheme)
+            for scheme_name, security_scheme in self.instrument_config.security_schemes.items()
+        }
+        if security_schemes is None:
+            openapi_schema.components.security_schemes = typing.cast(
+                "dict[str, openapi.spec.SecurityScheme | openapi.spec.Reference]",
+                configured_schemes,
+            )
+            return
+        security_schemes.update(
+            {name: scheme for name, scheme in configured_schemes.items() if name not in security_schemes}
+        )
+
+    def _document_operations(self, openapi_schema: openapi.spec.OpenAPI) -> None:
+        if openapi_schema.paths is None:
+            return
+        for path, path_item in openapi_schema.paths.items():
+            for method in SUPPORTED_HTTP_METHODS:
+                operation = getattr(path_item, method)
+                if operation is None:
+                    continue
+                existing_extension = (
+                    operation.accept_versioning if isinstance(operation, AcceptVersionedOperation) else None
+                )
+                documentation = self._build_version_documentation(
+                    path,
+                    method,
+                    operation.description,
+                    existing_extension,
+                    has_existing_extension=existing_extension is not None,
+                )
+                if documentation is None:
+                    continue
+                extension, description = documentation
+                if type(operation) is openapi.spec.Operation:
+                    init_fields = {
+                        field.name: getattr(operation, field.name)
+                        for field in dataclasses.fields(openapi.spec.Operation)
+                        if field.init
+                    }
+                    operation = AcceptVersionedOperation(**init_fields, accept_versioning=extension)
+                    setattr(path_item, method, operation)
+                elif type(operation) is not AcceptVersionedOperation:
+                    message = (
+                        f"OpenAPI operation {type(operation).__name__} is not supported "
+                        "for Accept version documentation."
+                    )
+                    raise TypeError(message)
+                operation.accept_versioning = extension
+                operation.description = description
+
+    @classmethod
+    def _build_litestar_security_scheme(cls, security_scheme: _OpenApiSecurityScheme) -> openapi.spec.SecurityScheme:
+        if isinstance(security_scheme, OpenApiHttpSecurityScheme):
+            return openapi.spec.SecurityScheme(
+                type=security_scheme.type,
+                scheme=security_scheme.scheme,
+                bearer_format=security_scheme.bearer_format,
+                description=security_scheme.description,
+            )
+        if isinstance(security_scheme, OpenApiApiKeySecurityScheme):
+            return openapi.spec.SecurityScheme(
+                type=security_scheme.type,
+                name=security_scheme.name,
+                security_scheme_in=security_scheme.location,
+                description=security_scheme.description,
+            )
+        if isinstance(security_scheme, OpenApiOAuth2SecurityScheme):
+            return openapi.spec.SecurityScheme(
+                type=security_scheme.type,
+                flows=cls._build_litestar_oauth_flows(security_scheme.flows),
+                description=security_scheme.description,
+            )
+        if isinstance(security_scheme, OpenApiOpenIdConnectSecurityScheme):
+            return openapi.spec.SecurityScheme(
+                type=security_scheme.type,
+                open_id_connect_url=security_scheme.open_id_connect_url,
+                description=security_scheme.description,
+            )
+        raise AssertionError("Unsupported OpenAPI security scheme.")
+
+    @classmethod
+    def _build_litestar_oauth_flows(cls, oauth_flows: OpenApiOAuthFlows) -> openapi.spec.OAuthFlows:
+        flows = {
+            "implicit": cls._build_litestar_oauth_flow(oauth_flows.implicit),
+            "password": cls._build_litestar_oauth_flow(object.__getattribute__(oauth_flows, "resource_owner")),
+            "client_credentials": cls._build_litestar_oauth_flow(oauth_flows.client_credentials),
+            "authorization_code": cls._build_litestar_oauth_flow(oauth_flows.authorization_code),
+        }
+        return openapi.spec.OAuthFlows(**flows)
+
+    @classmethod
+    def _build_litestar_oauth_flow(cls, oauth_flow: OpenApiOAuthFlow | None) -> openapi.spec.OAuthFlow | None:
+        if oauth_flow is None:
+            return None
+        return openapi.spec.OAuthFlow(
+            authorization_url=oauth_flow.authorization_url,
+            token_url=oauth_flow.token_url,
+            refresh_url=oauth_flow.refresh_url,
+            scopes=oauth_flow.scopes,
+        )
 
 
 @LitestarBootstrapper.use_instrument()

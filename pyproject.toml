@@ -63,18 +63,18 @@ authors = [{ name = "community-of-python" }]
 
 [project.optional-dependencies]
 fastapi = [
-    "fastapi>=0.100",
+    "fastapi>=0.110.1",
     "fastapi-offline-docs>=1",
     "opentelemetry-instrumentation-fastapi>=0.46b0",
-    "prometheus-fastapi-instrumentator>=6.1",
+    "prometheus-fastapi-instrumentator>=7.1",
 ]
 litestar = [
-    "litestar>=2.9",
+    "litestar>=2.21.1",
     "litestar-offline-docs>=1",
     "prometheus-client>=0.20",
 ]
 granian = ["granian[reload]>=1"]
-faststream = ["faststream~=0.6.2", "prometheus-client>=0.20"]
+faststream = ["faststream>=0.6.7,<0.8", "prometheus-client>=0.20"]
 fastmcp = ["fastmcp>=2,<4", "prometheus-client>=0.20"]
 
 [dependency-groups]
