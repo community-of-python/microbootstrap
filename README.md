@@ -40,7 +40,7 @@ With <b>microbootstrap</b>, you receive an application with lightweight built-in
 - `opentelemetry`
 - `logging`
 - `cors`
-- `swagger` - with additional offline version support
+- `swagger` - offline UI assets, OpenAPI security definitions, and optional Accept-version documentation
 - `health-checks`
 
 Those instruments can be bootstrapped for:
@@ -593,6 +593,64 @@ Parameter descriptions:
 - `swagger_path` - The path where the documentation can be found.
 - `swagger_offline_docs` - A boolean value that, when set to True, allows the Swagger JS bundles to be accessed offline. This is because the service starts to host via static.
 - `swagger_extra_params` - Additional parameters to pass into the OpenAPI configuration.
+
+#### OpenAPI security schemes
+
+Security schemes are disabled by default. They add reusable OpenAPI definitions under
+`components.securitySchemes`; they do not authenticate requests or add global or operation-level security requirements.
+Keep requirements and authentication in your application routes and dependencies.
+
+```python
+from microbootstrap import (
+    LitestarSettings,
+    OpenApiHttpSecurityScheme,
+)
+
+
+class Settings(LitestarSettings):
+    security_schemes: dict[str, OpenApiHttpSecurityScheme] = {
+        "serviceAuth": OpenApiHttpSecurityScheme(scheme="bearer", bearer_format="JWT"),
+    }
+```
+
+HTTP, API key, OAuth 2.0, and OpenID Connect definitions are supported by `SwaggerConfig`. Annotating a consumer
+setting with a concrete scheme class intentionally rejects other kinds for that consumer. Python field names and
+OpenAPI aliases are accepted; output uses canonical names such as `bearerFormat`, `in`, `tokenUrl`, and
+`openIdConnectUrl`. A same-named definition must be identical to the service-owned definition or schema generation
+raises `ValueError`.
+
+The definitions are added to the framework's normal schema. Repeated schema reads remain stable; after correcting
+a configuration conflict, rebuild the application.
+
+#### API-version documentation
+
+Version documentation is disabled by default. It describes supported versions in OpenAPI without implementing
+runtime version negotiation.
+
+```python
+from microbootstrap import LitestarSettings, OpenApiOperationVersionOverride, OpenApiVersionDocsConfig
+
+
+class Settings(LitestarSettings):
+    openapi_version_docs: OpenApiVersionDocsConfig | None = OpenApiVersionDocsConfig(
+        vendor_media_type="application/vnd.example+json",
+        supported_versions=("1.0",),
+        operation_versions=(
+            OpenApiOperationVersionOverride(path="/widgets", method="post", supported_versions=("2.0",)),
+            OpenApiOperationVersionOverride(path="/internal/widgets", method="get", supported_versions=()),
+        ),
+    )
+```
+
+Set `openapi_version_docs` to `None` to disable version documentation. A configured non-empty global
+`supported_versions` list adds an `x-accept-versioning` extension and matching description text to each operation.
+`operation_versions` replaces that list for one exact path and lower-case HTTP method; an explicit empty tuple skips
+microbootstrap's additions for that operation without asserting that no service-owned version metadata exists. This does
+not negotiate requests, add an `Accept` parameter, change response media types, or provide a Swagger UI version selector.
+
+Repeated schema reads remain stable. A conflicting service-owned `x-accept-versioning` extension raises `ValueError`;
+correct the configuration and rebuild the application. Litestar supports its standard `Operation` type for version
+documentation and rejects other custom operation subclasses.
 
 #### FastStream AsyncAPI documentation
 

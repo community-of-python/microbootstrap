@@ -1,6 +1,18 @@
 from microbootstrap.instruments.cors_instrument import CorsConfig
 from microbootstrap.instruments.health_checks_instrument import HealthChecksConfig
 from microbootstrap.instruments.logging_instrument import LoggingConfig
+from microbootstrap.instruments.openapi_security_schemes import (
+    OpenApiApiKeySecurityScheme,
+    OpenApiHttpSecurityScheme,
+    OpenApiOAuth2SecurityScheme,
+    OpenApiOAuthFlow,
+    OpenApiOAuthFlows,
+    OpenApiOpenIdConnectSecurityScheme,
+)
+from microbootstrap.instruments.openapi_version_docs import (
+    OpenApiOperationVersionOverride,
+    OpenApiVersionDocsConfig,
+)
 from microbootstrap.instruments.opentelemetry_instrument import (
     FastStreamOpentelemetryConfig,
     FastStreamTelemetryMiddlewareProtocol,
@@ -42,6 +54,14 @@ __all__ = (
     "LitestarPrometheusConfig",
     "LitestarSettings",
     "LoggingConfig",
+    "OpenApiApiKeySecurityScheme",
+    "OpenApiHttpSecurityScheme",
+    "OpenApiOAuth2SecurityScheme",
+    "OpenApiOAuthFlow",
+    "OpenApiOAuthFlows",
+    "OpenApiOpenIdConnectSecurityScheme",
+    "OpenApiOperationVersionOverride",
+    "OpenApiVersionDocsConfig",
     "OpentelemetryConfig",
     "PyroscopeConfig",
     "SentryConfig",

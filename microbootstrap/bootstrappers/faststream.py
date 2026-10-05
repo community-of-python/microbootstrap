@@ -57,7 +57,11 @@ def _isolate_faststream_subscribers(application: AsgiFastStream) -> None:
 class KwargsAsgiFastStream(AsgiFastStream):
     def __init__(self, **kwargs: typing.Any) -> None:  # noqa: ANN401
         # `broker` argument is positional-only
-        super().__init__(kwargs.pop("broker", None), **kwargs)
+        broker = kwargs.pop("broker", None)
+        if broker is None:
+            super().__init__(**kwargs)
+        else:
+            super().__init__(broker, **kwargs)
 
 
 class FastStreamBootstrapper(ApplicationBootstrapper[FastStreamSettings, AsgiFastStream, FastStreamConfig]):

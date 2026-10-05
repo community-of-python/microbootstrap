@@ -193,17 +193,19 @@ async def test_faststream_sentry_isolates_concurrent_messages(
         FastStreamConfig(broker=broker)
     ).configure_instruments(minimal_sentry_config).bootstrap()
 
-    original_log = broker.config.logger.log
+    logger_state: typing.Final = broker.config.logger
+    logger_type: typing.Final = type(logger_state)
+    original_log: typing.Final = logger_type.log
 
-    def record_error_tag(*args: typing.Any, **kwargs: typing.Any) -> None:  # noqa: ANN401
-        if kwargs.get("log_level") == logging.ERROR:
+    def record_error_tag(state: typing.Any, *args: typing.Any, **kwargs: typing.Any) -> None:  # noqa: ANN401
+        if state is logger_state and kwargs.get("log_level") == logging.ERROR:
             error_message = typing.cast("str", kwargs["message"])
             captured_tags[error_message] = sentry_sdk.get_isolation_scope()._tags.get(conversation_id_tag)  # noqa: SLF001
             if error_message.endswith("second"):
                 second_logged.set()
-        original_log(*args, **kwargs)
+        original_log(state, *args, **kwargs)
 
-    monkeypatch.setattr(broker.config.logger, "log", record_error_tag)
+    monkeypatch.setattr(logger_type, "log", record_error_tag)
     event_loop = asyncio.get_running_loop()
     previous_exception_handler = event_loop.get_exception_handler()
     event_loop.set_exception_handler(lambda *_: None)
@@ -267,10 +269,12 @@ async def test_faststream_sentry_automatic_errors_use_concurrent_baggage_snapsho
     client.get_integration.return_value = baggage_integration
     monkeypatch.setattr(sentry_sdk, "get_client", mock.Mock(return_value=client))
     before_send: typing.Final = init.call_args.kwargs["before_send"]
-    original_log = broker.config.logger.log
+    logger_state: typing.Final = broker.config.logger
+    logger_type: typing.Final = type(logger_state)
+    original_log: typing.Final = logger_type.log
 
-    def record_automatic_error(*args: typing.Any, **kwargs: typing.Any) -> None:  # noqa: ANN401
-        if kwargs.get("log_level") == logging.ERROR:
+    def record_automatic_error(state: typing.Any, *args: typing.Any, **kwargs: typing.Any) -> None:  # noqa: ANN401
+        if state is logger_state and kwargs.get("log_level") == logging.ERROR:
             exception = typing.cast("ValueError", kwargs["exc_info"])
             event = before_send(
                 {},
@@ -279,9 +283,9 @@ async def test_faststream_sentry_automatic_errors_use_concurrent_baggage_snapsho
             captured_tags[str(exception)] = event.get("tags", {}).get(conversation_id_tag)
             if str(exception) == "second":
                 second_captured.set()
-        original_log(*args, **kwargs)
+        original_log(state, *args, **kwargs)
 
-    monkeypatch.setattr(broker.config.logger, "log", record_automatic_error)
+    monkeypatch.setattr(logger_type, "log", record_automatic_error)
 
     event_loop = asyncio.get_running_loop()
     previous_exception_handler = event_loop.get_exception_handler()
