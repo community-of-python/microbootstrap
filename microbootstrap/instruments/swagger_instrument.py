@@ -81,11 +81,9 @@ class SwaggerInstrument(Instrument[SwaggerConfig]):
             "parameter": "version",
             "supportedVersions": list(supported_versions),
         }
-        self._validate_accept_versioning_extension(
-            existing_extension,
-            expected_extension,
-            has_existing_extension=has_existing_extension,
-        )
+        if has_existing_extension and existing_extension != expected_extension:
+            message = "OpenAPI operation x-accept-versioning conflicts with configured Accept version documentation."
+            raise ValueError(message)
         return expected_extension, self._format_version_documentation(description, configuration, supported_versions)
 
     @staticmethod
@@ -107,17 +105,6 @@ class SwaggerInstrument(Instrument[SwaggerConfig]):
         if version_documentation in description:
             return description
         return f"{description}\n\n{version_documentation}"
-
-    @staticmethod
-    def _validate_accept_versioning_extension(
-        existing_extension: object,
-        expected_extension: dict[str, str | list[str]],
-        *,
-        has_existing_extension: bool,
-    ) -> None:
-        if has_existing_extension and existing_extension != expected_extension:
-            message = "OpenAPI operation x-accept-versioning conflicts with configured Accept version documentation."
-            raise ValueError(message)
 
     @staticmethod
     def _validate_security_scheme_conflicts(

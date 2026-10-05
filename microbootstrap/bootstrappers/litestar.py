@@ -30,8 +30,6 @@ from microbootstrap.instruments.openapi_security_schemes import (
     OpenApiApiKeySecurityScheme,
     OpenApiHttpSecurityScheme,
     OpenApiOAuth2SecurityScheme,
-    OpenApiOAuthFlow,
-    OpenApiOAuthFlows,
     OpenApiOpenIdConnectSecurityScheme,
     _OpenApiSecurityScheme,
     serialize_security_schemes,
@@ -127,7 +125,7 @@ class LitestarSwaggerInstrument(SwaggerInstrument):
 
     def bootstrap_after(self, application: ApplicationT) -> ApplicationT:
         if (self.instrument_config.openapi_version_docs is None and not self.instrument_config.security_schemes) or (
-            application.openapi_schema is None
+            application.openapi_config is None
         ):
             return application
         if self.instrument_config.security_schemes:
@@ -199,54 +197,27 @@ class LitestarSwaggerInstrument(SwaggerInstrument):
 
     @classmethod
     def _build_litestar_security_scheme(cls, security_scheme: _OpenApiSecurityScheme) -> openapi.spec.SecurityScheme:
-        if isinstance(security_scheme, OpenApiHttpSecurityScheme):
-            return openapi.spec.SecurityScheme(
-                type=security_scheme.type,
-                scheme=security_scheme.scheme,
-                bearer_format=security_scheme.bearer_format,
-                description=security_scheme.description,
+        if not isinstance(
+            security_scheme,
+            (
+                OpenApiHttpSecurityScheme,
+                OpenApiApiKeySecurityScheme,
+                OpenApiOAuth2SecurityScheme,
+                OpenApiOpenIdConnectSecurityScheme,
+            ),
+        ):
+            raise AssertionError("Unsupported OpenAPI security scheme.")  # noqa: TRY004
+        scheme_data = security_scheme.model_dump(by_alias=False, exclude_none=True)
+        if "location" in scheme_data:
+            scheme_data["security_scheme_in"] = scheme_data.pop("location")
+        if "flows" in scheme_data:
+            flow_data = scheme_data["flows"]
+            if "resource_owner" in flow_data:
+                flow_data["password"] = flow_data.pop("resource_owner")
+            scheme_data["flows"] = openapi.spec.OAuthFlows(
+                **{flow_name: openapi.spec.OAuthFlow(**flow) for flow_name, flow in flow_data.items()}
             )
-        if isinstance(security_scheme, OpenApiApiKeySecurityScheme):
-            return openapi.spec.SecurityScheme(
-                type=security_scheme.type,
-                name=security_scheme.name,
-                security_scheme_in=security_scheme.location,
-                description=security_scheme.description,
-            )
-        if isinstance(security_scheme, OpenApiOAuth2SecurityScheme):
-            return openapi.spec.SecurityScheme(
-                type=security_scheme.type,
-                flows=cls._build_litestar_oauth_flows(security_scheme.flows),
-                description=security_scheme.description,
-            )
-        if isinstance(security_scheme, OpenApiOpenIdConnectSecurityScheme):
-            return openapi.spec.SecurityScheme(
-                type=security_scheme.type,
-                open_id_connect_url=security_scheme.open_id_connect_url,
-                description=security_scheme.description,
-            )
-        raise AssertionError("Unsupported OpenAPI security scheme.")
-
-    @classmethod
-    def _build_litestar_oauth_flows(cls, oauth_flows: OpenApiOAuthFlows) -> openapi.spec.OAuthFlows:
-        flows = {
-            "implicit": cls._build_litestar_oauth_flow(oauth_flows.implicit),
-            "password": cls._build_litestar_oauth_flow(object.__getattribute__(oauth_flows, "resource_owner")),
-            "client_credentials": cls._build_litestar_oauth_flow(oauth_flows.client_credentials),
-            "authorization_code": cls._build_litestar_oauth_flow(oauth_flows.authorization_code),
-        }
-        return openapi.spec.OAuthFlows(**flows)
-
-    @classmethod
-    def _build_litestar_oauth_flow(cls, oauth_flow: OpenApiOAuthFlow | None) -> openapi.spec.OAuthFlow | None:
-        if oauth_flow is None:
-            return None
-        return openapi.spec.OAuthFlow(
-            authorization_url=oauth_flow.authorization_url,
-            token_url=oauth_flow.token_url,
-            refresh_url=oauth_flow.refresh_url,
-            scopes=oauth_flow.scopes,
-        )
+        return openapi.spec.SecurityScheme(**scheme_data)
 
 
 @LitestarBootstrapper.use_instrument()

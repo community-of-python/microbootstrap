@@ -13,7 +13,13 @@ from pydantic import ValidationError
 
 from microbootstrap.bootstrappers.fastapi import FastApiSwaggerInstrument
 from microbootstrap.bootstrappers.litestar import LitestarSwaggerInstrument
-from microbootstrap.instruments.openapi_security_schemes import OpenApiHttpSecurityScheme
+from microbootstrap.instruments.openapi_security_schemes import (
+    OpenApiApiKeySecurityScheme,
+    OpenApiHttpSecurityScheme,
+    OpenApiOAuth2SecurityScheme,
+    OpenApiOAuthFlow,
+    OpenApiOAuthFlows,
+)
 from microbootstrap.instruments.openapi_version_docs import OpenApiOperationVersionOverride, OpenApiVersionDocsConfig
 from microbootstrap.instruments.swagger_instrument import SwaggerConfig, SwaggerInstrument
 from microbootstrap.settings import FastApiSettings, LitestarSettings
@@ -86,6 +92,41 @@ def test_litestar_swagger_bootstrap_extra_params_have_correct_types(minimal_swag
     assert "openapi_config" in bootstrap_result
     assert isinstance(bootstrap_result["openapi_config"], openapi.OpenAPIConfig)
     assert type(bootstrap_result["openapi_config"].components) is litestar_openapi.Components
+
+
+def test_litestar_swagger_builds_native_security_schemes_with_optional_fields() -> None:
+    swagger_instrument: typing.Final = LitestarSwaggerInstrument(
+        SwaggerConfig(
+            security_schemes={
+                "http": OpenApiHttpSecurityScheme(scheme="bearer"),
+                "api-key": OpenApiApiKeySecurityScheme(name="X-API-Key", location="header"),
+                "oauth": OpenApiOAuth2SecurityScheme(
+                    flows=OpenApiOAuthFlows(resource_owner=OpenApiOAuthFlow(token_url="/token"))  # noqa: S106
+                ),
+            }
+        )
+    )
+    application: typing.Final = litestar.Litestar(**swagger_instrument.bootstrap_before())
+
+    swagger_instrument.bootstrap_after(application)
+
+    security_schemes = application.openapi_schema.components.security_schemes
+    assert security_schemes is not None
+    http_scheme, api_key_scheme, oauth_scheme = (
+        security_schemes["http"],
+        security_schemes["api-key"],
+        security_schemes["oauth"],
+    )
+    assert isinstance(http_scheme, litestar_openapi.SecurityScheme)
+    assert isinstance(api_key_scheme, litestar_openapi.SecurityScheme)
+    assert isinstance(oauth_scheme, litestar_openapi.SecurityScheme)
+    assert http_scheme.bearer_format is None
+    assert http_scheme.description is None
+    assert api_key_scheme.security_scheme_in == "header"
+    assert api_key_scheme.description is None
+    assert oauth_scheme.flows is not None
+    assert oauth_scheme.flows.password is not None
+    assert oauth_scheme.flows.password.token_url == "/token"  # noqa: S105
 
 
 def test_litestar_swagger_bootstrap_offline_docs(minimal_swagger_config: SwaggerConfig) -> None:
@@ -184,6 +225,130 @@ def test_fastapi_swagger_bootstrap_working_offline_docs(
         assert response.status_code == status_codes.HTTP_200_OK
         response = test_client.get(f"{minimal_swagger_config.service_static_path}/swagger-ui-bundle.js")
         assert response.status_code == status_codes.HTTP_200_OK
+
+
+@pytest.mark.parametrize(
+    ("operation", "error"),
+    [
+        ({"description": "List widgets"}, None),
+        (
+            {"description": "List widgets", "x-accept-versioning": None},
+            "x-accept-versioning conflicts",
+        ),
+        ({"description": 42}, "non-string description"),
+    ],
+)
+def test_fastapi_version_docs_distinguishes_missing_and_invalid_operation_values(
+    operation: dict[str, object], error: str | None
+) -> None:
+    configuration: typing.Final = SwaggerConfig(
+        openapi_version_docs=OpenApiVersionDocsConfig(
+            vendor_media_type="application/vnd.example+json",
+            supported_versions=("2026-01",),
+        )
+    )
+    swagger_instrument: typing.Final = FastApiSwaggerInstrument(configuration)
+    application: typing.Final = fastapi.FastAPI()
+    schema: dict[str, typing.Any] = {"paths": {TARGET_PATH: {"get": operation}}}
+    application.openapi = lambda: schema  # type: ignore[method-assign]  # Exercise FastAPI's public OpenAPI hook.
+
+    swagger_instrument.bootstrap_after(application)
+
+    if error is not None:
+        with pytest.raises(ValueError, match=error):
+            application.openapi()
+    else:
+        documented_schema = application.openapi()
+        assert documented_schema["paths"][TARGET_PATH]["get"]["x-accept-versioning"] == {
+            "header": "Accept",
+            "mediaType": "application/vnd.example+json",
+            "parameter": "version",
+            "supportedVersions": ["2026-01"],
+        }
+
+
+def test_fastapi_version_docs_empty_operation_override_leaves_operation_unchanged() -> None:
+    swagger_instrument: typing.Final = FastApiSwaggerInstrument(
+        SwaggerConfig(
+            openapi_version_docs=OpenApiVersionDocsConfig(
+                vendor_media_type="application/vnd.example+json",
+                supported_versions=("2026-01",),
+                operation_versions=(
+                    OpenApiOperationVersionOverride(path=TARGET_PATH, method="get", supported_versions=()),
+                ),
+            )
+        )
+    )
+    application: typing.Final = fastapi.FastAPI()
+    operation: dict[str, typing.Any] = {"description": "List widgets"}
+    application.openapi = lambda: {"paths": {TARGET_PATH: {"get": operation}}}  # type: ignore[method-assign]  # Exercise FastAPI's public OpenAPI hook.
+
+    swagger_instrument.bootstrap_after(application)
+
+    assert application.openapi()["paths"][TARGET_PATH]["get"] == {"description": "List widgets"}
+
+
+@pytest.mark.parametrize(
+    ("schema", "expected_schema"),
+    [
+        (
+            {
+                "openapi": "3.1.0",
+                "info": {"title": "Service API", "version": "1.0.0"},
+                "components": {"schemas": {"Widget": {"type": "object"}}},
+            },
+            {
+                "openapi": "3.1.0",
+                "info": {"title": "Service API", "version": "1.0.0"},
+                "components": {"schemas": {"Widget": {"type": "object"}}},
+            },
+        ),
+        (
+            {
+                "openapi": "3.1.0",
+                "info": {"title": "Service API", "version": "1.0.0"},
+                "paths": {"x-owner": "widgets", TARGET_PATH: {"get": {"description": "List widgets"}}},
+            },
+            {
+                "openapi": "3.1.0",
+                "info": {"title": "Service API", "version": "1.0.0"},
+                "paths": {
+                    "x-owner": "widgets",
+                    TARGET_PATH: {
+                        "get": {
+                            "description": "List widgets\n\nSupported API version: "
+                            "`application/vnd.example+json; version=2026-01`.",
+                            "x-accept-versioning": {
+                                "header": "Accept",
+                                "mediaType": "application/vnd.example+json",
+                                "parameter": "version",
+                                "supportedVersions": ["2026-01"],
+                            },
+                        }
+                    },
+                },
+            },
+        ),
+    ],
+)
+def test_fastapi_version_docs_handles_optional_paths_and_extensions(
+    schema: dict[str, typing.Any], expected_schema: dict[str, typing.Any]
+) -> None:
+    swagger_instrument: typing.Final = FastApiSwaggerInstrument(
+        SwaggerConfig(
+            openapi_version_docs=OpenApiVersionDocsConfig(
+                vendor_media_type="application/vnd.example+json",
+                supported_versions=("2026-01",),
+            )
+        )
+    )
+    application: typing.Final = fastapi.FastAPI()
+    application.openapi = lambda: schema  # type: ignore[method-assign]  # Exercise FastAPI's public OpenAPI hook.
+
+    swagger_instrument.bootstrap_after(application)
+
+    assert application.openapi() == expected_schema
+    assert application.openapi() == expected_schema
 
 
 @pytest.mark.parametrize(

@@ -8,6 +8,7 @@ import pytest
 from fastapi.security import HTTPBearer
 from fastapi.testclient import TestClient as FastAPITestClient
 from litestar import get, openapi, post, status_codes
+from litestar.config.app import AppConfig
 from litestar.openapi import spec as litestar_openapi
 from litestar.openapi.plugins import SwaggerRenderPlugin
 from litestar.testing import TestClient as LitestarTestClient
@@ -243,11 +244,13 @@ def test_empty_operation_override_skips_malformed_service_owned_metadata(framewo
         application, schema = custom_fastapi_application()
         operation = schema["paths"][TARGET_PATH]["get"]
         operation.update({"description": 1, "x-accept-versioning": {"header": "X-Service-Version"}})
+        snapshot = copy.deepcopy(operation)
 
         FastApiSwaggerInstrument(SwaggerConfig(openapi_version_docs=configuration)).bootstrap_after(application)
 
         assert application.openapi() is schema
         assert schema["paths"][TARGET_PATH]["get"] is operation
+        assert operation == snapshot
         return
 
     built = build_application("litestar", None)
@@ -268,10 +271,12 @@ def test_empty_operation_override_skips_malformed_service_owned_metadata(framewo
     operation = ServiceOperation(**fields, accept_versioning={"header": "X-Service-Version"})
     operation.description = 1  # type: ignore[assignment]  # Deliberately invalid service-owned schema.
     path_item.get = operation
+    snapshot = copy.deepcopy(operation)
 
     LitestarSwaggerInstrument(SwaggerConfig(openapi_version_docs=configuration)).bootstrap_after(built.application)
 
     assert path_item.get is operation
+    assert operation == snapshot
 
 
 def test_version_docs_do_not_create_absent_security_scheme_containers(framework: str) -> None:
@@ -583,6 +588,45 @@ def test_litestar_served_schema_matches_canonical_schema_on_repeated_reads() -> 
     expected_schema = built.schema()
     assert built.served_schema() == expected_schema
     assert built.served_schema() == expected_schema
+
+
+@pytest.mark.parametrize(
+    ("has_security_schemes", "has_version_docs"),
+    [(False, False), (True, False), (False, True), (True, True)],
+)
+def test_litestar_bootstraps_without_openapi_config(
+    has_security_schemes: bool,
+    has_version_docs: bool,
+) -> None:
+    @get(TARGET_PATH)
+    async def handler() -> dict[str, str]:
+        return {"status": "ok"}
+
+    def disable_openapi(configuration: AppConfig) -> AppConfig:
+        configuration.openapi_config = None
+        return configuration
+
+    application = (
+        LitestarBootstrapper(
+            LitestarSettings(
+                service_debug=False,
+                security_schemes={"ServiceAuth": OpenApiHttpSecurityScheme(scheme="bearer")}
+                if has_security_schemes
+                else {},
+                openapi_version_docs=version_docs() if has_version_docs else None,
+            )
+        )
+        .configure_application(LitestarConfig(route_handlers=[handler], on_app_init=[disable_openapi]))
+        .bootstrap()
+    )
+
+    assert application.openapi_config is None
+    with LitestarTestClient(app=application) as client:
+        response = client.get(TARGET_PATH)
+        openapi_response = client.get("/docs/openapi.json")
+    assert response.status_code == status_codes.HTTP_200_OK
+    assert response.json() == {"status": "ok"}
+    assert openapi_response.status_code == status_codes.HTTP_404_NOT_FOUND
 
 
 def test_litestar_standard_operations_preserve_fields_and_are_stable() -> None:

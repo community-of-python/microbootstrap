@@ -29,26 +29,6 @@ class MixedSecuritySettings(LitestarSettings):
     security_schemes: dict[str, OpenApiHttpSecurityScheme | ApiKeySecurityScheme] = Field(default_factory=dict)
 
 
-@pytest.fixture
-def http_only_settings() -> HttpOnlySettings:
-    return HttpOnlySettings(security_schemes={"http": OpenApiHttpSecurityScheme(scheme="bearer", bearer_format="JWT")})
-
-
-@pytest.fixture
-def api_key_only_settings() -> ApiKeyOnlySettings:
-    return ApiKeyOnlySettings(security_schemes={"api": ApiKeySecurityScheme(name="X-API-Key", location="header")})
-
-
-@pytest.fixture
-def mixed_security_settings() -> MixedSecuritySettings:
-    return MixedSecuritySettings(
-        security_schemes={
-            "http": OpenApiHttpSecurityScheme(scheme="bearer"),
-            "api": ApiKeySecurityScheme(name="X-API-Key", location="query"),
-        }
-    )
-
-
 def test_security_schemes_accept_python_names_and_serialize_openapi_aliases() -> None:
     security_schemes: typing.Final[dict[str, _OpenApiSecurityScheme]] = {
         "http.auth": OpenApiHttpSecurityScheme(scheme="bearer", bearer_format="JWT"),
@@ -113,13 +93,18 @@ def test_swagger_config_round_trips_all_security_scheme_types() -> None:
         assert isinstance(round_tripped.security_schemes["oidc"], OpenApiOpenIdConnectSecurityScheme)
 
 
-def test_instrument_box_reconstructs_concrete_security_scheme_settings(
-    http_only_settings: HttpOnlySettings,
-    api_key_only_settings: ApiKeyOnlySettings,
-    mixed_security_settings: MixedSecuritySettings,
-) -> None:
+def test_instrument_box_reconstructs_concrete_security_scheme_settings() -> None:
     configurations: list[SwaggerConfig] = []
-    for settings in (http_only_settings, api_key_only_settings, mixed_security_settings):
+    for settings in (
+        HttpOnlySettings(security_schemes={"http": OpenApiHttpSecurityScheme(scheme="bearer", bearer_format="JWT")}),
+        ApiKeyOnlySettings(security_schemes={"api": ApiKeySecurityScheme(name="X-API-Key", location="header")}),
+        MixedSecuritySettings(
+            security_schemes={
+                "http": OpenApiHttpSecurityScheme(scheme="bearer"),
+                "api": ApiKeySecurityScheme(name="X-API-Key", location="query"),
+            }
+        ),
+    ):
         instrument_box = InstrumentBox(__instruments__=[SwaggerInstrument])
         instrument_box.initialize(settings)
 

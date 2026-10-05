@@ -95,7 +95,9 @@ class FastApiSwaggerInstrument(SwaggerInstrument):
         )
 
     def _document_operations(self, openapi_schema: dict[str, typing.Any]) -> None:
-        for path, path_item in openapi_schema["paths"].items():
+        for path, path_item in openapi_schema.get("paths", {}).items():
+            if path.startswith("x-"):
+                continue
             for method, operation in path_item.items():
                 if method not in SUPPORTED_HTTP_METHODS:
                     continue
