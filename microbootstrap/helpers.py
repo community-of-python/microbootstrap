@@ -26,7 +26,7 @@ def dataclass_to_dict_no_defaults(dataclass_to_convert: "_DataclassT") -> dict[s
         if dataclass_field.default != value and isinstance(dataclass_field.default_factory, _MISSING_TYPE):
             conversion_result[dataclass_field.name] = value
             continue
-        if value != dataclass_field.default and value != dataclass_field.default_factory():  # type: ignore[misc]
+        if value != dataclass_field.default and value != dataclass_field.default_factory():  # type: ignore[operator]
             conversion_result[dataclass_field.name] = value
 
     return conversion_result
