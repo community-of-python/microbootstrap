@@ -1,3 +1,4 @@
+import copy
 import typing
 
 import fastapi
@@ -19,6 +20,8 @@ from microbootstrap.instruments.openapi_security_schemes import (
     OpenApiOAuth2SecurityScheme,
     OpenApiOAuthFlow,
     OpenApiOAuthFlows,
+    OpenApiSecuritySchemeModel,
+    _OpenApiSecurityScheme,
 )
 from microbootstrap.instruments.openapi_version_docs import OpenApiOperationVersionOverride, OpenApiVersionDocsConfig
 from microbootstrap.instruments.swagger_instrument import SwaggerConfig, SwaggerInstrument
@@ -127,6 +130,49 @@ def test_litestar_swagger_builds_native_security_schemes_with_optional_fields() 
     assert oauth_scheme.flows is not None
     assert oauth_scheme.flows.password is not None
     assert oauth_scheme.flows.password.token_url == "/token"  # noqa: S105
+
+
+def test_litestar_version_docs_preserves_components_only_schema() -> None:
+    swagger_instrument: typing.Final = LitestarSwaggerInstrument(
+        SwaggerConfig(
+            openapi_version_docs=OpenApiVersionDocsConfig(
+                vendor_media_type="application/vnd.example+json",
+                supported_versions=("2026-01",),
+            )
+        )
+    )
+    application: typing.Final = litestar.Litestar(**swagger_instrument.bootstrap_before())
+    schema: typing.Final = application.openapi_schema
+    schema.paths = None
+    expected_schema: typing.Final = copy.deepcopy(schema.to_schema())
+
+    swagger_instrument.bootstrap_after(application)
+
+    assert application.openapi_schema is schema
+    assert schema.paths is None
+    assert schema.to_schema() == expected_schema
+
+
+def test_litestar_rejects_unsupported_security_scheme_model() -> None:
+    unsupported_scheme: typing.Final = typing.cast("_OpenApiSecurityScheme", OpenApiSecuritySchemeModel())
+
+    with pytest.raises(AssertionError, match=r"^Unsupported OpenAPI security scheme\.$"):
+        LitestarSwaggerInstrument._build_litestar_security_scheme(unsupported_scheme)  # noqa: SLF001
+
+
+def test_swagger_version_documentation_returns_none_when_disabled() -> None:
+    swagger_instrument: typing.Final = SwaggerInstrument(SwaggerConfig())
+
+    assert (
+        swagger_instrument._build_version_documentation(  # noqa: SLF001
+            TARGET_PATH,
+            "get",
+            "Service-owned description",
+            {"service": "owned"},
+            has_existing_extension=True,
+        )
+        is None
+    )
 
 
 def test_litestar_swagger_bootstrap_offline_docs(minimal_swagger_config: SwaggerConfig) -> None:
