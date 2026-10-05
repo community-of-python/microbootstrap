@@ -15,11 +15,12 @@ from litestar.openapi.plugins import SwaggerRenderPlugin
 from litestar.types.asgi_types import ASGIApp, Scope
 from litestar_offline_docs import generate_static_files_config
 from opentelemetry.instrumentation.asgi import OpenTelemetryMiddleware
-from opentelemetry.util.http import get_excluded_urls
+from opentelemetry.util.http import ExcludeList, get_excluded_urls
 from sentry_sdk.integrations.litestar import LitestarIntegration
 
 from microbootstrap.bootstrappers.base import ApplicationBootstrapper
 from microbootstrap.config.litestar import LitestarConfig
+from microbootstrap.instruments import opentelemetry_instrument
 from microbootstrap.instruments.cors_instrument import CorsInstrument
 from microbootstrap.instruments.health_checks_instrument import (
     HealthChecksInstrument,
@@ -35,7 +36,6 @@ from microbootstrap.instruments.openapi_security_schemes import (
     serialize_security_schemes,
 )
 from microbootstrap.instruments.openapi_version_docs import SUPPORTED_HTTP_METHODS
-from microbootstrap.instruments.opentelemetry_instrument import OpentelemetryInstrument
 from microbootstrap.instruments.prometheus_instrument import (
     LitestarPrometheusConfig,
     PrometheusInstrument,
@@ -239,12 +239,6 @@ class LitestarCorsInstrument(CorsInstrument):
 LitestarBootstrapper.use_instrument()(PyroscopeInstrument)
 
 
-def build_span_name(method: str, route: str) -> str:
-    if not route:
-        return method
-    return f"{method} {route}"
-
-
 def build_litestar_route_details_from_scope(
     scope: Scope,
 ) -> tuple[str, dict[str, str]]:
@@ -261,18 +255,23 @@ def build_litestar_route_details_from_scope(
     method: typing.Final = str(scope.get("method", "HTTP")).strip()
     if path_template is not None:
         path_template_stripped: typing.Final = path_template.strip()
-        return build_span_name(method, path_template_stripped), {"http.route": path_template_stripped}
+        span_name: typing.Final = opentelemetry_instrument.build_span_name(method, path_template_stripped)
+        return span_name, {"http.route": path_template_stripped}
 
     path: typing.Final = scope.get("path")
     if path is not None:
         path_stripped: typing.Final = path.strip()
-        return build_span_name(method, path_stripped), {"http.route": path_stripped}
+        return opentelemetry_instrument.build_span_name(method, path_stripped), {"http.route": path_stripped}
     return method, {}
 
 
 class LitestarOpenTelemetryInstrumentationMiddleware(ASGIMiddleware):
-    def __init__(self, config: OpenTelemetryConfig) -> None:
+    def __init__(self, config: OpenTelemetryConfig, exclude_urls: typing.Sequence[str] = ()) -> None:
         self.config = config
+        self.excluded_urls = opentelemetry_instrument.CombinedExcludeList(
+            ExcludeList(exclude_urls),
+            get_excluded_urls(self.config.exclude_urls_env_key),
+        )
 
     def create_open_telemetry_middleware(self, app: ASGIApp) -> OpenTelemetryMiddleware:
         return OpenTelemetryMiddleware(
@@ -280,7 +279,7 @@ class LitestarOpenTelemetryInstrumentationMiddleware(ASGIMiddleware):
             client_request_hook=self.config.client_request_hook_handler,
             client_response_hook=self.config.client_response_hook_handler,
             default_span_details=build_litestar_route_details_from_scope,
-            excluded_urls=get_excluded_urls(self.config.exclude_urls_env_key),
+            excluded_urls=self.excluded_urls,
             meter=self.config.meter,
             meter_provider=self.config.meter_provider,
             server_request_hook=self.config.server_request_hook_handler,
@@ -292,7 +291,7 @@ class LitestarOpenTelemetryInstrumentationMiddleware(ASGIMiddleware):
 
 
 @LitestarBootstrapper.use_instrument()
-class LitestarOpentelemetryInstrument(OpentelemetryInstrument):
+class LitestarOpentelemetryInstrument(opentelemetry_instrument.OpentelemetryInstrument):
     def bootstrap_before(self) -> dict[str, typing.Any]:
         return {
             "middleware": [
@@ -300,7 +299,8 @@ class LitestarOpentelemetryInstrument(OpentelemetryInstrument):
                     LitestarOpentelemetryConfig(
                         tracer_provider=self.tracer_provider,
                         middleware_class=LitestarOpenTelemetryInstrumentationMiddleware,  # type: ignore[arg-type]
-                    )
+                    ),
+                    exclude_urls=self.define_exclude_urls(),
                 )
             ]
         }
