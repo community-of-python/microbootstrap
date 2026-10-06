@@ -228,7 +228,7 @@ def test_fastmcp_opentelemetry_is_not_ready_without_settings() -> None:
     application: typing.Final = FastMcpBootstrapper(FastMcpSettings(service_debug=False)).bootstrap()
 
     assert isinstance(application, KwargsFastMCP)
-    assert application.http_app_hooks == []
+    assert application.http_application_postprocessors == []
     assert count_opentelemetry_middlewares(application.http_app()) == 0
 
 

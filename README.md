@@ -530,11 +530,11 @@ Requests to unknown paths produce spans named after the HTTP method only, withou
   `http.response.status_code` for `http`, both for `http/dup`.
 
 Applications already instrumented by `StarletteInstrumentor` are left as is, so the request is never traced twice.
-To post-process every created ASGI application yourself, use `add_http_app_hook` on the bootstrapped application:
+To post-process every created ASGI application yourself, use `add_http_application_postprocessor` on the bootstrapped application:
 
 ```python
 application = FastMcpBootstrapper(settings).bootstrap()
-application.add_http_app_hook(lambda http_application: http_application)
+application.add_http_application_postprocessor(lambda http_application: http_application)
 ```
 
 ### [Pyroscope](https://pyroscope.io)

@@ -34,16 +34,18 @@ StarletteT = typing.TypeVar("StarletteT", bound=Starlette)
 class KwargsFastMCP(FastMCP[typing.Any]):
     def __init__(self, **kwargs: typing.Any) -> None:  # noqa: ANN401
         super().__init__(**kwargs)
-        self.http_app_hooks: list[typing.Callable[[StarletteWithLifespan], StarletteWithLifespan]] = []
+        self.http_application_postprocessors: list[typing.Callable[[StarletteWithLifespan], StarletteWithLifespan]] = []
 
-    def add_http_app_hook(self, hook: typing.Callable[[StarletteWithLifespan], StarletteWithLifespan]) -> None:
-        self.http_app_hooks.append(hook)
+    def add_http_application_postprocessor(
+        self, postprocessor: typing.Callable[[StarletteWithLifespan], StarletteWithLifespan]
+    ) -> None:
+        self.http_application_postprocessors.append(postprocessor)
 
     def http_app(self, *args: typing.Any, **kwargs: typing.Any) -> StarletteWithLifespan:  # noqa: ANN401
         # ASGI application is created by the user after bootstrap, so instruments subscribe to its creation
         http_application = super().http_app(*args, **kwargs)
-        for hook in self.http_app_hooks:
-            http_application = hook(http_application)
+        for postprocessor in self.http_application_postprocessors:
+            http_application = postprocessor(http_application)
         return http_application
 
 
@@ -90,10 +92,10 @@ class FastMcpOpentelemetryInstrument(
 ):
     def bootstrap_after(self, application: FastMCP[typing.Any]) -> FastMCP[typing.Any]:  # type: ignore[override]
         if isinstance(application, KwargsFastMCP):
-            application.add_http_app_hook(self.instrument_http_app)
+            application.add_http_application_postprocessor(self.__instrument_http_app)
         return application
 
-    def instrument_http_app(self, http_application: StarletteT) -> StarletteT:
+    def __instrument_http_app(self, http_application: StarletteT) -> StarletteT:
         # `StarletteInstrumentor` marks applications the same way, so each application is instrumented once
         if getattr(http_application, "_is_instrumented_by_opentelemetry", False):
             return http_application
