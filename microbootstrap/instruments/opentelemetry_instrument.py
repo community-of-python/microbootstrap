@@ -19,6 +19,7 @@ from opentelemetry.sdk.trace.export import BatchSpanProcessor, ConsoleSpanExport
 from opentelemetry.semconv.resource import ResourceAttributes
 from opentelemetry.trace import SpanKind, format_span_id, get_current_span, set_tracer_provider
 from opentelemetry.util._importlib_metadata import entry_points
+from opentelemetry.util.http import ExcludeList
 
 from microbootstrap.instruments.base import BaseInstrumentConfig, Instrument
 from microbootstrap.instruments.sentry_instrument import snapshot_sentry_opentelemetry_baggage
@@ -68,6 +69,21 @@ def opentelemetry_baggage_scope(
         raise
     finally:
         context.detach(token)
+
+
+def build_span_name(method: str, route: str) -> str:
+    if not route:
+        return method
+    return f"{method} {route}"
+
+
+class CombinedExcludeList(ExcludeList):
+    def __init__(self, *exclude_lists: ExcludeList) -> None:
+        super().__init__([])
+        self.exclude_lists = exclude_lists
+
+    def url_disabled(self, url: str) -> bool:
+        return any(one_exclude_list.url_disabled(url) for one_exclude_list in self.exclude_lists)
 
 
 @dataclasses.dataclass()
@@ -167,6 +183,16 @@ class BaseOpentelemetryInstrument(Instrument[OpentelemetryConfigT]):
                 LOGGER_OBJ.debug("Instrumenting failed", entry_point_name=entry_point.name)
                 raise
 
+    def define_exclude_urls(self) -> list[str]:
+        exclude_urls: typing.Final = [*self.instrument_config.opentelemetry_exclude_urls]
+        if (
+            not self.instrument_config.opentelemetry_generate_health_check_spans
+            and self.instrument_config.health_checks_path
+            and self.instrument_config.health_checks_path not in exclude_urls
+        ):
+            exclude_urls.append(self.instrument_config.health_checks_path)
+        return exclude_urls
+
     def is_ready(self) -> bool:
         return (
             bool(self.instrument_config.opentelemetry_endpoint)
@@ -222,16 +248,6 @@ class BaseOpentelemetryInstrument(Instrument[OpentelemetryConfigT]):
 
 
 class OpentelemetryInstrument(BaseOpentelemetryInstrument[OpentelemetryConfig]):
-    def define_exclude_urls(self) -> list[str]:
-        exclude_urls: typing.Final = [*self.instrument_config.opentelemetry_exclude_urls]
-        if (
-            not self.instrument_config.opentelemetry_generate_health_check_spans
-            and self.instrument_config.health_checks_path
-            and self.instrument_config.health_checks_path not in exclude_urls
-        ):
-            exclude_urls.append(self.instrument_config.health_checks_path)
-        return exclude_urls
-
     @classmethod
     def get_config_type(cls) -> type[OpentelemetryConfig]:
         return OpentelemetryConfig

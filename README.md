@@ -440,7 +440,7 @@ class YourSettings(BaseServiceSettings):
     opentelemetry_namespace: str | None = None
     opentelemetry_insecure: bool = True
     opentelemetry_instrumentors: list[OpenTelemetryInstrumentor] = []
-    opentelemetry_exclude_urls: list[str] = []
+    opentelemetry_exclude_urls: list[str] = ["/metrics"]
     opentelemetry_baggage_span_attributes: dict[str, str] = {}
 
     ... # Other settings here
@@ -456,9 +456,9 @@ Parameters description:
 - `opentelemetry_insecure` - is opentelemetry connection secure.
 - `opentelemetry_container_name` - will be passed to the `Resource`.
 - `opentelemetry_instrumentors` - a list of extra instrumentors.
-- `opentelemetry_exclude_urls` - list of ignored urls.
+- `opentelemetry_exclude_urls` - list of url regexes that produce no server spans (`["/metrics"]` by default). For Litestar they are combined with `OTEL_PYTHON_LITESTAR_EXCLUDED_URLS` (or `OTEL_PYTHON_EXCLUDED_URLS`).
 - `opentelemetry_log_traces` - traces will be logged to stdout.
-- `opentelemetry_generate_health_check_spans` - generate spans for health check handlers if `True`
+- `opentelemetry_generate_health_check_spans` - generate spans for health check handlers if `True`; if `False`, `health_checks_path` is added to the excluded urls.
 - `opentelemetry_baggage_span_attributes` - maps allowed baggage keys to attributes added to local server and consumer spans.
 
 These settings are subsequently passed to [opentelemetry](https://opentelemetry.io/), finalizing your Opentelemetry integration.
