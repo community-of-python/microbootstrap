@@ -4,7 +4,8 @@ from unittest import mock
 
 import prometheus_client
 import pytest
-from fastmcp import FastMCP
+from fastmcp import Client, FastMCP
+from fastmcp.exceptions import ToolError
 from opentelemetry.instrumentation._semconv import (
     OTEL_SEMCONV_STABILITY_OPT_IN,
     _OpenTelemetrySemanticConventionStability,
@@ -28,7 +29,7 @@ from microbootstrap.instruments.health_checks_instrument import HealthChecksConf
 from microbootstrap.instruments.logging_instrument import LoggingConfig
 from microbootstrap.instruments.opentelemetry_instrument import OpentelemetryConfig, OpenTelemetryInstrumentor
 from microbootstrap.instruments.prometheus_instrument import FastMcpPrometheusConfig
-from microbootstrap.middlewares.fastmcp import FastMcpLoggingMiddleware
+from microbootstrap.middlewares.fastmcp import FastMcpLoggingMiddleware, FastMcpPrometheusMiddleware
 from microbootstrap.settings import FastMcpSettings
 
 
@@ -210,6 +211,66 @@ def test_fastmcp_prometheus_instrumentator_params_are_passed() -> None:
         )
         == 1
     )
+
+
+async def test_fastmcp_prometheus_counts_tool_calls() -> None:
+    metrics_registry: typing.Final = prometheus_client.CollectorRegistry()
+    application: typing.Final = (
+        FastMcpBootstrapper(FastMcpSettings())
+        .configure_instrument(
+            FastMcpPrometheusConfig(
+                prometheus_registry=metrics_registry, prometheus_custom_labels={"team": "platform"}
+            ),
+        )
+        .bootstrap()
+    )
+
+    @application.tool
+    def echo(text: str) -> str:
+        return text
+
+    @application.tool
+    def failing() -> str:
+        msg: typing.Final = "boom"
+        raise ValueError(msg)
+
+    async with Client(application) as client:
+        for _ in range(2):
+            await client.call_tool("echo", {"text": "hi"})
+        with pytest.raises(ToolError):
+            await client.call_tool("failing", {})
+
+    def tool_calls_total(tool: str, call_status: str) -> float | None:
+        return metrics_registry.get_sample_value(
+            "fastmcp_tool_calls_total",
+            {"tool": tool, "status": call_status, "team": "platform"},
+        )
+
+    assert tool_calls_total("echo", "success") == 2  # noqa: PLR2004
+    assert tool_calls_total("echo", "error") is None
+    assert tool_calls_total("failing", "error") == 1
+    assert (
+        metrics_registry.get_sample_value(
+            "fastmcp_tool_call_duration_seconds_count",
+            {"tool": "failing", "team": "platform"},
+        )
+        == 1
+    )
+
+
+def test_fastmcp_prometheus_tool_metrics_can_be_disabled() -> None:
+    application: typing.Final = (
+        FastMcpBootstrapper(FastMcpSettings())
+        .configure_instrument(
+            FastMcpPrometheusConfig(
+                prometheus_registry=prometheus_client.CollectorRegistry(),
+                prometheus_tool_metrics=False,
+            ),
+        )
+        .bootstrap()
+    )
+
+    assert not any(isinstance(middleware, FastMcpPrometheusMiddleware) for middleware in application.middleware)
 
 
 def test_fastmcp_prometheus_route_can_be_disabled() -> None:
