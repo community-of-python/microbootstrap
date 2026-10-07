@@ -38,6 +38,7 @@ class FastMcpPrometheusConfig(BasePrometheusConfig):
     prometheus_instrumentator_params: dict[str, typing.Any] = pydantic.Field(default_factory=dict)
     prometheus_instrument_params: dict[str, typing.Any] = pydantic.Field(default_factory=dict)
     prometheus_custom_labels: dict[str, typing.Any] = pydantic.Field(default_factory=dict)
+    prometheus_tool_metrics: bool = True
 
 
 @typing.runtime_checkable

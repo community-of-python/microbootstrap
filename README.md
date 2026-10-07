@@ -436,6 +436,7 @@ class YourSettings(FastMcpSettings):
     prometheus_instrumentator_params: dict[str, typing.Any] = {}
     prometheus_instrument_params: dict[str, typing.Any] = {}
     prometheus_custom_labels: dict[str, typing.Any] = {}
+    prometheus_tool_metrics: bool = True
 
     ... # Other settings here
 ```
@@ -452,7 +453,8 @@ Parameters description:
 - `prometheus_registry` - registry to expose and to register the request metrics in, the global one by default.
 - `prometheus_instrumentator_params` - will be passed to `Instrumentator` during initialization (`excluded_handlers` and `registry` are set by default and can be overridden here).
 - `prometheus_instrument_params` - will be passed to `Instrumentator.instrument(...)`.
-- `prometheus_custom_labels` - will be added to every request metric.
+- `prometheus_custom_labels` - will be added to every request and tool call metric.
+- `prometheus_tool_metrics` - count tool calls in `fastmcp_tool_calls_total{tool, status}` (`status` is `success` or `error`) and `fastmcp_tool_call_duration_seconds{tool}` through a FastMCP middleware; set to `False` to turn it off.
 
 ### [OpenTelemetry](https://opentelemetry.io/)
 

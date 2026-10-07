@@ -21,7 +21,7 @@ from microbootstrap.instruments.logging_instrument import LoggingInstrument
 from microbootstrap.instruments.prometheus_instrument import FastMcpPrometheusConfig, PrometheusInstrument
 from microbootstrap.instruments.pyroscope_instrument import PyroscopeInstrument
 from microbootstrap.instruments.sentry_instrument import SentryInstrument
-from microbootstrap.middlewares.fastmcp import FastMcpLoggingMiddleware
+from microbootstrap.middlewares.fastmcp import FastMcpLoggingMiddleware, FastMcpPrometheusMiddleware
 from microbootstrap.settings import FastMcpSettings
 
 
@@ -152,6 +152,13 @@ class FastMcpPrometheusInstrument(PrometheusInstrument[FastMcpPrometheusConfig])
     def bootstrap_after(self, application: FastMCP[typing.Any]) -> FastMCP[typing.Any]:  # type: ignore[override]
         if isinstance(application, KwargsFastMCP):
             application.add_http_application_postprocessor(self.__instrument_http_app)
+        if self.instrument_config.prometheus_tool_metrics:
+            application.add_middleware(
+                FastMcpPrometheusMiddleware(
+                    registry=self.instrument_config.prometheus_registry,
+                    custom_labels=self.instrument_config.prometheus_custom_labels,
+                )
+            )
 
         if not self.instrument_config.prometheus_register_route:
             return application
