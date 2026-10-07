@@ -1,4 +1,5 @@
 from __future__ import annotations
+import re
 import typing
 
 import prometheus_client
@@ -6,6 +7,8 @@ import typing_extensions
 from fastmcp import FastMCP
 from opentelemetry.instrumentation.asgi import OpenTelemetryMiddleware
 from opentelemetry.util.http import ExcludeList, get_excluded_urls
+from prometheus_fastapi_instrumentator import Instrumentator
+from prometheus_fastapi_instrumentator import metrics as instrumentator_metrics
 from starlette.applications import Starlette
 from starlette.responses import JSONResponse, Response
 from starlette.routing import Match, Mount, Route
@@ -147,6 +150,9 @@ class FastMcpHealthChecksInstrument(HealthChecksInstrument):
 @FastMcpBootstrapper.use_instrument()
 class FastMcpPrometheusInstrument(PrometheusInstrument[FastMcpPrometheusConfig]):
     def bootstrap_after(self, application: FastMCP[typing.Any]) -> FastMCP[typing.Any]:  # type: ignore[override]
+        if isinstance(application, KwargsFastMCP):
+            application.add_http_application_postprocessor(self.__instrument_http_app)
+
         if not self.instrument_config.prometheus_register_route:
             return application
 
@@ -164,6 +170,23 @@ class FastMcpPrometheusInstrument(PrometheusInstrument[FastMcpPrometheusConfig])
             )
 
         return application
+
+    def __instrument_http_app(self, http_application: StarletteT) -> StarletteT:
+        # Same instrumentator as in the FastAPI bootstrapper: requests are counted by route template
+        # (`handler="/mcp"`, `handler="/health/"`), unknown paths are grouped into `handler="none"`.
+        registry: typing.Final = self.instrument_config.prometheus_registry or prometheus_client.REGISTRY
+        instrumentator_params: typing.Final = {
+            "excluded_handlers": [f"^{re.escape(self.instrument_config.prometheus_metrics_path)}$"],
+            "registry": registry,
+            **self.instrument_config.prometheus_instrumentator_params,
+        }
+        Instrumentator(**instrumentator_params).add(
+            instrumentator_metrics.default(
+                registry=registry,
+                custom_labels=self.instrument_config.prometheus_custom_labels,
+            ),
+        ).instrument(http_application, **self.instrument_config.prometheus_instrument_params)
+        return http_application
 
     @classmethod
     def get_config_type(cls) -> type[FastMcpPrometheusConfig]:
