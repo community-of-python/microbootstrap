@@ -69,7 +69,7 @@ fastapi = [
     "prometheus-fastapi-instrumentator>=7.1",
 ]
 litestar = [
-    "litestar>=2.21.1",
+    "litestar>=2.22.0",
     "litestar-offline-docs>=1",
     "prometheus-client>=0.20",
 ]

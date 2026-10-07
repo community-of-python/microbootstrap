@@ -6,16 +6,13 @@ import litestar
 import typing_extensions
 from litestar import openapi
 from litestar.config.cors import CORSConfig as LitestarCorsConfig
-from litestar.contrib.opentelemetry.config import (
-    OpenTelemetryConfig as LitestarOpentelemetryConfig,
-)
 from litestar.contrib.prometheus import PrometheusConfig, PrometheusController
 from litestar.middleware import ASGIMiddleware
 from litestar.openapi.plugins import SwaggerRenderPlugin
-from litestar.types.asgi_types import ASGIApp, Scope
+from litestar.plugins.opentelemetry import OpenTelemetryConfig as LitestarOpentelemetryConfig
+from litestar.plugins.opentelemetry import OpenTelemetryPlugin
 from litestar_offline_docs import generate_static_files_config
-from opentelemetry.instrumentation.asgi import OpenTelemetryMiddleware
-from opentelemetry.util.http import ExcludeList, get_excluded_urls
+from opentelemetry import trace
 from sentry_sdk.integrations.litestar import LitestarIntegration
 
 from microbootstrap.bootstrappers.base import ApplicationBootstrapper
@@ -59,9 +56,7 @@ class AcceptVersionedOperation(openapi.spec.Operation):
 
 
 if typing.TYPE_CHECKING:
-    from litestar.contrib.opentelemetry import OpenTelemetryConfig
-    from litestar.types import ASGIApp, Scope
-    from litestar.types.asgi_types import Receive, Send
+    from litestar.types import ASGIApp, Receive, Scope, Send
 
 
 class LitestarBootstrapper(
@@ -265,45 +260,34 @@ def build_litestar_route_details_from_scope(
     return method, {}
 
 
-class LitestarOpenTelemetryInstrumentationMiddleware(ASGIMiddleware):
-    def __init__(self, config: OpenTelemetryConfig, exclude_urls: typing.Sequence[str] = ()) -> None:
-        self.config = config
-        self.excluded_urls = opentelemetry_instrument.CombinedExcludeList(
-            ExcludeList(exclude_urls),
-            get_excluded_urls(self.config.exclude_urls_env_key),
-        )
-
-    def create_open_telemetry_middleware(self, app: ASGIApp) -> OpenTelemetryMiddleware:
-        return OpenTelemetryMiddleware(
-            app=app,
-            client_request_hook=self.config.client_request_hook_handler,
-            client_response_hook=self.config.client_response_hook_handler,
-            default_span_details=build_litestar_route_details_from_scope,
-            excluded_urls=self.excluded_urls,
-            meter=self.config.meter,
-            meter_provider=self.config.meter_provider,
-            server_request_hook=self.config.server_request_hook_handler,
-            tracer_provider=self.config.tracer_provider,
-        )
-
+class LitestarOpentelemetryRouteMiddleware(ASGIMiddleware):
+    # `OpenTelemetryPlugin` wraps the whole application, so its span is created before routing with the raw path.
+    # This middleware runs inside the route handler stack, where `path_template` is known, and renames the span.
     async def handle(self, scope: Scope, receive: Receive, send: Send, next_app: ASGIApp) -> None:
-        await self.create_open_telemetry_middleware(next_app)(scope, receive, send)  # type: ignore[arg-type]
+        server_span: typing.Final = trace.get_current_span()
+        if server_span.is_recording():
+            span_name, attributes = build_litestar_route_details_from_scope(scope)
+            server_span.update_name(span_name)
+            server_span.set_attributes(attributes)
+        await next_app(scope, receive, send)
 
 
 @LitestarBootstrapper.use_instrument()
 class LitestarOpentelemetryInstrument(opentelemetry_instrument.OpentelemetryInstrument):
     def bootstrap_before(self) -> dict[str, typing.Any]:
         return {
-            "middleware": [
-                LitestarOpenTelemetryInstrumentationMiddleware(
-                    LitestarOpentelemetryConfig(
-                        tracer_provider=self.tracer_provider,
-                        middleware_class=LitestarOpenTelemetryInstrumentationMiddleware,  # type: ignore[arg-type]
-                    ),
-                    exclude_urls=self.define_exclude_urls(),
-                )
-            ]
+            "plugins": [OpenTelemetryPlugin(self.build_litestar_opentelemetry_config())],
+            "middleware": [LitestarOpentelemetryRouteMiddleware()],
         }
+
+    def build_litestar_opentelemetry_config(self) -> LitestarOpentelemetryConfig:
+        # `exclude` bypasses the plugin middleware for the configured urls; the plugin itself still honors
+        # `OTEL_PYTHON_LITESTAR_EXCLUDED_URLS` through `exclude_urls_env_key`.
+        return LitestarOpentelemetryConfig(
+            tracer_provider=self.tracer_provider,
+            scope_span_details_extractor=build_litestar_route_details_from_scope,
+            exclude=self.define_exclude_urls() or None,
+        )
 
 
 @LitestarBootstrapper.use_instrument()
