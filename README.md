@@ -457,6 +457,8 @@ Parameters description:
 - `opentelemetry_container_name` - will be passed to the `Resource`.
 - `opentelemetry_instrumentors` - a list of extra instrumentors.
 - `opentelemetry_exclude_urls` - list of url regexes that produce no server spans (`["/metrics"]` by default). For Litestar they are combined with `OTEL_PYTHON_LITESTAR_EXCLUDED_URLS` (or `OTEL_PYTHON_EXCLUDED_URLS`), for FastMCP with `OTEL_PYTHON_STARLETTE_EXCLUDED_URLS` (or `OTEL_PYTHON_EXCLUDED_URLS`).
+
+For Litestar the tracing is wired through Litestar's own [`OpenTelemetryPlugin`](https://docs.litestar.dev/2/reference/plugins/opentelemetry.html). Server spans are named by the route template, e.g. `GET /users/{user_id}`, and carry it in `http.route`.
 - `opentelemetry_log_traces` - traces will be logged to stdout.
 - `opentelemetry_generate_health_check_spans` - generate spans for health check handlers if `True`; if `False`, `health_checks_path` is added to the excluded urls.
 - `opentelemetry_baggage_span_attributes` - maps allowed baggage keys to attributes added to local server and consumer spans.

@@ -1,12 +1,12 @@
-import contextlib
 import typing
 from unittest import mock
-from unittest.mock import AsyncMock, MagicMock, Mock, patch
+from unittest.mock import MagicMock, Mock, patch
 
 import fastapi
 import litestar
 import pytest
 from fastapi.testclient import TestClient as FastAPITestClient
+from litestar.plugins.opentelemetry import OpenTelemetryPlugin
 from litestar.testing import TestClient as LitestarTestClient
 from opentelemetry import baggage, context
 from opentelemetry.context import Context
@@ -18,7 +18,6 @@ from microbootstrap import OpentelemetryConfig, opentelemetry_baggage_scope
 from microbootstrap.bootstrappers.fastapi import FastApiOpentelemetryInstrument
 from microbootstrap.bootstrappers.litestar import (
     LitestarOpentelemetryInstrument,
-    LitestarOpenTelemetryInstrumentationMiddleware,
 )
 from microbootstrap.instruments import opentelemetry_instrument
 from microbootstrap.instruments.opentelemetry_instrument import BaggageSpanProcessor, OpentelemetryInstrument
@@ -218,10 +217,10 @@ def test_litestar_opentelemetry_bootstrap(
     opentelemetry_bootstrap_result: typing.Final = test_opentelemetry_instrument.bootstrap_before()
 
     assert opentelemetry_bootstrap_result
-    assert "middleware" in opentelemetry_bootstrap_result
-    assert isinstance(opentelemetry_bootstrap_result["middleware"], list)
-    assert len(opentelemetry_bootstrap_result["middleware"]) == 1
-    assert isinstance(opentelemetry_bootstrap_result["middleware"][0], LitestarOpenTelemetryInstrumentationMiddleware)
+    assert "plugins" in opentelemetry_bootstrap_result
+    assert isinstance(opentelemetry_bootstrap_result["plugins"], list)
+    assert len(opentelemetry_bootstrap_result["plugins"]) == 1
+    assert isinstance(opentelemetry_bootstrap_result["plugins"][0], OpenTelemetryPlugin)
 
 
 def test_litestar_opentelemetry_teardown(
@@ -236,16 +235,10 @@ def test_litestar_opentelemetry_teardown(
 
 def test_litestar_opentelemetry_bootstrap_working(
     minimal_opentelemetry_config: OpentelemetryConfig,
-    async_mock: AsyncMock,
 ) -> None:
     test_opentelemetry_instrument: typing.Final = LitestarOpentelemetryInstrument(minimal_opentelemetry_config)
     test_opentelemetry_instrument.bootstrap()
     opentelemetry_bootstrap_result: typing.Final = test_opentelemetry_instrument.bootstrap_before()
-
-    opentelemetry_middleware = opentelemetry_bootstrap_result["middleware"][0]
-    assert isinstance(opentelemetry_middleware, LitestarOpenTelemetryInstrumentationMiddleware)
-    async_mock.__name__ = "test-name"
-    opentelemetry_middleware.handle = async_mock  # type: ignore[method-assign]
 
     @litestar.get("/test-handler")
     async def test_handler() -> None:
@@ -255,11 +248,9 @@ def test_litestar_opentelemetry_bootstrap_working(
         route_handlers=[test_handler],
         **opentelemetry_bootstrap_result,
     )
-    with LitestarTestClient(app=litestar_application) as test_client:
-        # Silencing error, because we are mocking middleware call, so ASGI scope remains unchanged.
-        with contextlib.suppress(AssertionError):
-            test_client.get("/test-handler")
-        assert async_mock.called
+    with patch("opentelemetry.trace.use_span") as mock_use_span, LitestarTestClient(app=litestar_application) as client:
+        client.get("/test-handler")
+        assert mock_use_span.called
 
 
 def test_fastapi_opentelemetry_bootstrap_working(
