@@ -150,6 +150,68 @@ def test_fastmcp_prometheus() -> None:
     assert b"fastmcp_test_requests_total 1.0" in response.content
 
 
+def test_fastmcp_prometheus_counts_http_requests_by_route_template() -> None:
+    test_metrics_path: typing.Final = "/test-metrics"
+    test_health_path: typing.Final = "/test-health/"
+    metrics_registry: typing.Final = prometheus_client.CollectorRegistry()
+    application: typing.Final = (
+        FastMcpBootstrapper(FastMcpSettings())
+        .configure_instrument(
+            FastMcpPrometheusConfig(
+                prometheus_metrics_path=test_metrics_path,
+                prometheus_registry=metrics_registry,
+                prometheus_custom_labels={"team": "platform"},
+            ),
+        )
+        .configure_instrument(HealthChecksConfig(health_checks_path=test_health_path))
+        .bootstrap()
+    )
+
+    with TestClient(application.http_app(path="/mcp")) as client:
+        for _ in range(2):
+            assert client.get(test_health_path).status_code == status.HTTP_200_OK
+        client.get("/unknown")
+        client.post("/mcp", json={})
+        assert client.get(test_metrics_path).status_code == status.HTTP_200_OK
+
+    def requests_total(method: str, status_group: str, handler: str) -> float | None:
+        return metrics_registry.get_sample_value(
+            "http_requests_total",
+            {"method": method, "status": status_group, "handler": handler, "team": "platform"},
+        )
+
+    assert requests_total("GET", "2xx", test_health_path) == 2  # noqa: PLR2004
+    assert requests_total("GET", "4xx", "none") == 1
+    assert requests_total("POST", "4xx", "/mcp") == 1
+    assert requests_total("GET", "2xx", test_metrics_path) is None
+
+
+def test_fastmcp_prometheus_instrumentator_params_are_passed() -> None:
+    metrics_registry: typing.Final = prometheus_client.CollectorRegistry()
+    application: typing.Final = (
+        FastMcpBootstrapper(FastMcpSettings())
+        .configure_instrument(
+            FastMcpPrometheusConfig(
+                prometheus_registry=metrics_registry,
+                prometheus_instrumentator_params={"should_group_status_codes": False, "excluded_handlers": []},
+            ),
+        )
+        .bootstrap()
+    )
+
+    with TestClient(application.http_app()) as client:
+        assert client.get("/metrics").status_code == status.HTTP_200_OK
+
+    # excluded_handlers is overridden, so the metrics route itself is counted, with the exact status code
+    assert (
+        metrics_registry.get_sample_value(
+            "http_requests_total",
+            {"method": "GET", "status": "200", "handler": "/metrics"},
+        )
+        == 1
+    )
+
+
 def test_fastmcp_prometheus_route_can_be_disabled() -> None:
     test_metrics_path: typing.Final = "/test-metrics"
     application: typing.Final = (
@@ -228,7 +290,10 @@ def test_fastmcp_opentelemetry_is_not_ready_without_settings() -> None:
     application: typing.Final = FastMcpBootstrapper(FastMcpSettings(service_debug=False)).bootstrap()
 
     assert isinstance(application, KwargsFastMCP)
-    assert application.http_application_postprocessors == []
+    assert not any(
+        isinstance(getattr(postprocessor, "__self__", None), FastMcpOpentelemetryInstrument)
+        for postprocessor in application.http_application_postprocessors
+    )
     assert count_opentelemetry_middlewares(application.http_app()) == 0
 
 

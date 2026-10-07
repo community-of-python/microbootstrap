@@ -35,6 +35,9 @@ class FastApiPrometheusConfig(BasePrometheusConfig):
 class FastMcpPrometheusConfig(BasePrometheusConfig):
     prometheus_registry: typing.Any | None = None
     prometheus_register_route: bool = True
+    prometheus_instrumentator_params: dict[str, typing.Any] = pydantic.Field(default_factory=dict)
+    prometheus_instrument_params: dict[str, typing.Any] = pydantic.Field(default_factory=dict)
+    prometheus_custom_labels: dict[str, typing.Any] = pydantic.Field(default_factory=dict)
 
 
 @typing.runtime_checkable
