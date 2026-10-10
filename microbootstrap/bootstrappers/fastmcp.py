@@ -108,7 +108,7 @@ class FastMcpOpentelemetryInstrument(
             tracer_provider=self.tracer_provider,
             default_span_details=build_route_details,
             excluded_urls=opentelemetry_instrument.CombinedExcludeList(
-                ExcludeList(self.define_exclude_urls()),
+                ExcludeList(self.define_excluded_url_patterns()),
                 get_excluded_urls("STARLETTE"),
             ),
         )

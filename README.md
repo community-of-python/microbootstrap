@@ -456,7 +456,7 @@ Parameters description:
 - `opentelemetry_insecure` - is opentelemetry connection secure.
 - `opentelemetry_container_name` - will be passed to the `Resource`.
 - `opentelemetry_instrumentors` - a list of extra instrumentors.
-- `opentelemetry_exclude_urls` - list of url regexes that produce no server spans (`["/metrics"]` by default). For Litestar they are combined with `OTEL_PYTHON_LITESTAR_EXCLUDED_URLS` (or `OTEL_PYTHON_EXCLUDED_URLS`), for FastMCP with `OTEL_PYTHON_STARLETTE_EXCLUDED_URLS` (or `OTEL_PYTHON_EXCLUDED_URLS`).
+- `opentelemetry_exclude_urls` - extra url regexes that produce no server spans (empty by default). `prometheus_metrics_path` is always excluded; for FastAPI and FastMCP it is matched as a whole path, so `/metrics` excludes neither `/api/metrics` nor `/metrics-report`. For Litestar they are combined with `OTEL_PYTHON_LITESTAR_EXCLUDED_URLS` (or `OTEL_PYTHON_EXCLUDED_URLS`), for FastMCP with `OTEL_PYTHON_STARLETTE_EXCLUDED_URLS` (or `OTEL_PYTHON_EXCLUDED_URLS`).
 - `opentelemetry_log_traces` - traces will be logged to stdout.
 - `opentelemetry_generate_health_check_spans` - generate spans for health check handlers if `True`; if `False`, `health_checks_path` is added to the excluded urls.
 - `opentelemetry_baggage_span_attributes` - maps allowed baggage keys to attributes added to local server and consumer spans.
@@ -524,7 +524,7 @@ Requests to unknown paths produce spans named after the HTTP method only, withou
 
 - `opentelemetry_endpoint` - OTLP endpoint for exported traces.
 - `opentelemetry_instrumentors` - extra instrumentors, e.g. for HTTP clients used by your tools.
-- `opentelemetry_exclude_urls` - urls without spans, `["/metrics"]` by default. Combined with `OTEL_PYTHON_STARLETTE_EXCLUDED_URLS`.
+- `opentelemetry_exclude_urls` - extra url regexes without spans, empty by default; `prometheus_metrics_path` is always excluded. Combined with `OTEL_PYTHON_STARLETTE_EXCLUDED_URLS`.
 - `opentelemetry_generate_health_check_spans` - set to `False` to skip spans for `health_checks_path`.
 - The status code attribute name depends on `OTEL_SEMCONV_STABILITY_OPT_IN`: `http.status_code` when unset,
   `http.response.status_code` for `http`, both for `http/dup`.
