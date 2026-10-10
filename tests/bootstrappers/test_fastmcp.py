@@ -19,6 +19,8 @@ from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanE
 from opentelemetry.trace import SpanKind
 from starlette import status
 from starlette.applications import Starlette
+from starlette.requests import Request
+from starlette.responses import PlainTextResponse
 from starlette.testclient import TestClient
 
 from microbootstrap.bootstrappers.fastmcp import FastMcpBootstrapper, FastMcpOpentelemetryInstrument, KwargsFastMCP
@@ -280,9 +282,9 @@ class TestFastMcpHttpOpentelemetry:
         client: typing.Final = TestClient(application.http_app())
 
         client.get("/custom")
-        client.get("/metrics")
+        client.get("/health/")
 
-        assert [span.name for span in find_server_spans(span_exporter)] == ["GET /metrics"]
+        assert [span.name for span in find_server_spans(span_exporter)] == ["GET /health/"]
 
     def test_exclude_urls_from_environment(
         self,
@@ -290,25 +292,57 @@ class TestFastMcpHttpOpentelemetry:
         span_exporter: InMemorySpanExporter,
     ) -> None:
         monkeypatch.setenv("OTEL_PYTHON_STARLETTE_EXCLUDED_URLS", "/health/")
-        application: typing.Final = build_fastmcp_application_with_opentelemetry(opentelemetry_exclude_urls=[])
+        application: typing.Final = build_fastmcp_application_with_opentelemetry()
         client: typing.Final = TestClient(application.http_app())
 
         client.get("/health/")
-        client.get("/metrics")
+        client.get("/missing")
 
-        assert [span.name for span in find_server_spans(span_exporter)] == ["GET /metrics"]
+        assert [span.name for span in find_server_spans(span_exporter)] == ["GET"]
 
     def test_health_check_spans_can_be_disabled(self, span_exporter: InMemorySpanExporter) -> None:
         application: typing.Final = build_fastmcp_application_with_opentelemetry(
             opentelemetry_generate_health_check_spans=False,
-            opentelemetry_exclude_urls=[],
         )
         client: typing.Final = TestClient(application.http_app())
 
         client.get("/health/")
+        client.get("/missing")
+
+        assert [span.name for span in find_server_spans(span_exporter)] == ["GET"]
+
+    def test_exclusions_do_not_silence_lookalike_routes(self, span_exporter: InMemorySpanExporter) -> None:
+        application: typing.Final = build_fastmcp_application_with_opentelemetry(
+            opentelemetry_generate_health_check_spans=False,
+        )
+
+        @application.custom_route("/api/metrics-report", methods=["GET"])
+        async def metrics_report(_: Request) -> PlainTextResponse:
+            return PlainTextResponse("ok")
+
+        @application.custom_route("/api/health/details", methods=["GET"])
+        async def health_details(_: Request) -> PlainTextResponse:
+            return PlainTextResponse("ok")
+
+        client: typing.Final = TestClient(application.http_app())
+        for path in ("/metrics", "/health/", "/health", "/api/metrics-report", "/api/health/details"):
+            client.get(path, follow_redirects=False)
+
+        assert [span.name for span in find_server_spans(span_exporter)] == [
+            "GET /api/metrics-report",
+            "GET /api/health/details",
+        ]
+
+    def test_metrics_path_is_derived_from_prometheus_settings(self, span_exporter: InMemorySpanExporter) -> None:
+        application: typing.Final = build_fastmcp_application_with_opentelemetry(
+            prometheus_metrics_path="/custom-metrics",
+        )
+        client: typing.Final = TestClient(application.http_app())
+
+        assert client.get("/custom-metrics").status_code == status.HTTP_200_OK
         client.get("/metrics")
 
-        assert [span.name for span in find_server_spans(span_exporter)] == ["GET /metrics"]
+        assert [span.name for span in find_server_spans(span_exporter)] == ["GET"]
 
     def test_unknown_path_has_no_route(self, span_exporter: InMemorySpanExporter) -> None:
         application: typing.Final = build_fastmcp_application_with_opentelemetry()

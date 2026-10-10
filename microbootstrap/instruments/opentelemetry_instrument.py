@@ -3,6 +3,7 @@ import contextlib
 import dataclasses
 import logging
 import os
+import re
 import typing
 
 import pydantic
@@ -71,6 +72,10 @@ def opentelemetry_baggage_scope(
         context.detach(token)
 
 
+# OpenTelemetry's `ExcludeList` searches its patterns in the full url, not in a bare path
+EXCLUDED_URL_SCHEME_AND_HOST: typing.Final = r"^\w+://[^/]*"
+
+
 def build_span_name(method: str, route: str) -> str:
     if not route:
         return method
@@ -97,6 +102,7 @@ class OpentelemetryConfig(BaseInstrumentConfig):
     service_name: str = "micro-service"
     service_version: str = "1.0.0"
     health_checks_path: str = "/health/"
+    prometheus_metrics_path: str = "/metrics"
     pyroscope_endpoint: pydantic.HttpUrl | None = None
 
     opentelemetry_service_name: str | None = None
@@ -105,7 +111,7 @@ class OpentelemetryConfig(BaseInstrumentConfig):
     opentelemetry_namespace: str | None = None
     opentelemetry_insecure: bool = pydantic.Field(default=True)
     opentelemetry_instrumentors: list[OpenTelemetryInstrumentor] = pydantic.Field(default_factory=list)
-    opentelemetry_exclude_urls: list[str] = pydantic.Field(default=["/metrics"])
+    opentelemetry_exclude_urls: list[str] = pydantic.Field(default_factory=list)
     opentelemetry_disabled_instrumentations: list[str] = pydantic.Field(
         default=[
             one_package_to_exclude.strip()
@@ -183,15 +189,30 @@ class BaseOpentelemetryInstrument(Instrument[OpentelemetryConfigT]):
                 LOGGER_OBJ.debug("Instrumenting failed", entry_point_name=entry_point.name)
                 raise
 
-    def define_exclude_urls(self) -> list[str]:
-        exclude_urls: typing.Final = [*self.instrument_config.opentelemetry_exclude_urls]
+    def define_excluded_paths(self) -> list[str]:
+        excluded_paths: typing.Final = []
+        if self.instrument_config.prometheus_metrics_path:
+            excluded_paths.append(self.instrument_config.prometheus_metrics_path)
         if (
             not self.instrument_config.opentelemetry_generate_health_check_spans
             and self.instrument_config.health_checks_path
-            and self.instrument_config.health_checks_path not in exclude_urls
         ):
-            exclude_urls.append(self.instrument_config.health_checks_path)
+            excluded_paths.append(self.instrument_config.health_checks_path)
+        return excluded_paths
+
+    def define_exclude_urls(self) -> list[str]:
+        exclude_urls: typing.Final = [*self.instrument_config.opentelemetry_exclude_urls]
+        exclude_urls.extend(path for path in self.define_excluded_paths() if path not in exclude_urls)
         return exclude_urls
+
+    def define_excluded_url_patterns(self) -> list[str]:
+        # Only derived paths are anchored: user-supplied entries are regexes and stay verbatim
+        anchored_paths: typing.Final = [
+            rf"{EXCLUDED_URL_SCHEME_AND_HOST}{re.escape(path.rstrip('/'))}(?:/|$)"
+            for path in self.define_excluded_paths()
+            if path.rstrip("/")
+        ]
+        return [*self.instrument_config.opentelemetry_exclude_urls, *anchored_paths]
 
     def is_ready(self) -> bool:
         return (
