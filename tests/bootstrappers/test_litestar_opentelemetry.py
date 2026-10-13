@@ -61,29 +61,15 @@ def server_span_names(span_exporter: InMemorySpanExporter) -> list[str]:
                 "path": "/users/123",
                 "method": "POST",
             },
-            "POST /users/123",
-            {"http.route": "/users/123"},
+            "POST",
+            {},
         ),
         (
             {
                 "path": "/test",
             },
-            "HTTP /test",
-            {"http.route": "/test"},
-        ),
-        (
-            {
-                "path": "",
-            },
             "HTTP",
-            {"http.route": ""},
-        ),
-        (
-            {
-                "path": " ",
-            },
-            "HTTP",
-            {"http.route": ""},
+            {},
         ),
         (
             {
@@ -133,7 +119,8 @@ def test_build_litestar_route_details_from_scope(
 def test_litestar_opentelemetry_instrument_uses_litestar_plugin(
     minimal_opentelemetry_config: OpentelemetryConfig,
 ) -> None:
-    minimal_opentelemetry_config.opentelemetry_exclude_urls = ["/metrics"]
+    minimal_opentelemetry_config.opentelemetry_exclude_urls = ["/internal.*"]
+    minimal_opentelemetry_config.prometheus_metrics_path = "/metrics"
     minimal_opentelemetry_config.opentelemetry_generate_health_check_spans = False
     minimal_opentelemetry_config.health_checks_path = "/health/"
     opentelemetry_instrument: typing.Final = LitestarOpentelemetryInstrument(minimal_opentelemetry_config)
@@ -147,13 +134,15 @@ def test_litestar_opentelemetry_instrument_uses_litestar_plugin(
     assert isinstance(plugin, OpenTelemetryPlugin)
     assert plugin.config.tracer_provider is opentelemetry_instrument.tracer_provider
     assert plugin.config.scope_span_details_extractor is build_litestar_route_details_from_scope
-    assert plugin.config.exclude == ["/metrics", "/health/"]
+    # User regexes stay verbatim, derived paths are anchored with an optional trailing slash
+    assert plugin.config.exclude == ["/internal.*", "^/metrics(?:/|$)", "^/health(?:/|$)"]
 
 
-def test_litestar_opentelemetry_instrument_does_not_exclude_anything_by_default(
+def test_litestar_opentelemetry_instrument_passes_no_exclusions_when_nothing_is_derived(
     minimal_opentelemetry_config: OpentelemetryConfig,
 ) -> None:
     minimal_opentelemetry_config.opentelemetry_exclude_urls = []
+    minimal_opentelemetry_config.prometheus_metrics_path = ""
     minimal_opentelemetry_config.opentelemetry_generate_health_check_spans = True
     opentelemetry_instrument: typing.Final = LitestarOpentelemetryInstrument(minimal_opentelemetry_config)
     opentelemetry_instrument.bootstrap()
@@ -228,10 +217,14 @@ def test_litestar_opentelemetry_server_spans_use_path_template(
         assert client.get("/missing").status_code == HTTP_404_NOT_FOUND
 
     server_spans: typing.Final = [span for span in span_exporter.get_finished_spans() if span.kind == SpanKind.SERVER]
-    assert [span.name for span in server_spans] == ["GET /users/{user_id}", "GET /missing"]
+    # An unmatched path keeps the method-only name without `http.route`, so a 404 scan yields one span name
+    assert [span.name for span in server_spans] == ["GET /users/{user_id}", "GET"]
     assert server_spans[0].attributes is not None
     assert server_spans[0].attributes["http.route"] == "/users/{user_id}"
     assert server_spans[0].attributes["http.status_code"] == HTTP_200_OK
+    assert server_spans[1].attributes is not None
+    assert "http.route" not in server_spans[1].attributes
+    assert server_spans[1].attributes["http.status_code"] == HTTP_404_NOT_FOUND
 
 
 def test_litestar_opentelemetry_keeps_user_plugins(
@@ -317,3 +310,48 @@ def test_litestar_opentelemetry_excludes_urls_from_environment(
 
         client.get("/other")
     assert server_span_names(span_exporter) == ["GET /other"]
+
+
+def test_litestar_opentelemetry_exclusions_do_not_silence_lookalike_routes(
+    span_exporter: InMemorySpanExporter,
+    minimal_opentelemetry_config: OpentelemetryConfig,
+) -> None:
+    minimal_opentelemetry_config.opentelemetry_generate_health_check_spans = False
+
+    @litestar.get("/api/metrics-report")
+    async def metrics_report() -> None: ...
+
+    @litestar.get("/api/health/details")
+    async def health_details() -> None: ...
+
+    application: typing.Final = (
+        LitestarBootstrapper(LitestarSettings())
+        .configure_instrument(minimal_opentelemetry_config)
+        .configure_application(LitestarConfig(route_handlers=[metrics_report, health_details]))
+        .bootstrap()
+    )
+
+    with TestClient(app=application) as client:
+        # Litestar strips the trailing slash from scope["path"], so both forms of the health path must be excluded
+        for path in ("/metrics", "/health/", "/health", "/api/metrics-report", "/api/health/details"):
+            assert client.get(path).status_code == HTTP_200_OK
+
+    assert server_span_names(span_exporter) == ["GET /api/metrics-report", "GET /api/health/details"]
+
+
+def test_litestar_opentelemetry_custom_metrics_path_is_excluded(
+    span_exporter: InMemorySpanExporter,
+    minimal_opentelemetry_config: OpentelemetryConfig,
+) -> None:
+    minimal_opentelemetry_config.prometheus_metrics_path = "/custom-metrics"
+
+    application: typing.Final = (
+        LitestarBootstrapper(LitestarSettings(prometheus_metrics_path="/custom-metrics"))
+        .configure_instrument(minimal_opentelemetry_config)
+        .bootstrap()
+    )
+
+    with TestClient(app=application) as client:
+        assert client.get("/custom-metrics").status_code == HTTP_200_OK
+
+    assert server_span_names(span_exporter) == []

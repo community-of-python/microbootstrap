@@ -214,6 +214,13 @@ class BaseOpentelemetryInstrument(Instrument[OpentelemetryConfigT]):
         ]
         return [*self.instrument_config.opentelemetry_exclude_urls, *anchored_paths]
 
+    def define_excluded_path_patterns(self) -> list[str]:
+        # The path-based counterpart of define_excluded_url_patterns() for middlewares that search a bare path
+        anchored_paths: typing.Final = [
+            rf"^{re.escape(path.rstrip('/'))}(?:/|$)" for path in self.define_excluded_paths() if path.rstrip("/")
+        ]
+        return [*self.instrument_config.opentelemetry_exclude_urls, *anchored_paths]
+
     def is_ready(self) -> bool:
         return (
             bool(self.instrument_config.opentelemetry_endpoint)

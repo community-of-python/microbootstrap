@@ -248,16 +248,13 @@ def build_litestar_route_details_from_scope(
     """
     path_template: typing.Final = scope.get("path_template")
     method: typing.Final = str(scope.get("method", "HTTP")).strip()
-    if path_template is not None:
-        path_template_stripped: typing.Final = path_template.strip()
-        span_name: typing.Final = opentelemetry_instrument.build_span_name(method, path_template_stripped)
-        return span_name, {"http.route": path_template_stripped}
-
-    path: typing.Final = scope.get("path")
-    if path is not None:
-        path_stripped: typing.Final = path.strip()
-        return opentelemetry_instrument.build_span_name(method, path_stripped), {"http.route": path_stripped}
-    return method, {}
+    # Unmatched paths get only the method and no `http.route`: a raw path would let scanners explode span cardinality
+    if path_template is None:
+        return method, {}
+    path_template_stripped: typing.Final = path_template.strip()
+    return opentelemetry_instrument.build_span_name(method, path_template_stripped), {
+        "http.route": path_template_stripped
+    }
 
 
 class LitestarOpentelemetryRouteMiddleware(ASGIMiddleware):
@@ -281,12 +278,12 @@ class LitestarOpentelemetryInstrument(opentelemetry_instrument.OpentelemetryInst
         }
 
     def build_litestar_opentelemetry_config(self) -> LitestarOpentelemetryConfig:
-        # `exclude` bypasses the plugin middleware for the configured urls; the plugin itself still honors
+        # `exclude` bypasses the plugin middleware for the configured paths; the plugin itself still honors
         # `OTEL_PYTHON_LITESTAR_EXCLUDED_URLS` through `exclude_urls_env_key`.
         return LitestarOpentelemetryConfig(
             tracer_provider=self.tracer_provider,
             scope_span_details_extractor=build_litestar_route_details_from_scope,
-            exclude=self.define_exclude_urls() or None,
+            exclude=self.define_excluded_path_patterns() or None,
         )
 
 
