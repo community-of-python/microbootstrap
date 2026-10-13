@@ -215,6 +215,31 @@ def test_fastmcp_prometheus_instrumentator_params_are_passed() -> None:
     )
 
 
+def test_fastmcp_prometheus_counts_requests_of_every_http_application() -> None:
+    test_health_path: typing.Final = "/test-health/"
+    metrics_registry: typing.Final = prometheus_client.CollectorRegistry()
+    application: typing.Final = (
+        FastMcpBootstrapper(FastMcpSettings())
+        .configure_instrument(FastMcpPrometheusConfig(prometheus_registry=metrics_registry))
+        .configure_instrument(HealthChecksConfig(health_checks_path=test_health_path))
+        .bootstrap()
+    )
+
+    # A second http_app() (another transport, or a test building the app twice) must be counted as well:
+    # the instrumentator's default metrics register once and are silently skipped on a duplicate
+    for _ in range(2):
+        with TestClient(application.http_app()) as client:
+            assert client.get(test_health_path).status_code == status.HTTP_200_OK
+
+    assert (
+        metrics_registry.get_sample_value(
+            "http_requests_total",
+            {"method": "GET", "status": "2xx", "handler": test_health_path},
+        )
+        == 2  # noqa: PLR2004
+    )
+
+
 async def test_fastmcp_prometheus_counts_tool_calls() -> None:
     metrics_registry: typing.Final = prometheus_client.CollectorRegistry()
     application: typing.Final = (

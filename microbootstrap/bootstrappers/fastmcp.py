@@ -178,6 +178,8 @@ class FastMcpPrometheusInstrument(PrometheusInstrument[FastMcpPrometheusConfig])
 
         return application
 
+    _default_metrics: typing.Callable[..., None] | None = None
+
     def __instrument_http_app(self, http_application: StarletteT) -> StarletteT:
         # Same instrumentator as in the FastAPI bootstrapper: requests are counted by route template
         # (`handler="/mcp"`, `handler="/health/"`), unknown paths are grouped into `handler="none"`.
@@ -187,12 +189,16 @@ class FastMcpPrometheusInstrument(PrometheusInstrument[FastMcpPrometheusConfig])
             "registry": registry,
             **self.instrument_config.prometheus_instrumentator_params,
         }
-        Instrumentator(**instrumentator_params).add(
-            instrumentator_metrics.default(
+        # `metrics.default()` registers its collectors on creation and returns None on a duplicate, so a second
+        # `http_app()` would get an instrumentator without metrics. The closure is built once and shared instead.
+        if self._default_metrics is None:
+            self._default_metrics = instrumentator_metrics.default(
                 registry=registry,
                 custom_labels=self.instrument_config.prometheus_custom_labels,
-            ),
-        ).instrument(http_application, **self.instrument_config.prometheus_instrument_params)
+            )
+        Instrumentator(**instrumentator_params).add(self._default_metrics).instrument(
+            http_application, **self.instrument_config.prometheus_instrument_params
+        )
         return http_application
 
     @classmethod
