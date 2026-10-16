@@ -9,7 +9,7 @@ from microbootstrap.instruments.base import BaseInstrumentConfig, Instrument
 try:
     import pyroscope  # type: ignore[import-untyped]
 except ImportError:  # pragma: no cover
-    pyroscope = None  # Not supported on Windows
+    pyroscope = None  # Not supported on Windows and Python 3.15 yet
 
 
 class PyroscopeConfig(BaseInstrumentConfig):

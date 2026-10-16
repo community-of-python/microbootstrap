@@ -1,7 +1,6 @@
 import dataclasses
 import re
 import typing
-from dataclasses import _MISSING_TYPE
 
 from microbootstrap import exceptions
 
@@ -20,10 +19,10 @@ def dataclass_to_dict_no_defaults(dataclass_to_convert: "_DataclassT") -> dict[s
     conversion_result: typing.Final = {}
     for dataclass_field in dataclasses.fields(dataclass_to_convert):
         value = getattr(dataclass_to_convert, dataclass_field.name)
-        if isinstance(dataclass_field.default, _MISSING_TYPE):
+        if dataclass_field.default is dataclasses.MISSING:
             conversion_result[dataclass_field.name] = value
             continue
-        if dataclass_field.default != value and isinstance(dataclass_field.default_factory, _MISSING_TYPE):
+        if dataclass_field.default != value and dataclass_field.default_factory is dataclasses.MISSING:
             conversion_result[dataclass_field.name] = value
             continue
         if value != dataclass_field.default and value != dataclass_field.default_factory():  # type: ignore[operator]
