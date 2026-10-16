@@ -47,5 +47,5 @@ Microbootstrap auto-wires production instrumentation (observability, logging, tr
 ### Key constraints
 
 - Strict mypy — all code must type-check cleanly
-- Python 3.10–3.14 support required; avoid 3.11+ syntax
+- Python 3.10–3.15 support required; avoid 3.11+ syntax
 - All instrument extras are optional deps; use `TYPE_CHECKING` guards where needed

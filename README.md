@@ -547,7 +547,7 @@ To integrate Pyroscope, specify the `pyroscope_endpoint`.
 
 When both Pyroscope and OpenTelemetry are enabled, profile span IDs will be included in traces using [`pyroscope-otel`](https://github.com/grafana/otel-profiling-python) for correlation.
 
-Note that Pyroscope integration is not supported on Windows.
+Note that Pyroscope integration is not supported on Windows and Python 3.15 yet.
 
 ### Logging
 
