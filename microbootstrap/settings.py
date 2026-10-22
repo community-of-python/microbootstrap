@@ -12,6 +12,7 @@ from microbootstrap import (
     FastStreamOpentelemetryConfig,
     FastStreamPrometheusConfig,
     HealthChecksConfig,
+    HttpErrorTitlesConfig,
     LitestarPrometheusConfig,
     LoggingConfig,
     OpentelemetryConfig,
@@ -60,6 +61,7 @@ class ServerConfig(pydantic.BaseModel):
 
 class LitestarSettings(  # type: ignore[misc]
     BaseServiceSettings,
+    HttpErrorTitlesConfig,
     ServerConfig,
     LoggingConfig,
     OpentelemetryConfig,
@@ -75,6 +77,7 @@ class LitestarSettings(  # type: ignore[misc]
 
 class FastApiSettings(  # type: ignore[misc]
     BaseServiceSettings,
+    HttpErrorTitlesConfig,
     ServerConfig,
     LoggingConfig,
     OpentelemetryConfig,

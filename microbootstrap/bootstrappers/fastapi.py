@@ -1,16 +1,22 @@
 import contextlib
+import http
 import typing
 
 import fastapi
+from fastapi.encoders import jsonable_encoder
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi_offline_docs import enable_offline_docs
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from prometheus_fastapi_instrumentator import Instrumentator, metrics
+from starlette.exceptions import HTTPException
+from starlette.responses import JSONResponse
 
 from microbootstrap.bootstrappers.base import ApplicationBootstrapper
 from microbootstrap.config.fastapi import FastApiConfig
 from microbootstrap.instruments.cors_instrument import CorsInstrument
 from microbootstrap.instruments.health_checks_instrument import HealthChecksInstrument, HealthCheckTypedDict
+from microbootstrap.instruments.http_error_titles_instrument import HttpErrorTitlesInstrument
 from microbootstrap.instruments.logging_instrument import LoggingInstrument
 from microbootstrap.instruments.openapi_security_schemes import serialize_security_schemes
 from microbootstrap.instruments.openapi_version_docs import SUPPORTED_HTTP_METHODS
@@ -142,6 +148,63 @@ class FastApiSwaggerInstrument(SwaggerInstrument):
                 )
                 if documentation is not None:
                     operation["x-accept-versioning"], operation["description"] = documentation
+
+
+@FastApiBootstrapper.use_instrument()
+class FastApiHttpErrorTitlesInstrument(HttpErrorTitlesInstrument):
+    async def http_exception_response(self, request: fastapi.Request, exc: HTTPException) -> fastapi.Response:
+        response = await fastapi.exception_handlers.http_exception_handler(request, exc)
+        if exc.status_code >= http.HTTPStatus.BAD_REQUEST:
+            return JSONResponse(
+                {"detail": exc.detail, "title": self.title_for_status(exc.status_code)},
+                status_code=exc.status_code,
+                headers=exc.headers,
+            )
+        return response
+
+    async def validation_error_response(self, _request: fastapi.Request, exc: RequestValidationError) -> JSONResponse:
+        return JSONResponse(
+            {
+                "detail": jsonable_encoder(exc.errors()),
+                "title": self.title_for_status(http.HTTPStatus.UNPROCESSABLE_ENTITY),
+            },
+            status_code=http.HTTPStatus.UNPROCESSABLE_ENTITY,
+        )
+
+    async def internal_error_response(self, _request: fastapi.Request, _exc: Exception) -> JSONResponse:
+        return JSONResponse(
+            {"detail": "Internal Server Error", "title": self.title_for_status(http.HTTPStatus.INTERNAL_SERVER_ERROR)},
+            status_code=http.HTTPStatus.INTERNAL_SERVER_ERROR,
+        )
+
+    def bootstrap_before(self) -> dict[str, typing.Any]:
+        return {
+            "exception_handlers": {
+                HTTPException: self.http_exception_response,
+                RequestValidationError: self.validation_error_response,
+                Exception: self.internal_error_response,
+            }
+        }
+
+    def bootstrap_after(self, application: ApplicationT) -> ApplicationT:
+        if application.exception_handlers.get(RequestValidationError) != self.validation_error_response:
+            return application
+        original_openapi: typing.Final = application.openapi
+
+        def titled_openapi() -> dict[str, typing.Any]:
+            document: typing.Final = original_openapi()
+            schema = document.get("components", {}).get("schemas", {}).get("HTTPValidationError")
+            if schema is not None:
+                schema.setdefault("properties", {}).setdefault(
+                    "title", {"type": "string", "description": "Short, human-readable summary of the HTTP error."}
+                )
+                required = schema.setdefault("required", [])
+                if "title" not in required:
+                    required.append("title")
+            return document
+
+        application.openapi = titled_openapi  # type: ignore[method-assign]  # FastAPI's public custom OpenAPI hook.
+        return application
 
 
 @FastApiBootstrapper.use_instrument()

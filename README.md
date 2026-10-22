@@ -751,6 +751,24 @@ Application-specific descriptions and authentication declarations remain with th
 application, using native framework metadata and the existing `security_schemes`
 setting. No authentication policy is inferred or enforced by this option.
 
+### HTTP error titles
+
+Enable `http_error_titles_enabled=True` in `FastApiSettings`, `LitestarSettings`,
+or `HttpErrorTitlesConfig` to add the HTTP status phrase as `title` on default
+JSON error responses. The option is disabled by default; the normal settings
+environment prefix applies to `HTTP_ERROR_TITLES_ENABLED`.
+
+The native error fields, status codes and headers are preserved. Default Litestar
+errors use JSON even when a route's success media type is different. An unknown
+HTTP status receives the title `HTTP error`. Existing application exception
+handlers keep precedence and remain responsible for their own payloads and
+schemas. Explicit error responses returned by application handlers are also
+owned by the application.
+
+The bootstrappers document `title` as required on their generated validation
+schemas when the default handler is active. This is independent of
+`openapi_descriptions_enabled`. Debug traceback responses remain framework-owned.
+
 ## Configuration
 
 While settings provide a convenient mechanism, it's not always feasible to store everything within them.
