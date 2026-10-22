@@ -1,14 +1,19 @@
 from __future__ import annotations
+import typing
 
+import pydantic
 import typing_extensions
 
 from microbootstrap.instruments.base import BaseInstrumentConfig, Instrument
 
 
 class HealthCheckTypedDict(typing_extensions.TypedDict, total=False):
-    service_version: str | None
-    service_name: str | None
-    health_status: bool
+    service_version: typing.Annotated[str | None, pydantic.Field(description="Version of the running service.")]
+    service_name: typing.Annotated[str | None, pydantic.Field(description="Name of the running service.")]
+    health_status: typing.Annotated[
+        bool,
+        pydantic.Field(description="Static process health status; external dependencies are not checked."),
+    ]
 
 
 class HealthChecksConfig(BaseInstrumentConfig):

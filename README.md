@@ -730,6 +730,40 @@ Parameter descriptions:
 - `health_checks_path` - Path for health check handler.
 - `health_checks_include_in_schema` - Must be True to include `health_checks_path` (`/health/`) in OpenAPI schema.
 
+### OpenAPI metadata
+
+Optional helpers fill framework-generated descriptions after routes are registered.
+They work with native FastAPI and Litestar applications, including applications
+created without a bootstrapper. Install the corresponding framework extra.
+
+For FastAPI, update the cached document after registering every route:
+
+```python
+from microbootstrap.openapi.fastapi import update_openapi
+
+update_openapi(app, parameter_descriptions={"item_id": "Identifier of the requested item."})
+```
+
+For Litestar, register the helper as an OpenAPI schema creation hook:
+
+```python
+from litestar.openapi.config import OpenAPIConfig
+from microbootstrap.openapi.litestar import update_openapi
+
+openapi_config = OpenAPIConfig(
+    title="Example API", version="1", on_create_openapi_schema=[update_openapi]
+)
+```
+
+Both helpers describe generated validation errors and JSON values while preserving
+existing descriptions and runtime response shapes. Litestar also describes the
+health fields owned by microbootstrap. Caller-supplied parameter descriptions apply
+to matching names throughout the document. Litestar accepts component and property
+descriptions and explicit security overrides keyed by `(lowercase_method, path)`;
+FastAPI accepts root security requirements and security schemes, preserving existing
+values. Authentication policy and application-specific meanings remain the caller's
+responsibility. These declarations document authentication; they do not enforce it.
+
 ## Configuration
 
 While settings provide a convenient mechanism, it's not always feasible to store everything within them.
