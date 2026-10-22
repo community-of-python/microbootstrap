@@ -23,6 +23,16 @@ from microbootstrap.middlewares.fastapi import build_fastapi_logging_middleware
 from microbootstrap.settings import FastApiSettings
 
 
+_VALIDATION_DESCRIPTIONS: typing.Final = {
+    "detail": "Validation errors describing the rejected request fields.",
+    "loc": "Field names and array indices locating the invalid input.",
+    "msg": "Human-readable validation error message.",
+    "type": "Machine-readable validation error category.",
+    "input": "Input value associated with the validation failure.",
+    "ctx": "Additional context explaining the validation error.",
+}
+
+
 ApplicationT = typing.TypeVar("ApplicationT", bound=fastapi.FastAPI)
 
 
@@ -69,13 +79,19 @@ class FastApiSwaggerInstrument(SwaggerInstrument):
     def bootstrap_after(self, application: ApplicationT) -> ApplicationT:
         if self.instrument_config.swagger_offline_docs:
             enable_offline_docs(application, static_files_handler=self.instrument_config.service_static_path)
-        if self.instrument_config.openapi_version_docs is None and not self.instrument_config.security_schemes:
+        if (
+            self.instrument_config.openapi_version_docs is None
+            and not self.instrument_config.security_schemes
+            and not self.instrument_config.openapi_descriptions_enabled
+        ):
             return application
 
         original_openapi: typing.Final = application.openapi
 
         def documented_openapi() -> dict[str, typing.Any]:
             openapi_schema: typing.Final = original_openapi()
+            if self.instrument_config.openapi_descriptions_enabled:
+                self._describe_generated_schemas(openapi_schema)
             if self.instrument_config.security_schemes:
                 self._merge_security_schemes(openapi_schema)
             if self.instrument_config.openapi_version_docs is not None:
@@ -84,6 +100,22 @@ class FastApiSwaggerInstrument(SwaggerInstrument):
 
         application.openapi = documented_openapi  # type: ignore[method-assign]  # FastAPI's public custom OpenAPI hook.
         return application
+
+    @staticmethod
+    def _describe_generated_schemas(document: dict[str, typing.Any]) -> None:
+        schemas = document.get("components", {}).get("schemas", {})
+        for name in ("HTTPValidationError", "ValidationError"):
+            if name not in schemas:
+                continue
+            definition = schemas[name]
+            definition.setdefault("description", "Request validation failure reported by FastAPI.")
+            for field_name, description in _VALIDATION_DESCRIPTIONS.items():
+                if field_name in definition.get("properties", {}):
+                    definition["properties"][field_name].setdefault("description", description)
+        if "JsonValue" in schemas:
+            schemas["JsonValue"].setdefault(
+                "description", "JSON value: an object, array, string, number, boolean or null."
+            )
 
     def _merge_security_schemes(self, openapi_schema: dict[str, typing.Any]) -> None:
         expected_schemes: typing.Final = serialize_security_schemes(self.instrument_config.security_schemes)

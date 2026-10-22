@@ -730,6 +730,27 @@ Parameter descriptions:
 - `health_checks_path` - Path for health check handler.
 - `health_checks_include_in_schema` - Must be True to include `health_checks_path` (`/health/`) in OpenAPI schema.
 
+### Generated OpenAPI descriptions
+
+Set `openapi_descriptions_enabled=True` in `FastApiSettings`, `LitestarSettings`,
+or `SwaggerConfig` to describe framework-generated validation errors and JSON
+values automatically. Litestar also fills descriptions for microbootstrap health
+fields. The setting is disabled by default and supports the normal environment
+prefix, for example `OPENAPI_DESCRIPTIONS_ENABLED=true` without a prefix.
+
+```python
+from microbootstrap import FastApiSettings
+from microbootstrap.bootstrappers.fastapi import FastApiBootstrapper
+
+app = FastApiBootstrapper(FastApiSettings(openapi_descriptions_enabled=True)).bootstrap()
+# Register application routes normally; FastAPI enriches its schema when generated.
+```
+
+The bootstrappers preserve existing descriptions and runtime response shapes.
+Application-specific descriptions and authentication declarations remain with the
+application, using native framework metadata and the existing `security_schemes`
+setting. No authentication policy is inferred or enforced by this option.
+
 ## Configuration
 
 While settings provide a convenient mechanism, it's not always feasible to store everything within them.
