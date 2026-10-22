@@ -3,6 +3,7 @@ import dataclasses
 import typing
 
 import litestar
+import pydantic
 import typing_extensions
 from litestar import openapi
 from litestar.config.cors import CORSConfig as LitestarCorsConfig
@@ -45,6 +46,17 @@ from microbootstrap.instruments.sentry_instrument import SentryInstrument
 from microbootstrap.instruments.swagger_instrument import SwaggerInstrument
 from microbootstrap.middlewares.litestar import build_litestar_logging_middleware
 from microbootstrap.settings import LitestarSettings
+
+
+_ERROR_DESCRIPTIONS: typing.Final = {
+    "status_code": "HTTP status code of the failed request.",
+    "detail": "Human-readable explanation of the request failure.",
+    "extra": "Additional validation or error details supplied by Litestar.",
+}
+_HEALTH_PROPERTIES: typing.Final[dict[str, str]] = {
+    name: field["description"]
+    for name, field in pydantic.TypeAdapter(HealthCheckTypedDict).json_schema()["properties"].items()
+}
 
 
 ApplicationT = typing.TypeVar("ApplicationT", bound=litestar.Litestar)
@@ -124,15 +136,61 @@ class LitestarSwaggerInstrument(SwaggerInstrument):
         return bootstrap_result
 
     def bootstrap_after(self, application: ApplicationT) -> ApplicationT:
-        if (self.instrument_config.openapi_version_docs is None and not self.instrument_config.security_schemes) or (
-            application.openapi_config is None
-        ):
+        if (
+            self.instrument_config.openapi_version_docs is None
+            and not self.instrument_config.security_schemes
+            and not self.instrument_config.openapi_descriptions_enabled
+        ) or (application.openapi_config is None):
             return application
+        if self.instrument_config.openapi_descriptions_enabled:
+            self._describe_generated_schemas(application.openapi_schema)
         if self.instrument_config.security_schemes:
             self._merge_security_schemes(application.openapi_schema)
         if self.instrument_config.openapi_version_docs is not None:
             self._document_operations(application.openapi_schema)
         return application
+
+    @staticmethod
+    def _describe_properties(schema: openapi.spec.Schema, descriptions: typing.Mapping[str, str]) -> None:
+        for name, description in descriptions.items():
+            field = (schema.properties or {}).get(name)
+            if field is not None and not field.description:
+                field.description = description
+
+    @classmethod
+    def _describe_error_schema(cls, schema: openapi.spec.Schema) -> None:
+        for branch in (*(schema.one_of or []), *(schema.any_of or []), *(schema.all_of or [])):
+            if isinstance(branch, openapi.spec.Schema):
+                cls._describe_error_schema(branch)
+        if (
+            schema.type is None
+            and schema.one_of
+            and all(
+                isinstance(branch, openapi.spec.Schema) and branch.type == openapi.spec.OpenAPIType.OBJECT
+                for branch in schema.one_of
+            )
+        ):
+            schema.type = openapi.spec.OpenAPIType.OBJECT
+        cls._describe_properties(schema, _ERROR_DESCRIPTIONS)
+
+    @classmethod
+    def _describe_generated_schemas(cls, document: openapi.spec.OpenAPI) -> None:
+        schemas = document.components.schemas or {}
+        if "JsonValue" in schemas and not schemas["JsonValue"].description:
+            schemas["JsonValue"].description = "JSON value: an object, array, string, number, boolean or null."
+        if "HealthCheckTypedDict" in schemas:
+            cls._describe_properties(schemas["HealthCheckTypedDict"], _HEALTH_PROPERTIES)
+        for path_item in (document.paths or {}).values():
+            for method in SUPPORTED_HTTP_METHODS:
+                operation = getattr(path_item, method)
+                if operation is None:
+                    continue
+                for code, response in (operation.responses or {}).items():
+                    if not str(code).startswith(("4", "5")) or not isinstance(response, openapi.spec.OpenAPIResponse):
+                        continue
+                    for media_type in (response.content or {}).values():
+                        if isinstance(media_type.schema, openapi.spec.Schema):
+                            cls._describe_error_schema(media_type.schema)
 
     def _merge_security_schemes(self, openapi_schema: openapi.spec.OpenAPI) -> None:
         expected_schemes: typing.Final = serialize_security_schemes(self.instrument_config.security_schemes)

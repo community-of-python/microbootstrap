@@ -27,6 +27,7 @@ class SwaggerConfig(BaseInstrumentConfig):
     swagger_extra_params: dict[str, typing.Any] = pydantic.Field(default_factory=dict)
     security_schemes: typing.Mapping[str, _OpenApiSecurityScheme] = pydantic.Field(default_factory=dict)
     openapi_version_docs: OpenApiVersionDocsConfig | None = None
+    openapi_descriptions_enabled: bool = False
 
     @pydantic.field_validator("security_schemes")
     @classmethod

@@ -730,37 +730,26 @@ Parameter descriptions:
 - `health_checks_path` - Path for health check handler.
 - `health_checks_include_in_schema` - Must be True to include `health_checks_path` (`/health/`) in OpenAPI schema.
 
-### OpenAPI metadata
+### Generated OpenAPI descriptions
 
-Optional helpers fill framework-generated descriptions after routes are registered.
-They work with native FastAPI and Litestar applications, including applications
-created without a bootstrapper. Install the corresponding framework extra.
-
-For FastAPI, update the cached document after registering every route:
-
-```python
-from microbootstrap.openapi.fastapi import update_openapi
-
-update_openapi(app, parameter_descriptions={"item_id": "Identifier of the requested item."})
-```
-
-For Litestar, update the generated document after constructing the application
-with OpenAPI enabled:
+Set `openapi_descriptions_enabled=True` in `FastApiSettings`, `LitestarSettings`,
+or `SwaggerConfig` to describe framework-generated validation errors and JSON
+values automatically. Litestar also fills descriptions for microbootstrap health
+fields. The setting is disabled by default and supports the normal environment
+prefix, for example `OPENAPI_DESCRIPTIONS_ENABLED=true` without a prefix.
 
 ```python
-from microbootstrap.openapi.litestar import update_openapi
+from microbootstrap import FastApiSettings
+from microbootstrap.bootstrappers.fastapi import FastApiBootstrapper
 
-update_openapi(app.openapi_schema)
+app = FastApiBootstrapper(FastApiSettings(openapi_descriptions_enabled=True)).bootstrap()
+# Register application routes normally; FastAPI enriches its schema when generated.
 ```
 
-Both helpers describe generated validation errors and JSON values while preserving
-existing descriptions and runtime response shapes. Litestar also describes the
-health fields owned by microbootstrap. Caller-supplied parameter descriptions apply
-to matching names throughout the document. Litestar accepts component and property
-descriptions and explicit security overrides keyed by `(lowercase_method, path)`;
-FastAPI accepts root security requirements and security schemes, preserving existing
-values. Authentication policy and application-specific meanings remain the caller's
-responsibility. These declarations document authentication; they do not enforce it.
+The bootstrappers preserve existing descriptions and runtime response shapes.
+Application-specific descriptions and authentication declarations remain with the
+application, using native framework metadata and the existing `security_schemes`
+setting. No authentication policy is inferred or enforced by this option.
 
 ## Configuration
 
