@@ -1,4 +1,5 @@
 import dataclasses
+import http
 import re
 import typing
 
@@ -108,3 +109,10 @@ def optimize_exclude_paths(
         endpoints_to_ignore = set(endpoints_to_ignore)
 
     return endpoints_to_ignore
+
+
+def http_error_title(status_code: int) -> str:
+    try:
+        return http.HTTPStatus(status_code).phrase
+    except ValueError:
+        return "HTTP error"

@@ -1,14 +1,20 @@
 import contextlib
+import http
 import typing
 
 import fastapi
+from fastapi.encoders import jsonable_encoder
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi_offline_docs import enable_offline_docs
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from prometheus_fastapi_instrumentator import Instrumentator, metrics
+from starlette.exceptions import HTTPException
+from starlette.responses import JSONResponse
 
 from microbootstrap.bootstrappers.base import ApplicationBootstrapper
 from microbootstrap.config.fastapi import FastApiConfig
+from microbootstrap.helpers import http_error_title
 from microbootstrap.instruments.cors_instrument import CorsInstrument
 from microbootstrap.instruments.health_checks_instrument import HealthChecksInstrument, HealthCheckTypedDict
 from microbootstrap.instruments.logging_instrument import LoggingInstrument
@@ -62,43 +68,69 @@ class FastApiBootstrapper(
             "lifespan": self._wrapped_lifespan_manager if self.application_config.lifespan else self._lifespan_manager,
         }
 
+    def bootstrap_before_instruments_after_app_created(self, application: ApplicationT) -> ApplicationT:
+        if self.settings.api_metadata_enabled:
+            for exception, native, replacement in (
+                (HTTPException, fastapi.exception_handlers.http_exception_handler, self.http_exception_response),
+                (
+                    RequestValidationError,
+                    fastapi.exception_handlers.request_validation_exception_handler,
+                    self.validation_error_response,
+                ),
+            ):
+                if application.exception_handlers.get(exception) == native:
+                    application.exception_handlers[exception] = replacement
+            if http.HTTPStatus.INTERNAL_SERVER_ERROR not in application.exception_handlers:
+                application.exception_handlers.setdefault(Exception, self.internal_error_response)
+        return application
 
-FastApiBootstrapper.use_instrument()(SentryInstrument)
+    async def http_exception_response(self, request: fastapi.Request, exc: HTTPException) -> fastapi.Response:
+        response = await fastapi.exception_handlers.http_exception_handler(request, exc)
+        if exc.status_code >= http.HTTPStatus.BAD_REQUEST:
+            return JSONResponse(
+                {"detail": exc.detail, "title": http_error_title(exc.status_code)},
+                status_code=exc.status_code,
+                headers=exc.headers,
+            )
+        return response
 
+    async def validation_error_response(self, _request: fastapi.Request, exc: RequestValidationError) -> JSONResponse:
+        return JSONResponse(
+            {
+                "detail": jsonable_encoder(exc.errors()),
+                "title": http_error_title(http.HTTPStatus.UNPROCESSABLE_ENTITY),
+            },
+            status_code=http.HTTPStatus.UNPROCESSABLE_ENTITY,
+        )
 
-@FastApiBootstrapper.use_instrument()
-class FastApiSwaggerInstrument(SwaggerInstrument):
-    def bootstrap_before(self) -> dict[str, typing.Any]:
-        return {
-            "title": self.instrument_config.service_name,
-            "description": self.instrument_config.service_description,
-            "docs_url": self.instrument_config.swagger_path,
-            "version": self.instrument_config.service_version,
-        }
+    async def internal_error_response(self, _request: fastapi.Request, _exc: Exception) -> JSONResponse:
+        return JSONResponse(
+            {"detail": "Internal Server Error", "title": http_error_title(http.HTTPStatus.INTERNAL_SERVER_ERROR)},
+            status_code=http.HTTPStatus.INTERNAL_SERVER_ERROR,
+        )
 
     def bootstrap_after(self, application: ApplicationT) -> ApplicationT:
-        if self.instrument_config.swagger_offline_docs:
-            enable_offline_docs(application, static_files_handler=self.instrument_config.service_static_path)
-        if (
-            self.instrument_config.openapi_version_docs is None
-            and not self.instrument_config.security_schemes
-            and not self.instrument_config.openapi_descriptions_enabled
-        ):
+        if not self.settings.api_metadata_enabled:
             return application
-
         original_openapi: typing.Final = application.openapi
 
-        def documented_openapi() -> dict[str, typing.Any]:
-            openapi_schema: typing.Final = original_openapi()
-            if self.instrument_config.openapi_descriptions_enabled:
-                self._describe_generated_schemas(openapi_schema)
-            if self.instrument_config.security_schemes:
-                self._merge_security_schemes(openapi_schema)
-            if self.instrument_config.openapi_version_docs is not None:
-                self._document_operations(openapi_schema)
-            return openapi_schema
+        def titled_openapi() -> dict[str, typing.Any]:
+            document: typing.Final = original_openapi()
+            self._describe_generated_schemas(document)
+            schema = document.get("components", {}).get("schemas", {}).get("HTTPValidationError")
+            if (
+                schema is not None
+                and application.exception_handlers.get(RequestValidationError) == self.validation_error_response
+            ):
+                schema.setdefault("properties", {}).setdefault(
+                    "title", {"type": "string", "description": "Short, human-readable summary of the HTTP error."}
+                )
+                required = schema.setdefault("required", [])
+                if "title" not in required:
+                    required.append("title")
+            return document
 
-        application.openapi = documented_openapi  # type: ignore[method-assign]  # FastAPI's public custom OpenAPI hook.
+        application.openapi = titled_openapi  # type: ignore[method-assign]  # FastAPI's public custom OpenAPI hook.
         return application
 
     @staticmethod
@@ -116,6 +148,39 @@ class FastApiSwaggerInstrument(SwaggerInstrument):
             schemas["JsonValue"].setdefault(
                 "description", "JSON value: an object, array, string, number, boolean or null."
             )
+
+
+FastApiBootstrapper.use_instrument()(SentryInstrument)
+
+
+@FastApiBootstrapper.use_instrument()
+class FastApiSwaggerInstrument(SwaggerInstrument):
+    def bootstrap_before(self) -> dict[str, typing.Any]:
+        return {
+            "title": self.instrument_config.service_name,
+            "description": self.instrument_config.service_description,
+            "docs_url": self.instrument_config.swagger_path,
+            "version": self.instrument_config.service_version,
+        }
+
+    def bootstrap_after(self, application: ApplicationT) -> ApplicationT:
+        if self.instrument_config.swagger_offline_docs:
+            enable_offline_docs(application, static_files_handler=self.instrument_config.service_static_path)
+        if self.instrument_config.openapi_version_docs is None and not self.instrument_config.security_schemes:
+            return application
+
+        original_openapi: typing.Final = application.openapi
+
+        def documented_openapi() -> dict[str, typing.Any]:
+            openapi_schema: typing.Final = original_openapi()
+            if self.instrument_config.security_schemes:
+                self._merge_security_schemes(openapi_schema)
+            if self.instrument_config.openapi_version_docs is not None:
+                self._document_operations(openapi_schema)
+            return openapi_schema
+
+        application.openapi = documented_openapi  # type: ignore[method-assign]  # FastAPI's public custom OpenAPI hook.
+        return application
 
     def _merge_security_schemes(self, openapi_schema: dict[str, typing.Any]) -> None:
         expected_schemes: typing.Final = serialize_security_schemes(self.instrument_config.security_schemes)
