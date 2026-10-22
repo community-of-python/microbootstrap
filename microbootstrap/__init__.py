@@ -1,6 +1,5 @@
 from microbootstrap.instruments.cors_instrument import CorsConfig
 from microbootstrap.instruments.health_checks_instrument import HealthChecksConfig
-from microbootstrap.instruments.http_error_titles_instrument import HttpErrorTitlesConfig
 from microbootstrap.instruments.logging_instrument import LoggingConfig
 from microbootstrap.instruments.openapi_security_schemes import (
     OpenApiApiKeySecurityScheme,
@@ -51,7 +50,6 @@ __all__ = (
     "FastStreamSettings",
     "FastStreamTelemetryMiddlewareProtocol",
     "HealthChecksConfig",
-    "HttpErrorTitlesConfig",
     "InstrumentsSetupperSettings",
     "LitestarPrometheusConfig",
     "LitestarSettings",

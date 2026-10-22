@@ -730,44 +730,31 @@ Parameter descriptions:
 - `health_checks_path` - Path for health check handler.
 - `health_checks_include_in_schema` - Must be True to include `health_checks_path` (`/health/`) in OpenAPI schema.
 
-### Generated OpenAPI descriptions
+### API metadata
 
-Set `openapi_descriptions_enabled=True` in `FastApiSettings`, `LitestarSettings`,
-or `SwaggerConfig` to describe framework-generated validation errors and JSON
-values automatically. Litestar also fills descriptions for microbootstrap health
-fields. The setting is disabled by default and supports the normal environment
-prefix, for example `OPENAPI_DESCRIPTIONS_ENABLED=true` without a prefix.
+Set `api_metadata_enabled=True` in `FastApiSettings` or `LitestarSettings` to enable
+both generated OpenAPI descriptions and HTTP error titles. It defaults to `False`
+and can also be enabled with `API_METADATA_ENABLED=true` (with the configured
+`ENVIRONMENT_PREFIX`, if any). No separate instrument configuration is required.
 
 ```python
 from microbootstrap import FastApiSettings
 from microbootstrap.bootstrappers.fastapi import FastApiBootstrapper
 
-app = FastApiBootstrapper(FastApiSettings(openapi_descriptions_enabled=True)).bootstrap()
-# Register application routes normally; FastAPI enriches its schema when generated.
+app = FastApiBootstrapper(FastApiSettings(api_metadata_enabled=True)).bootstrap()
 ```
 
-The bootstrappers preserve existing descriptions and runtime response shapes.
-Application-specific descriptions and authentication declarations remain with the
-application, using native framework metadata and the existing `security_schemes`
-setting. No authentication policy is inferred or enforced by this option.
+Default HTTP errors receive the HTTP status phrase as `title`, alongside the
+framework's existing fields, status and headers. Generated validation schemas
+and examples reflect that response. Application, router and route exception
+handlers retain ownership of their payloads and schemas. Debug tracebacks retain
+the framework's native behavior. Error titles also work with Swagger disabled.
+This setting does not document authentication, change successful responses or
+certify compliance with an API standard.
 
-### HTTP error titles
-
-Enable `http_error_titles_enabled=True` in `FastApiSettings`, `LitestarSettings`,
-or `HttpErrorTitlesConfig` to add the HTTP status phrase as `title` on default
-JSON error responses. The option is disabled by default; the normal settings
-environment prefix applies to `HTTP_ERROR_TITLES_ENABLED`.
-
-The native error fields, status codes and headers are preserved. Default Litestar
-errors use JSON even when a route's success media type is different. An unknown
-HTTP status receives the title `HTTP error`. Existing application exception
-handlers keep precedence and remain responsible for their own payloads and
-schemas. Explicit error responses returned by application handlers are also
-owned by the application.
-
-The bootstrappers document `title` as required on their generated validation
-schemas when the default handler is active. This is independent of
-`openapi_descriptions_enabled`. Debug traceback responses remain framework-owned.
+`api_metadata_enabled` replaces the description-only `openapi_descriptions_enabled`
+option from 1.8.0. Migrate existing settings and environment variables to the new
+name; enabling it also changes default HTTP error bodies as described above.
 
 ## Configuration
 

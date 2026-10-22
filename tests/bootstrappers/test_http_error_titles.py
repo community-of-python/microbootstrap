@@ -9,7 +9,7 @@ from litestar.config.app import AppConfig
 from litestar.exceptions import HTTPException as LitestarHTTPException
 from litestar.testing import TestClient as LitestarTestClient
 
-from microbootstrap import FastApiSettings, HttpErrorTitlesConfig, LitestarSettings
+from microbootstrap import FastApiSettings, LitestarSettings
 from microbootstrap.bootstrappers.fastapi import FastApiBootstrapper
 from microbootstrap.bootstrappers.litestar import LitestarBootstrapper
 from microbootstrap.config.fastapi import FastApiConfig
@@ -27,7 +27,7 @@ NONSTANDARD_STATUS: typing.Final = 599
 @pytest.mark.parametrize("status_code", [http.HTTPStatus.BAD_REQUEST, http.HTTPStatus.UNAUTHORIZED, NONSTANDARD_STATUS])
 def test_fastapi_errors_preserve_fields_headers_and_status(enabled: bool, status_code: int) -> None:
     application: typing.Final = FastApiBootstrapper(
-        FastApiSettings(service_debug=False, http_error_titles_enabled=enabled)
+        FastApiSettings(service_debug=False, api_metadata_enabled=enabled)
     ).bootstrap()
 
     @application.get("/error")
@@ -51,7 +51,7 @@ def test_fastapi_errors_preserve_fields_headers_and_status(enabled: bool, status
 @pytest.mark.parametrize("enabled", [False, True])
 def test_fastapi_validation_schema_matches_real_errors(enabled: bool) -> None:
     application: typing.Final = FastApiBootstrapper(
-        FastApiSettings(service_debug=False, http_error_titles_enabled=enabled)
+        FastApiSettings(service_debug=False, api_metadata_enabled=enabled)
     ).bootstrap()
 
     @application.get("/items")
@@ -63,6 +63,7 @@ def test_fastapi_validation_schema_matches_real_errors(enabled: bool) -> None:
     error: typing.Final = schema["components"]["schemas"]["HTTPValidationError"]
     assert ("title" in error.get("required", [])) is enabled
     assert ("title" in error["properties"]) is enabled
+    assert ("description" in error["properties"]["detail"]) is enabled
     with FastAPITestClient(application) as client:
         assert client.get("/items?limit=1").json() == 1
         response = client.get("/items?limit=invalid")
@@ -73,7 +74,7 @@ def test_fastapi_validation_schema_matches_real_errors(enabled: bool) -> None:
 
 def test_fastapi_empty_schema_and_non_error_exception_keep_native_behavior() -> None:
     application: typing.Final = FastApiBootstrapper(
-        FastApiSettings(service_debug=False, http_error_titles_enabled=True, health_checks_enabled=False)
+        FastApiSettings(service_debug=False, api_metadata_enabled=True, health_checks_enabled=False)
     ).bootstrap()
     assert not application.openapi().get("components", {}).get("schemas")
 
@@ -93,7 +94,7 @@ def test_fastapi_custom_validation_handler_keeps_ownership() -> None:
         return fastapi.responses.JSONResponse({"owned": True}, status_code=http.HTTPStatus.BAD_REQUEST)
 
     application: typing.Final = (
-        FastApiBootstrapper(FastApiSettings(service_debug=False, http_error_titles_enabled=True))
+        FastApiBootstrapper(FastApiSettings(service_debug=False, api_metadata_enabled=True))
         .configure_application(
             FastApiConfig(exception_handlers={fastapi.exceptions.RequestValidationError: custom_validation})
         )
@@ -123,7 +124,7 @@ def test_litestar_errors_preserve_fields_headers_and_status(enabled: bool, media
         )
 
     application: typing.Final = (
-        LitestarBootstrapper(LitestarSettings(service_debug=False, http_error_titles_enabled=enabled))
+        LitestarBootstrapper(LitestarSettings(service_debug=False, api_metadata_enabled=enabled))
         .configure_application(LitestarConfig(route_handlers=[reject]))
         .bootstrap()
     )
@@ -146,14 +147,14 @@ def test_litestar_validation_schema_matches_real_errors(enabled: bool) -> None:
         return limit
 
     application: typing.Final = (
-        LitestarBootstrapper(LitestarSettings(service_debug=False))
-        .configure_instrument(HttpErrorTitlesConfig(http_error_titles_enabled=enabled))
+        LitestarBootstrapper(LitestarSettings(service_debug=False, api_metadata_enabled=enabled))
         .configure_application(LitestarConfig(route_handlers=[get_items]))
         .bootstrap()
     )
     schema: typing.Final = application.openapi_schema.to_schema()
     error: typing.Final = schema["paths"]["/items"]["get"]["responses"]["400"]["content"]["application/json"]["schema"]
     assert ("title" in error["required"]) is enabled
+    assert ("description" in error["properties"]["detail"]) is enabled
     with LitestarTestClient(application) as client:
         assert client.get("/items?limit=1").json() == 1
         response = client.get("/items?limit=invalid")
@@ -167,16 +168,14 @@ def test_internal_errors_have_safe_titles(framework: str) -> None:
         raise RuntimeError("private diagnostic")
 
     if framework == "fastapi":
-        application = FastApiBootstrapper(
-            FastApiSettings(service_debug=False, http_error_titles_enabled=True)
-        ).bootstrap()
+        application = FastApiBootstrapper(FastApiSettings(service_debug=False, api_metadata_enabled=True)).bootstrap()
         application.get("/error")(fail)
         with FastAPITestClient(application, raise_server_exceptions=False) as client:
             response = client.get("/error")
     else:
         handler: typing.Final = litestar.get("/error", sync_to_thread=False)(fail)
         litestar_application: typing.Final = (
-            LitestarBootstrapper(LitestarSettings(service_debug=False, http_error_titles_enabled=True))
+            LitestarBootstrapper(LitestarSettings(service_debug=False, api_metadata_enabled=True))
             .configure_application(LitestarConfig(route_handlers=[handler]))
             .bootstrap()
         )
@@ -188,10 +187,11 @@ def test_internal_errors_have_safe_titles(framework: str) -> None:
 
 
 def test_setting_defaults_and_environment(monkeypatch: pytest.MonkeyPatch) -> None:
-    assert HttpErrorTitlesConfig().http_error_titles_enabled is False
-    monkeypatch.setenv("HTTP_ERROR_TITLES_ENABLED", "true")
-    assert FastApiSettings().http_error_titles_enabled is True
-    assert LitestarSettings().http_error_titles_enabled is True
+    assert FastApiSettings().api_metadata_enabled is False
+    assert LitestarSettings().api_metadata_enabled is False
+    monkeypatch.setenv("API_METADATA_ENABLED", "true")
+    assert FastApiSettings().api_metadata_enabled is True
+    assert LitestarSettings().api_metadata_enabled is True
 
 
 @pytest.mark.parametrize("level", ["application", "controller", "router", "route"])
@@ -222,7 +222,7 @@ def test_litestar_custom_validation_handler_owns_payload_and_schema(level: str, 
         exception_handlers=handlers if level == "router" else None,
     )
     application: typing.Final = (
-        LitestarBootstrapper(LitestarSettings(service_debug=False, http_error_titles_enabled=True))
+        LitestarBootstrapper(LitestarSettings(service_debug=False, api_metadata_enabled=True))
         .configure_application(
             LitestarConfig(route_handlers=[router], exception_handlers=handlers if level == "application" else {})
         )
@@ -246,7 +246,7 @@ def test_litestar_debug_traceback_remains_framework_owned(enabled: bool) -> None
         raise RuntimeError("private diagnostic")
 
     application: typing.Final = (
-        LitestarBootstrapper(LitestarSettings(service_debug=True, http_error_titles_enabled=enabled))
+        LitestarBootstrapper(LitestarSettings(service_debug=True, api_metadata_enabled=enabled))
         .configure_application(LitestarConfig(route_handlers=[fail]))
         .bootstrap()
     )
@@ -279,7 +279,7 @@ def test_litestar_non_http_routes_and_combined_error_schemas(swagger_enabled: bo
 
     application: typing.Final = (
         LitestarBootstrapper(
-            LitestarSettings(service_debug=False, http_error_titles_enabled=True, swagger_enabled=swagger_enabled)
+            LitestarSettings(service_debug=False, api_metadata_enabled=True, swagger_enabled=swagger_enabled)
         )
         .configure_application(
             LitestarConfig(
@@ -301,3 +301,27 @@ def test_litestar_non_http_routes_and_combined_error_schemas(swagger_enabled: bo
         ]["application/json"]["schema"]
         assert all("title" in branch["required"] for branch in schema["oneOf"])
         assert "500" in application.openapi_schema.to_schema()["paths"]["/items"]["get"]["responses"]
+
+
+@pytest.mark.parametrize("key", [http.HTTPStatus.INTERNAL_SERVER_ERROR, Exception])
+def test_fastapi_custom_server_error_handler_keeps_ownership(key: int | type[Exception]) -> None:
+    async def custom_error(_request: fastapi.Request, _exc: Exception) -> fastapi.responses.JSONResponse:
+        return fastapi.responses.JSONResponse(
+            {"detail": "owned"}, status_code=http.HTTPStatus.SERVICE_UNAVAILABLE, headers={"X-Owner": "application"}
+        )
+
+    application: typing.Final = (
+        FastApiBootstrapper(FastApiSettings(service_debug=False, api_metadata_enabled=True))
+        .configure_application(FastApiConfig(exception_handlers={key: custom_error}))
+        .bootstrap()
+    )
+
+    @application.get("/error")
+    def fail() -> None:
+        raise RuntimeError("private diagnostic")
+
+    with FastAPITestClient(application, raise_server_exceptions=False) as client:
+        response = client.get("/error")
+    assert response.status_code == http.HTTPStatus.SERVICE_UNAVAILABLE
+    assert response.json() == {"detail": "owned"}
+    assert response.headers["x-owner"] == "application"

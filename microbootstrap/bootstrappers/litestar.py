@@ -26,13 +26,13 @@ from sentry_sdk.integrations.litestar import LitestarIntegration
 
 from microbootstrap.bootstrappers.base import ApplicationBootstrapper
 from microbootstrap.config.litestar import LitestarConfig
+from microbootstrap.helpers import http_error_title
 from microbootstrap.instruments import opentelemetry_instrument
 from microbootstrap.instruments.cors_instrument import CorsInstrument
 from microbootstrap.instruments.health_checks_instrument import (
     HealthChecksInstrument,
     HealthCheckTypedDict,
 )
-from microbootstrap.instruments.http_error_titles_instrument import HttpErrorTitlesInstrument
 from microbootstrap.instruments.logging_instrument import LoggingInstrument
 from microbootstrap.instruments.openapi_security_schemes import (
     OpenApiApiKeySecurityScheme,
@@ -77,6 +77,7 @@ class AcceptVersionedOperation(openapi.spec.Operation):
 
 
 if typing.TYPE_CHECKING:
+    from litestar.config.app import AppConfig
     from litestar.contrib.opentelemetry import OpenTelemetryConfig
     from litestar.types import ASGIApp, Scope
     from litestar.types.asgi_types import Receive, Send
@@ -93,7 +94,119 @@ class LitestarBootstrapper(
             "debug": self.settings.service_debug,
             "on_shutdown": [self.teardown],
             "on_startup": [self.console_writer.print_bootstrap_table],
+            "on_app_init": [self._configure_error_titles] if self.settings.api_metadata_enabled else [],
         }
+
+    def exception_response(
+        self, request: litestar.Request[typing.Any, typing.Any, typing.Any], exc: Exception
+    ) -> litestar.Response[typing.Any]:
+        status_code = exc.status_code if isinstance(exc, HTTPException) else http.HTTPStatus.INTERNAL_SERVER_ERROR
+        if status_code == http.HTTPStatus.INTERNAL_SERVER_ERROR and request.app.debug:
+            return create_debug_response(request, exc)
+        response = create_exception_response(request, exc)
+        if status_code >= http.HTTPStatus.BAD_REQUEST:
+            if not isinstance(response.content, dict):
+                response.content = json.loads(response.content)
+            response.content.setdefault("title", http_error_title(status_code))
+            response.media_type = litestar.MediaType.JSON
+        return response
+
+    def _configure_error_titles(self, config: AppConfig) -> AppConfig:
+        config.exception_handlers.setdefault(Exception, self.exception_response)
+        return config
+
+    @classmethod
+    def _title_error_schema(cls, schema: openapi.spec.Schema) -> None:
+        for branch in (*(schema.one_of or []), *(schema.any_of or []), *(schema.all_of or [])):
+            if isinstance(branch, openapi.spec.Schema):
+                cls._title_error_schema(branch)
+        properties = schema.properties or {}
+        if "status_code" in properties and "detail" in properties:
+            properties.setdefault(
+                "title",
+                openapi.spec.Schema(
+                    type=openapi.spec.OpenAPIType.STRING,
+                    description="Short, human-readable summary of the HTTP error.",
+                ),
+            )
+            schema.required = list(dict.fromkeys([*(schema.required or []), "title"]))
+            for example in schema.examples or []:
+                if isinstance(example, dict) and isinstance(example.get("status_code"), int):
+                    example.setdefault("title", http_error_title(example["status_code"]))
+
+    @classmethod
+    def _title_operation(cls, operation: openapi.spec.Operation) -> None:
+        for code, response in (operation.responses or {}).items():
+            if str(code).startswith(("4", "5")) and isinstance(response, openapi.spec.OpenAPIResponse):
+                for media_type in (response.content or {}).values():
+                    if isinstance(media_type.schema, openapi.spec.Schema):
+                        cls._title_error_schema(media_type.schema)
+
+    def bootstrap_after(self, application: ApplicationT) -> ApplicationT:
+        if not self.settings.api_metadata_enabled or application.openapi_config is None:
+            return application
+        self._describe_generated_schemas(application.openapi_schema)
+        for route in application.routes:
+            if not isinstance(route, HTTPRoute):
+                continue
+            path_item = (application.openapi_schema.paths or {}).get(route.path_format)
+            if path_item is None:
+                continue
+            for method, (handler, _) in route.route_handler_map.items():
+                # A custom handler can own any error schema on this route.
+                if any(
+                    value != self.exception_response
+                    and (isinstance(key, int) or issubclass(HTTPException, key) or issubclass(key, HTTPException))
+                    for key, value in handler.resolve_exception_handlers().items()
+                ):
+                    continue
+                operation = getattr(path_item, method.lower())
+                if operation is None:
+                    continue
+                self._title_operation(operation)
+        return application
+
+    @staticmethod
+    def _describe_properties(schema: openapi.spec.Schema, descriptions: typing.Mapping[str, str]) -> None:
+        for name, description in descriptions.items():
+            field = (schema.properties or {}).get(name)
+            if field is not None and not field.description:
+                field.description = description
+
+    @classmethod
+    def _describe_error_schema(cls, schema: openapi.spec.Schema) -> None:
+        for branch in (*(schema.one_of or []), *(schema.any_of or []), *(schema.all_of or [])):
+            if isinstance(branch, openapi.spec.Schema):
+                cls._describe_error_schema(branch)
+        if (
+            schema.type is None
+            and schema.one_of
+            and all(
+                isinstance(branch, openapi.spec.Schema) and branch.type == openapi.spec.OpenAPIType.OBJECT
+                for branch in schema.one_of
+            )
+        ):
+            schema.type = openapi.spec.OpenAPIType.OBJECT
+        cls._describe_properties(schema, _ERROR_DESCRIPTIONS)
+
+    @classmethod
+    def _describe_generated_schemas(cls, document: openapi.spec.OpenAPI) -> None:
+        schemas = document.components.schemas or {}
+        if "JsonValue" in schemas and not schemas["JsonValue"].description:
+            schemas["JsonValue"].description = "JSON value: an object, array, string, number, boolean or null."
+        if "HealthCheckTypedDict" in schemas:
+            cls._describe_properties(schemas["HealthCheckTypedDict"], _HEALTH_PROPERTIES)
+        for path_item in (document.paths or {}).values():
+            for method in SUPPORTED_HTTP_METHODS:
+                operation = getattr(path_item, method)
+                if operation is None:
+                    continue
+                for code, response in (operation.responses or {}).items():
+                    if not str(code).startswith(("4", "5")) or not isinstance(response, openapi.spec.OpenAPIResponse):
+                        continue
+                    for media_type in (response.content or {}).values():
+                        if isinstance(media_type.schema, openapi.spec.Schema):
+                            cls._describe_error_schema(media_type.schema)
 
 
 @LitestarBootstrapper.use_instrument()
@@ -142,61 +255,15 @@ class LitestarSwaggerInstrument(SwaggerInstrument):
         return bootstrap_result
 
     def bootstrap_after(self, application: ApplicationT) -> ApplicationT:
-        if (
-            self.instrument_config.openapi_version_docs is None
-            and not self.instrument_config.security_schemes
-            and not self.instrument_config.openapi_descriptions_enabled
-        ) or (application.openapi_config is None):
+        if (self.instrument_config.openapi_version_docs is None and not self.instrument_config.security_schemes) or (
+            application.openapi_config is None
+        ):
             return application
-        if self.instrument_config.openapi_descriptions_enabled:
-            self._describe_generated_schemas(application.openapi_schema)
         if self.instrument_config.security_schemes:
             self._merge_security_schemes(application.openapi_schema)
         if self.instrument_config.openapi_version_docs is not None:
             self._document_operations(application.openapi_schema)
         return application
-
-    @staticmethod
-    def _describe_properties(schema: openapi.spec.Schema, descriptions: typing.Mapping[str, str]) -> None:
-        for name, description in descriptions.items():
-            field = (schema.properties or {}).get(name)
-            if field is not None and not field.description:
-                field.description = description
-
-    @classmethod
-    def _describe_error_schema(cls, schema: openapi.spec.Schema) -> None:
-        for branch in (*(schema.one_of or []), *(schema.any_of or []), *(schema.all_of or [])):
-            if isinstance(branch, openapi.spec.Schema):
-                cls._describe_error_schema(branch)
-        if (
-            schema.type is None
-            and schema.one_of
-            and all(
-                isinstance(branch, openapi.spec.Schema) and branch.type == openapi.spec.OpenAPIType.OBJECT
-                for branch in schema.one_of
-            )
-        ):
-            schema.type = openapi.spec.OpenAPIType.OBJECT
-        cls._describe_properties(schema, _ERROR_DESCRIPTIONS)
-
-    @classmethod
-    def _describe_generated_schemas(cls, document: openapi.spec.OpenAPI) -> None:
-        schemas = document.components.schemas or {}
-        if "JsonValue" in schemas and not schemas["JsonValue"].description:
-            schemas["JsonValue"].description = "JSON value: an object, array, string, number, boolean or null."
-        if "HealthCheckTypedDict" in schemas:
-            cls._describe_properties(schemas["HealthCheckTypedDict"], _HEALTH_PROPERTIES)
-        for path_item in (document.paths or {}).values():
-            for method in SUPPORTED_HTTP_METHODS:
-                operation = getattr(path_item, method)
-                if operation is None:
-                    continue
-                for code, response in (operation.responses or {}).items():
-                    if not str(code).startswith(("4", "5")) or not isinstance(response, openapi.spec.OpenAPIResponse):
-                        continue
-                    for media_type in (response.content or {}).values():
-                        if isinstance(media_type.schema, openapi.spec.Schema):
-                            cls._describe_error_schema(media_type.schema)
 
     def _merge_security_schemes(self, openapi_schema: openapi.spec.OpenAPI) -> None:
         expected_schemes: typing.Final = serialize_security_schemes(self.instrument_config.security_schemes)
@@ -282,76 +349,6 @@ class LitestarSwaggerInstrument(SwaggerInstrument):
                 **{flow_name: openapi.spec.OAuthFlow(**flow) for flow_name, flow in flow_data.items()}
             )
         return openapi.spec.SecurityScheme(**scheme_data)
-
-
-@LitestarBootstrapper.use_instrument()
-class LitestarHttpErrorTitlesInstrument(HttpErrorTitlesInstrument):
-    def exception_response(
-        self, request: litestar.Request[typing.Any, typing.Any, typing.Any], exc: Exception
-    ) -> litestar.Response[typing.Any]:
-        status_code = exc.status_code if isinstance(exc, HTTPException) else http.HTTPStatus.INTERNAL_SERVER_ERROR
-        if status_code == http.HTTPStatus.INTERNAL_SERVER_ERROR and request.app.debug:
-            return create_debug_response(request, exc)
-        response = create_exception_response(request, exc)
-        if status_code >= http.HTTPStatus.BAD_REQUEST:
-            if not isinstance(response.content, dict):
-                response.content = json.loads(response.content)
-            response.content.setdefault("title", self.title_for_status(status_code))
-            response.media_type = litestar.MediaType.JSON
-        return response
-
-    def bootstrap_before(self) -> dict[str, typing.Any]:
-        return {"exception_handlers": {Exception: self.exception_response}}
-
-    @classmethod
-    def _title_error_schema(cls, schema: openapi.spec.Schema) -> None:
-        for branch in (*(schema.one_of or []), *(schema.any_of or []), *(schema.all_of or [])):
-            if isinstance(branch, openapi.spec.Schema):
-                cls._title_error_schema(branch)
-        properties = schema.properties or {}
-        if "status_code" in properties and "detail" in properties:
-            properties.setdefault(
-                "title",
-                openapi.spec.Schema(
-                    type=openapi.spec.OpenAPIType.STRING,
-                    description="Short, human-readable summary of the HTTP error.",
-                ),
-            )
-            schema.required = list(dict.fromkeys([*(schema.required or []), "title"]))
-            for example in schema.examples or []:
-                if isinstance(example, dict) and isinstance(example.get("status_code"), int):
-                    example.setdefault("title", cls.title_for_status(example["status_code"]))
-
-    @classmethod
-    def _title_operation(cls, operation: openapi.spec.Operation) -> None:
-        for code, response in (operation.responses or {}).items():
-            if str(code).startswith(("4", "5")) and isinstance(response, openapi.spec.OpenAPIResponse):
-                for media_type in (response.content or {}).values():
-                    if isinstance(media_type.schema, openapi.spec.Schema):
-                        cls._title_error_schema(media_type.schema)
-
-    def bootstrap_after(self, application: ApplicationT) -> ApplicationT:
-        if application.openapi_config is None:
-            return application
-        for route in application.routes:
-            if not isinstance(route, HTTPRoute):
-                continue
-            path_item = (application.openapi_schema.paths or {}).get(route.path_format)
-            if path_item is None:
-                continue
-            for method, (handler, _) in route.route_handler_map.items():
-                # A custom handler can own any error schema on this route.
-                if any(
-                    value != self.exception_response
-                    and (isinstance(key, int) or issubclass(HTTPException, key) or issubclass(key, HTTPException))
-                    for key, value in handler.resolve_exception_handlers().items()
-                ):
-                    continue
-                operation = getattr(path_item, method.lower())
-                if operation is None:
-                    continue
-                self._title_operation(operation)
-        return application
 
 
 @LitestarBootstrapper.use_instrument()

@@ -9,9 +9,9 @@ from fastapi.testclient import TestClient as FastAPITestClient
 from litestar.openapi import spec
 from litestar.testing import TestClient as LitestarTestClient
 
-from microbootstrap import FastApiSettings, LitestarSettings, SwaggerConfig
+from microbootstrap import FastApiSettings, LitestarSettings
 from microbootstrap.bootstrappers.fastapi import FastApiBootstrapper
-from microbootstrap.bootstrappers.litestar import LitestarBootstrapper, LitestarSwaggerInstrument
+from microbootstrap.bootstrappers.litestar import LitestarBootstrapper
 from microbootstrap.config.litestar import LitestarConfig
 from microbootstrap.instruments.health_checks_instrument import HealthCheckTypedDict
 
@@ -22,7 +22,7 @@ class Payload(pydantic.BaseModel):
 
 def test_fastapi_descriptions_preserve_validation_and_are_idempotent() -> None:
     application: typing.Final = FastApiBootstrapper(
-        FastApiSettings(openapi_descriptions_enabled=True, service_debug=False, health_checks_enabled=False)
+        FastApiSettings(api_metadata_enabled=True, service_debug=False, health_checks_enabled=False)
     ).bootstrap()
 
     @application.post("/items")
@@ -44,19 +44,19 @@ def test_fastapi_descriptions_preserve_validation_and_are_idempotent() -> None:
         assert client.post("/items", json={"value": {"nested": [1, None]}}).json() == {"value": {"nested": [1, None]}}
         rejected = client.post("/items", json={})
     assert rejected.status_code == http.HTTPStatus.UNPROCESSABLE_ENTITY
-    assert set(rejected.json()) == {"detail"}
-    assert "title" not in schemas["HTTPValidationError"]["properties"]
+    assert set(rejected.json()) == {"detail", "title"}
+    assert schemas["HTTPValidationError"]["properties"]["title"]["description"]
 
 
 def test_fastapi_empty_schema_is_supported() -> None:
     application: typing.Final = FastApiBootstrapper(
-        FastApiSettings(openapi_descriptions_enabled=True, service_debug=False, health_checks_enabled=False)
+        FastApiSettings(api_metadata_enabled=True, service_debug=False, health_checks_enabled=False)
     ).bootstrap()
     assert "security" not in application.openapi()
     assert not application.openapi().get("components", {}).get("schemas")
 
 
-def test_litestar_descriptions_preserve_runtime_contracts() -> None:
+def test_litestar_metadata_describes_schemas_and_preserves_successful_responses() -> None:
     @litestar.get("/example-health", sync_to_thread=False)
     def get_health() -> HealthCheckTypedDict:
         return {"health_status": True}
@@ -66,15 +66,15 @@ def test_litestar_descriptions_preserve_runtime_contracts() -> None:
         return item_id * limit
 
     application: typing.Final = (
-        LitestarBootstrapper(LitestarSettings(openapi_descriptions_enabled=True, service_debug=False))
+        LitestarBootstrapper(LitestarSettings(api_metadata_enabled=True, service_debug=False))
         .configure_application(LitestarConfig(route_handlers=[get_health, get_item]))
         .bootstrap()
     )
     document: typing.Final = application.openapi_schema
     before: typing.Final = copy.deepcopy(document.to_schema())
-    LitestarSwaggerInstrument(SwaggerConfig(openapi_descriptions_enabled=True)).bootstrap_after(application)
+    LitestarBootstrapper(LitestarSettings(api_metadata_enabled=True, service_debug=False)).bootstrap_after(application)
     after: typing.Final = copy.deepcopy(document.to_schema())
-    LitestarSwaggerInstrument(SwaggerConfig(openapi_descriptions_enabled=True)).bootstrap_after(application)
+    LitestarBootstrapper(LitestarSettings(api_metadata_enabled=True, service_debug=False)).bootstrap_after(application)
     assert document.to_schema() == after
     health: typing.Final = after["components"]["schemas"]["HealthCheckTypedDict"]
     assert health["properties"]["health_status"]["description"].startswith("Static process health")
@@ -82,7 +82,7 @@ def test_litestar_descriptions_preserve_runtime_contracts() -> None:
         "schema"
     ]
     assert error["properties"]["detail"]["description"]
-    assert "title" not in error["properties"]
+    assert error["properties"]["title"]["description"]
     before_error: typing.Final = before["paths"]["/items/{item_id}"]["get"]["responses"]["400"]["content"][
         "application/json"
     ]["schema"]
@@ -94,7 +94,7 @@ def test_litestar_descriptions_preserve_runtime_contracts() -> None:
         assert client.get(f"/items/{item_id}").json() == item_id
         rejected = client.get(f"/items/{item_id}?limit=invalid")
     assert rejected.status_code == http.HTTPStatus.BAD_REQUEST
-    assert set(rejected.json()) == {"status_code", "detail", "extra"}
+    assert set(rejected.json()) == {"status_code", "detail", "extra", "title"}
 
 
 def test_composite_error_schemas_and_references_keep_their_shapes() -> None:
@@ -137,7 +137,7 @@ def test_composite_error_schemas_and_references_keep_their_shapes() -> None:
     document: typing.Final = application.openapi_schema
     document.paths = {"/items": spec.PathItem(get=operation)}
     document.components.schemas = {"JsonValue": spec.Schema(description="Owned JSON description")}
-    LitestarSwaggerInstrument(SwaggerConfig(openapi_descriptions_enabled=True)).bootstrap_after(application)
+    LitestarBootstrapper(LitestarSettings(api_metadata_enabled=True, service_debug=False)).bootstrap_after(application)
     assert document.components.schemas["JsonValue"].description == "Owned JSON description"
     assert compound.type == spec.OpenAPIType.OBJECT
     assert compound.one_of == [branch, spec.Schema(type=spec.OpenAPIType.OBJECT)]
@@ -150,7 +150,7 @@ def test_composite_error_schemas_and_references_keep_their_shapes() -> None:
 
 def test_fastapi_preserves_owned_descriptions() -> None:
     application: typing.Final = FastApiBootstrapper(
-        FastApiSettings(openapi_descriptions_enabled=True, service_debug=False)
+        FastApiSettings(api_metadata_enabled=True, service_debug=False)
     ).bootstrap()
     cached: typing.Final = application.openapi()
     cached.clear()
@@ -178,7 +178,7 @@ def test_fastapi_preserves_owned_descriptions() -> None:
 @pytest.mark.parametrize("enabled", [False, True])
 def test_fastapi_setting_controls_generated_descriptions(enabled: bool) -> None:
     application: typing.Final = FastApiBootstrapper(
-        FastApiSettings(openapi_descriptions_enabled=enabled, service_debug=False)
+        FastApiSettings(api_metadata_enabled=enabled, service_debug=False)
     ).bootstrap()
 
     @application.post("/items")
@@ -201,8 +201,7 @@ def test_litestar_setting_controls_generated_descriptions(enabled: bool) -> None
         return limit
 
     application: typing.Final = (
-        LitestarBootstrapper(LitestarSettings(service_debug=False))
-        .configure_instrument(SwaggerConfig(openapi_descriptions_enabled=enabled))
+        LitestarBootstrapper(LitestarSettings(service_debug=False, api_metadata_enabled=enabled))
         .configure_application(LitestarConfig(route_handlers=[get_items]))
         .bootstrap()
     )
@@ -217,7 +216,7 @@ def test_litestar_setting_controls_generated_descriptions(enabled: bool) -> None
 
 
 def test_litestar_missing_openapi_and_empty_schema_are_supported() -> None:
-    instrument: typing.Final = LitestarSwaggerInstrument(SwaggerConfig(openapi_descriptions_enabled=True))
+    instrument: typing.Final = LitestarBootstrapper(LitestarSettings(api_metadata_enabled=True, service_debug=False))
     disabled: typing.Final = litestar.Litestar(openapi_config=None)
     assert instrument.bootstrap_after(disabled) is disabled
     application: typing.Final = litestar.Litestar(route_handlers=[])
@@ -230,7 +229,10 @@ def test_litestar_missing_openapi_and_empty_schema_are_supported() -> None:
 
 
 def test_environment_can_enable_descriptions(monkeypatch: pytest.MonkeyPatch) -> None:
-    assert SwaggerConfig().openapi_descriptions_enabled is False
-    monkeypatch.setenv("OPENAPI_DESCRIPTIONS_ENABLED", "true")
-    assert FastApiSettings().openapi_descriptions_enabled is True
-    assert LitestarSettings().openapi_descriptions_enabled is True
+    assert FastApiSettings().api_metadata_enabled is False
+    assert LitestarSettings().api_metadata_enabled is False
+    assert "openapi_descriptions_enabled" not in FastApiSettings.model_fields
+    assert "openapi_descriptions_enabled" not in LitestarSettings.model_fields
+    monkeypatch.setenv("API_METADATA_ENABLED", "true")
+    assert FastApiSettings().api_metadata_enabled is True
+    assert LitestarSettings().api_metadata_enabled is True
