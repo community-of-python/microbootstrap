@@ -53,6 +53,7 @@ def test_real_errors_and_health_schemas_preserve_runtime_contracts() -> None:
     assert set(error["properties"]) == set(before_error["properties"])
     item_id: typing.Final = 42
     with TestClient(application) as client:
+        assert client.get("/health").json() == {"health_status": True}
         assert client.get(f"/items/{item_id}").json() == item_id
         rejected = client.get(f"/items/{item_id}?limit=invalid")
     assert rejected.status_code == http.HTTPStatus.BAD_REQUEST

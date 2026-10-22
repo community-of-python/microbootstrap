@@ -744,15 +744,13 @@ from microbootstrap.openapi.fastapi import update_openapi
 update_openapi(app, parameter_descriptions={"item_id": "Identifier of the requested item."})
 ```
 
-For Litestar, register the helper as an OpenAPI schema creation hook:
+For Litestar, update the generated document after constructing the application
+with OpenAPI enabled:
 
 ```python
-from litestar.openapi.config import OpenAPIConfig
 from microbootstrap.openapi.litestar import update_openapi
 
-openapi_config = OpenAPIConfig(
-    title="Example API", version="1", on_create_openapi_schema=[update_openapi]
-)
+update_openapi(app.openapi_schema)
 ```
 
 Both helpers describe generated validation errors and JSON values while preserving
