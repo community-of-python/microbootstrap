@@ -33,6 +33,8 @@ from microbootstrap.instruments.health_checks_instrument import (
     HealthChecksInstrument,
     HealthCheckTypedDict,
 )
+from microbootstrap.instruments.litestar_pydantic_descriptions import PydanticDescriptionsSchemaPlugin
+from microbootstrap.instruments.litestar_typed_dict_descriptions import PydanticTypedDictDescriptionsPlugin
 from microbootstrap.instruments.logging_instrument import LoggingInstrument
 from microbootstrap.instruments.openapi_security_schemes import (
     OpenApiApiKeySecurityScheme,
@@ -95,6 +97,12 @@ class LitestarBootstrapper(
             "on_shutdown": [self.teardown],
             "on_startup": [self.console_writer.print_bootstrap_table],
             "on_app_init": [self._configure_error_titles] if self.settings.api_metadata_enabled else [],
+            "plugins": [
+                PydanticDescriptionsSchemaPlugin(),
+                PydanticTypedDictDescriptionsPlugin(),
+            ]
+            if self.settings.api_metadata_enabled
+            else [],
         }
 
     def exception_response(
@@ -472,7 +480,14 @@ class LitestarPrometheusInstrument(PrometheusInstrument[LitestarPrometheusConfig
 @LitestarBootstrapper.use_instrument()
 class LitestarHealthChecksInstrument(HealthChecksInstrument):
     def build_litestar_health_check_router(self) -> litestar.Router:
-        @litestar.get(media_type=litestar.MediaType.JSON)
+        @litestar.get(
+            media_type=litestar.MediaType.JSON,
+            security=[],
+            description=(
+                "Return the service name, version and static health status for this running process. "
+                "This endpoint does not check external dependencies."
+            ),
+        )
         async def health_check_handler() -> HealthCheckTypedDict:
             return self.render_health_check_data()
 

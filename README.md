@@ -737,6 +737,13 @@ both generated OpenAPI descriptions and HTTP error titles. It defaults to `False
 and can also be enabled with `API_METADATA_ENABLED=true` (with the configured
 `ENVIRONMENT_PREFIX`, if any). No separate instrument configuration is required.
 
+For Litestar, this also preserves Pydantic model docstrings and `Field(description=...)`
+metadata on `TypedDict` properties during schema generation, including nested and
+referenced models. Explicit descriptions and application-provided schema plugins
+take precedence. Validation, serialization and field constraints remain unchanged.
+Pydantic `RootModel` schemas describe the root value rather than a `root` property,
+including roots nested inside other models and recursive root collections.
+
 ```python
 from microbootstrap import FastApiSettings
 from microbootstrap.bootstrappers.fastapi import FastApiBootstrapper
