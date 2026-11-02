@@ -5,6 +5,8 @@ import typing
 import litestar
 import pydantic
 import pytest
+from litestar.openapi.spec import Example
+from litestar.params import Parameter
 from litestar.plugins.pydantic import PydanticPlugin
 from litestar.testing import TestClient
 
@@ -19,6 +21,7 @@ if typing.TYPE_CHECKING:
 
 _MAX_SCALAR_VALUE: typing.Final = 3
 _MAX_SEQUENCE_ITEMS: typing.Final = 3
+_USE_SITE_EXAMPLE: typing.Final = 3
 
 
 @typing.final
@@ -241,3 +244,34 @@ def test_litestar_root_model_examples_override_root_field_examples() -> None:
         response: typing.Final = test_client.post("/configured", json=configured_example)
     assert response.status_code == http.HTTPStatus.CREATED
     assert response.json() == configured_example
+
+
+@litestar.get("/catalog", sync_to_thread=False)
+def fetch_catalog() -> typing.Annotated[ScalarRoot, Parameter(examples=[Example(value=_USE_SITE_EXAMPLE)])]:
+    return ScalarRoot(_USE_SITE_EXAMPLE)
+
+
+@litestar.get("/configured-catalog", sync_to_thread=False)
+def fetch_configured_catalog() -> typing.Annotated[ConfiguredExamplesRoot, Parameter(examples=[Example(value=1)])]:
+    return ConfiguredExamplesRoot(_USE_SITE_EXAMPLE)
+
+
+@pytest.mark.parametrize(
+    ("route_handler", "route_path", "component_name"),
+    [
+        (fetch_catalog, "/catalog", "ScalarRoot"),
+        (fetch_configured_catalog, "/configured-catalog", "ConfiguredExamplesRoot"),
+    ],
+)
+def test_litestar_root_examples_keep_native_use_site_precedence(
+    route_handler: HTTPRouteHandler, route_path: str, component_name: str
+) -> None:
+    application: typing.Final = _build_application(route_handler)
+    document: typing.Final = application.openapi_schema.to_schema()
+    root_schema: typing.Final = document["components"]["schemas"][component_name]
+    assert root_schema["type"] == "integer"
+    assert root_schema["examples"] == [_USE_SITE_EXAMPLE]
+    with TestClient(application) as test_client:
+        response: typing.Final = test_client.get(route_path)
+    assert response.status_code == http.HTTPStatus.OK
+    assert response.json() == _USE_SITE_EXAMPLE

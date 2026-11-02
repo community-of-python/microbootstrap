@@ -58,7 +58,7 @@ class PydanticDescriptionsSchemaPlugin(PydanticSchemaPlugin):
             if issubclass(model_type, pydantic.RootModel):
                 root_field: typing.Final = model_type.model_fields["root"]
                 root_field_name: typing.Final = root_field.alias if schema_creator.prefer_alias else None
-                populate_root_value_schema(model_schema, schema_creator, root_field_name or "root")
+                populate_root_value_schema(model_schema, schema_creator, root_field_name or "root", field_definition)
                 model_schema.description = owner_description or model_schema.description
             elif not model_schema.description:
                 model_schema.description = owner_description
