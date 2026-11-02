@@ -4,19 +4,18 @@ import inspect
 import typing
 
 import pydantic
-from litestar.params import KwargDefinition, ParameterKwarg
-from litestar.plugins import OpenAPISchemaPlugin
+from litestar.openapi import spec
+from litestar.params import KwargDefinition
 from litestar.plugins.pydantic import PydanticSchemaPlugin
-from litestar.typing import FieldDefinition
 from pydantic.fields import FieldInfo
 
 
 if typing.TYPE_CHECKING:
     from litestar._openapi.schema_generation import SchemaCreator
-    from litestar.openapi import spec
+    from litestar.typing import FieldDefinition
 
 
-def _fetch_field_description(field_definition: FieldDefinition) -> str | None:
+def fetch_field_description(field_definition: FieldDefinition) -> str | None:
     keyword_definition: typing.Final = field_definition.kwarg_definition
     if isinstance(keyword_definition, KwargDefinition) and keyword_definition.description:
         return keyword_definition.description
@@ -30,6 +29,19 @@ def _fetch_field_description(field_definition: FieldDefinition) -> str | None:
     )
 
 
+def _unwrap_root_schema(generated_schema: spec.Schema, schema_creator: SchemaCreator, root_field_name: str) -> None:
+    root_schema: typing.Final = (generated_schema.properties or {})[root_field_name]
+    value_schema: typing.Final = (
+        schema_creator.schema_registry.from_reference(root_schema).schema
+        if isinstance(root_schema, spec.Reference)
+        else root_schema
+    )
+    original_title: typing.Final = generated_schema.title
+    for schema_field in dataclasses.fields(spec.Schema):
+        setattr(generated_schema, schema_field.name, getattr(value_schema, schema_field.name))
+    generated_schema.title = original_title
+
+
 @typing.final
 class PydanticDescriptionsSchemaPlugin(PydanticSchemaPlugin):
     def to_openapi_schema(self, field_definition: FieldDefinition, schema_creator: SchemaCreator) -> spec.Schema:
@@ -37,41 +49,14 @@ class PydanticDescriptionsSchemaPlugin(PydanticSchemaPlugin):
         model_type: typing.Final = field_definition.annotation
         if isinstance(model_type, type) and issubclass(model_type, pydantic.BaseModel):
             model_description: typing.Final = model_type.__dict__.get("__doc__")
-            if not generated_schema.description:
-                generated_schema.description = _fetch_field_description(field_definition) or (
-                    inspect.cleandoc(model_description) if isinstance(model_description, str) else None
-                )
+            owner_description: typing.Final = fetch_field_description(field_definition) or (
+                inspect.cleandoc(model_description) if isinstance(model_description, str) else None
+            )
+            if issubclass(model_type, pydantic.RootModel):
+                root_field: typing.Final = model_type.model_fields["root"]
+                root_field_name: typing.Final = root_field.alias if schema_creator.prefer_alias else None
+                _unwrap_root_schema(generated_schema, schema_creator, root_field_name or "root")
+                generated_schema.description = owner_description or generated_schema.description
+            elif not generated_schema.description:
+                generated_schema.description = owner_description
         return generated_schema
-
-
-def _describe_typed_dict_field(field_name: str, annotation: object) -> FieldDefinition:
-    original_field: typing.Final = FieldDefinition.from_kwarg(annotation, field_name)
-    original_keyword: typing.Final = original_field.kwarg_definition
-    description: typing.Final = _fetch_field_description(original_field)
-    if not description or (original_keyword is not None and not isinstance(original_keyword, KwargDefinition)):
-        return original_field
-    return dataclasses.replace(
-        original_field,
-        kwarg_definition=dataclasses.replace(
-            original_keyword if isinstance(original_keyword, KwargDefinition) else ParameterKwarg(),
-            description=description,
-        ),
-    )
-
-
-@typing.final
-class PydanticTypedDictDescriptionsPlugin(OpenAPISchemaPlugin):
-    def is_plugin_supported_field(self, field_definition: FieldDefinition) -> bool:
-        return field_definition.is_typeddict_type
-
-    def to_openapi_schema(self, field_definition: FieldDefinition, schema_creator: SchemaCreator) -> spec.Schema:
-        return schema_creator.create_component_schema(
-            field_definition,
-            required=sorted(field_definition.type_.__required_keys__),
-            property_fields={
-                field_name: _describe_typed_dict_field(field_name, annotation)
-                for field_name, annotation in field_definition.get_type_hints(
-                    include_extras=True, resolve_generics=True
-                ).items()
-            },
-        )

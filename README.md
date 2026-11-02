@@ -741,6 +741,8 @@ For Litestar, this also preserves Pydantic model docstrings and `Field(descripti
 metadata on `TypedDict` properties during schema generation, including nested and
 referenced models. Explicit descriptions and application-provided schema plugins
 take precedence. Validation, serialization and field constraints remain unchanged.
+Pydantic `RootModel` schemas describe the root value rather than a `root` property,
+including roots nested inside other models and recursive root collections.
 
 ```python
 from microbootstrap import FastApiSettings

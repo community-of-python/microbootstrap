@@ -34,10 +34,8 @@ from microbootstrap.instruments.health_checks_instrument import (
     HealthChecksInstrument,
     HealthCheckTypedDict,
 )
-from microbootstrap.instruments.litestar_pydantic_descriptions import (
-    PydanticDescriptionsSchemaPlugin,
-    PydanticTypedDictDescriptionsPlugin,
-)
+from microbootstrap.instruments.litestar_pydantic_descriptions import PydanticDescriptionsSchemaPlugin
+from microbootstrap.instruments.litestar_typed_dict_descriptions import PydanticTypedDictDescriptionsPlugin
 from microbootstrap.instruments.logging_instrument import LoggingInstrument
 from microbootstrap.instruments.openapi_security_schemes import (
     OpenApiApiKeySecurityScheme,
