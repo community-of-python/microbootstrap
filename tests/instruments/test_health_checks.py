@@ -42,7 +42,9 @@ def test_health_checks_teardown(
 
 def test_litestar_health_checks_bootstrap() -> None:
     test_health_checks_path: typing.Final = "/test-path/"
-    heatlh_checks_config: typing.Final = HealthChecksConfig(health_checks_path=test_health_checks_path)
+    heatlh_checks_config: typing.Final = HealthChecksConfig(
+        health_checks_path=test_health_checks_path, health_checks_include_in_schema=True
+    )
     health_checks_instrument: typing.Final = LitestarHealthChecksInstrument(heatlh_checks_config)
 
     health_checks_instrument.bootstrap()
@@ -53,6 +55,18 @@ def test_litestar_health_checks_bootstrap() -> None:
     with LitestarTestClient(app=litestar_application) as async_client:
         response = async_client.get(heatlh_checks_config.health_checks_path)
         assert response.status_code == status_codes.HTTP_200_OK
+        assert response.json() == {
+            "service_name": heatlh_checks_config.service_name,
+            "service_version": heatlh_checks_config.service_version,
+            "health_status": True,
+        }
+
+    document: typing.Final = litestar_application.openapi_schema.to_schema()
+    health_operation: typing.Final = document["paths"][test_health_checks_path.rstrip("/")]["get"]
+    assert "static health status" in health_operation["description"]
+    assert "does not check external dependencies" in health_operation["description"]
+    assert not document.get("security")
+    assert not health_operation.get("security")
 
 
 def test_fastapi_health_checks_bootstrap() -> None:

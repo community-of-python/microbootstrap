@@ -487,7 +487,14 @@ class LitestarPrometheusInstrument(PrometheusInstrument[LitestarPrometheusConfig
 @LitestarBootstrapper.use_instrument()
 class LitestarHealthChecksInstrument(HealthChecksInstrument):
     def build_litestar_health_check_router(self) -> litestar.Router:
-        @litestar.get(media_type=litestar.MediaType.JSON)
+        @litestar.get(
+            media_type=litestar.MediaType.JSON,
+            security=[],
+            description=(
+                "Return the service name, version and static health status for this running process. "
+                "This endpoint does not check external dependencies."
+            ),
+        )
         async def health_check_handler() -> HealthCheckTypedDict:
             return self.render_health_check_data()
 
