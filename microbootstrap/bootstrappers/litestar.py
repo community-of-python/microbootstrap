@@ -17,6 +17,7 @@ from litestar.exceptions import HTTPException
 from litestar.exceptions.responses import create_debug_response, create_exception_response
 from litestar.middleware import ASGIMiddleware
 from litestar.openapi.plugins import SwaggerRenderPlugin
+from litestar.plugins.pydantic import PydanticPlugin
 from litestar.routes import HTTPRoute
 from litestar.types.asgi_types import ASGIApp, Scope
 from litestar_offline_docs import generate_static_files_config
@@ -32,6 +33,10 @@ from microbootstrap.instruments.cors_instrument import CorsInstrument
 from microbootstrap.instruments.health_checks_instrument import (
     HealthChecksInstrument,
     HealthCheckTypedDict,
+)
+from microbootstrap.instruments.litestar_pydantic_descriptions import (
+    PydanticDescriptionsSchemaPlugin,
+    PydanticTypedDictDescriptionsPlugin,
 )
 from microbootstrap.instruments.logging_instrument import LoggingInstrument
 from microbootstrap.instruments.openapi_security_schemes import (
@@ -90,11 +95,21 @@ class LitestarBootstrapper(
     application_type = litestar.Litestar
 
     def bootstrap_before(self: typing_extensions.Self) -> dict[str, typing.Any]:
+        prefer_alias: typing.Final = next(
+            (plugin.prefer_alias for plugin in self.application_config.plugins if isinstance(plugin, PydanticPlugin)),
+            False,
+        )
         return {
             "debug": self.settings.service_debug,
             "on_shutdown": [self.teardown],
             "on_startup": [self.console_writer.print_bootstrap_table],
             "on_app_init": [self._configure_error_titles] if self.settings.api_metadata_enabled else [],
+            "plugins": [
+                PydanticDescriptionsSchemaPlugin(prefer_alias=prefer_alias),
+                PydanticTypedDictDescriptionsPlugin(),
+            ]
+            if self.settings.api_metadata_enabled
+            else [],
         }
 
     def exception_response(
