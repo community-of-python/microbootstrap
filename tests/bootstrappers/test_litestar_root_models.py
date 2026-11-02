@@ -28,6 +28,16 @@ class ScalarRoot(pydantic.RootModel[int]):
     root: int = pydantic.Field(ge=1, le=_MAX_SCALAR_VALUE, description="Numeric payload.", examples=[2])
 
 
+class RootExampleConfig(pydantic.ConfigDict):
+    example: int
+
+
+@typing.final
+class ConfiguredExamplesRoot(pydantic.RootModel[int]):
+    model_config: typing.ClassVar[RootExampleConfig] = {"example": 3}
+    root: int = pydantic.Field(ge=1, le=_MAX_SCALAR_VALUE, examples=[2])
+
+
 @typing.final
 class ArrayRoot(pydantic.RootModel[list[ScalarRoot]]):
     """An ordered numeric payload."""
@@ -76,6 +86,11 @@ def create_scalar(data: ScalarRoot) -> ScalarRoot:
     return data
 
 
+@litestar.post("/configured", sync_to_thread=False)
+def create_configured(data: ConfiguredExamplesRoot) -> ConfiguredExamplesRoot:
+    return data
+
+
 @litestar.post("/sequence", sync_to_thread=False)
 def create_sequence(data: ArrayRoot) -> ArrayRoot:
     return data
@@ -118,12 +133,16 @@ def _build_application(route_handler: HTTPRouteHandler, *, prefer_alias: bool = 
     )
 
 
-def _resolve_schema(document: dict[str, typing.Any], schema_value: dict[str, typing.Any]) -> dict[str, typing.Any]:
-    if "$ref" in schema_value:
-        return pydantic.TypeAdapter(dict[str, typing.Any]).validate_python(
-            document["components"]["schemas"][schema_value["$ref"].rsplit("/", maxsplit=1)[-1]]
-        )
-    return schema_value
+def _resolve_schema(
+    document: dict[str, pydantic.JsonValue], schema_value: dict[str, pydantic.JsonValue]
+) -> dict[str, pydantic.JsonValue]:
+    reference_value: typing.Final = schema_value.get("$ref")
+    if not isinstance(reference_value, str):
+        return schema_value
+    object_adapter: typing.Final = pydantic.TypeAdapter(dict[str, pydantic.JsonValue])
+    components: typing.Final = object_adapter.validate_python(document.get("components"))
+    schemas: typing.Final = object_adapter.validate_python(components.get("schemas"))
+    return object_adapter.validate_python(schemas.get(reference_value.rsplit("/", maxsplit=1)[-1]))
 
 
 @pytest.mark.parametrize(
@@ -149,7 +168,8 @@ def test_litestar_root_schema_matches_the_wire_value(
         document, operation["responses"]["201"]["content"]["application/json"]["schema"]
     )
     assert request_schema["type"] == response_schema["type"] == schema_type
-    assert "root" not in response_schema.get("properties", {})
+    response_properties: typing.Final = response_schema.get("properties")
+    assert not isinstance(response_properties, dict) or "root" not in response_properties
     with TestClient(application) as test_client:
         response: typing.Final = test_client.post(route_path, json=request_value)
     assert response.status_code == http.HTTPStatus.CREATED
@@ -208,3 +228,16 @@ def test_litestar_root_field_alias_does_not_add_an_envelope() -> None:
         response: typing.Final = test_client.post("/aliased", json=root_value)
     assert response.status_code == http.HTTPStatus.CREATED
     assert response.json() == root_value
+
+
+def test_litestar_root_model_examples_override_root_field_examples() -> None:
+    application: typing.Final = _build_application(create_configured)
+    document: typing.Final = application.openapi_schema.to_schema()
+    root_schema: typing.Final = document["components"]["schemas"]["ConfiguredExamplesRoot"]
+    configured_example: typing.Final = 3
+    assert root_schema["examples"] == [configured_example]
+    assert root_schema["type"] == "integer"
+    with TestClient(application) as test_client:
+        response: typing.Final = test_client.post("/configured", json=configured_example)
+    assert response.status_code == http.HTTPStatus.CREATED
+    assert response.json() == configured_example
