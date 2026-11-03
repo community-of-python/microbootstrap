@@ -339,7 +339,7 @@ Parameter descriptions:
 
 ### [Prometheus](https://prometheus.io/)
 
-Prometheus integration presents a challenge because the underlying libraries for `FastAPI`, `Litestar` and `FastStream` differ significantly, making it impossible to unify them under a single interface. As a result, the Prometheus settings for `FastAPI`, `Litestar` and `FastStream` must be configured separately.
+Prometheus integration presents a challenge because the underlying libraries for `FastAPI`, `Litestar` and `FastStream` differ significantly, making it impossible to unify them under a single interface. As a result, the Prometheus settings for `FastAPI`, `Litestar`, `FastStream` and `FastMCP` must be configured separately.
 
 #### FastAPI
 
@@ -418,6 +418,43 @@ Parameters description:
 - `service_name` - will be attached to metric's names, there are no name restrictions.
 - `prometheus_metrics_path` - path to metrics handler.
 - `prometheus_middleware_cls` - Prometheus middleware for your broker.
+
+#### FastMCP
+
+`FastMcpSettings` include the Prometheus settings, so the metrics route is registered by default:
+
+```python
+from microbootstrap import FastMcpSettings
+
+
+class YourSettings(FastMcpSettings):
+    service_name: str
+
+    prometheus_metrics_path: str = "/metrics"
+    prometheus_register_route: bool = True
+    prometheus_registry: CollectorRegistry | None = None
+    prometheus_instrumentator_params: dict[str, typing.Any] = {}
+    prometheus_instrument_params: dict[str, typing.Any] = {}
+    prometheus_custom_labels: dict[str, typing.Any] = {}
+    prometheus_tool_metrics: bool = True
+
+    ... # Other settings here
+```
+
+Every ASGI application returned by `http_app()` is instrumented with
+[prometheus-fastapi-instrumentator](https://github.com/trallnag/prometheus-fastapi-instrumentator), the same library the FastAPI bootstrapper uses,
+so requests are counted in `http_requests_total`, `http_request_duration_seconds` and friends by route template
+(`handler="/mcp"`, `handler="/health/"`); requests to unknown paths are grouped into `handler="none"` and the metrics route itself is not counted.
+
+Parameters description:
+
+- `prometheus_metrics_path` - path to metrics handler.
+- `prometheus_register_route` - set to `False` to serve the registry yourself.
+- `prometheus_registry` - registry to expose and to register the request metrics in, the global one by default.
+- `prometheus_instrumentator_params` - will be passed to `Instrumentator` during initialization (`excluded_handlers` and `registry` are set by default and can be overridden here).
+- `prometheus_instrument_params` - will be passed to `Instrumentator.instrument(...)`.
+- `prometheus_custom_labels` - will be added to every request and tool call metric.
+- `prometheus_tool_metrics` - count tool calls in `fastmcp_tool_calls_total{tool, status}` (`status` is `success` or `error`) and `fastmcp_tool_call_duration_seconds{tool}` through a FastMCP middleware; set to `False` to turn it off.
 
 ### [OpenTelemetry](https://opentelemetry.io/)
 
